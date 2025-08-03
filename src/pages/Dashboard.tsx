@@ -1,13 +1,17 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3 } from 'lucide-react';
+import { CardSkeleton } from '@/components/ui/skeleton';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationBell';
+import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 
 interface Business {
   id: string;
@@ -28,6 +32,12 @@ const Dashboard = () => {
     totalOrders: 0,
     pendingOrders: 0
   });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingBusiness, setLoadingBusiness] = useState(true);
+  
+  const { execute: executeCopyLink, loading: copyingLink } = useAsyncOperation({
+    successMessage: "Link copiado com sucesso!"
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -43,63 +53,66 @@ const Dashboard = () => {
   }, [user]);
 
   const fetchBusiness = async () => {
-    const { data, error } = await supabase
-      .from('delivery_businesses')
-      .select('*')
-      .single();
-
-    if (data) {
-      setBusiness(data);
-      setMenuLink(`${window.location.origin}/menu/${data.id}`);
-    } else if (error) {
-      // Criar business se não existir
-      const { data: newBusiness } = await supabase
+    setLoadingBusiness(true);
+    try {
+      const { data, error } = await supabase
         .from('delivery_businesses')
-        .insert({
-          owner_id: user?.id,
-          name: user?.user_metadata?.business_name || 'Meu Delivery',
-          description: 'Descrição do delivery'
-        })
-        .select()
+        .select('*')
         .single();
-      
-      if (newBusiness) {
-        setBusiness(newBusiness);
-        setMenuLink(`${window.location.origin}/menu/${newBusiness.id}`);
+
+      if (data) {
+        setBusiness(data);
+        setMenuLink(`${window.location.origin}/menu/${data.id}`);
+      } else if (error) {
+        // Criar business se não existir
+        const { data: newBusiness } = await supabase
+          .from('delivery_businesses')
+          .insert({
+            owner_id: user?.id,
+            name: user?.user_metadata?.business_name || 'Meu Delivery',
+            description: 'Descrição do delivery'
+          })
+          .select()
+          .single();
+        
+        if (newBusiness) {
+          setBusiness(newBusiness);
+          setMenuLink(`${window.location.origin}/menu/${newBusiness.id}`);
+        }
       }
+    } catch (error) {
+      console.error('Erro ao buscar business:', error);
+    } finally {
+      setLoadingBusiness(false);
     }
   };
 
   const copyMenuLink = async () => {
-    if (menuLink) {
-      try {
-        await navigator.clipboard.writeText(menuLink);
-        toast({
-          title: "Link copiado!",
-          description: "O link do seu cardápio foi copiado para a área de transferência"
-        });
-      } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível copiar o link",
-          variant: "destructive"
-        });
-      }
-    }
+    await executeCopyLink(async () => {
+      if (!menuLink) throw new Error('Link não disponível');
+      await navigator.clipboard.writeText(menuLink);
+    });
   };
 
   const fetchStats = async () => {
-    const [itemsResult, ordersResult, pendingResult] = await Promise.all([
-      supabase.from('menu_items').select('id', { count: 'exact' }),
-      supabase.from('orders').select('id', { count: 'exact' }),
-      supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pending')
-    ]);
+    setLoadingStats(true);
+    try {
+      const [itemsResult, ordersResult, pendingResult] = await Promise.all([
+        supabase.from('menu_items').select('id', { count: 'exact' }),
+        supabase.from('orders').select('id', { count: 'exact' }),
+        supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pending')
+      ]);
 
-    setStats({
-      totalItems: itemsResult.count || 0,
-      totalOrders: ordersResult.count || 0,
-      pendingOrders: pendingResult.count || 0
-    });
+      setStats({
+        totalItems: itemsResult.count || 0,
+        totalOrders: ordersResult.count || 0,
+        pendingOrders: pendingResult.count || 0
+      });
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+    } finally {
+      setLoadingStats(false);
+    }
   };
 
   if (loading) {
@@ -149,60 +162,75 @@ const Dashboard = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Itens do Cardápio
-                </CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalItems}</div>
-                <p className="text-xs text-muted-foreground">
-                  Total de itens cadastrados
-                </p>
-              </CardContent>
-            </Card>
+            {loadingStats ? (
+              <>
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </>
+            ) : (
+              <>
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Itens do Cardápio
+                    </CardTitle>
+                    <Package className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">{stats.totalItems}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Total de itens cadastrados
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Pedidos Totais
-                </CardTitle>
-                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalOrders}</div>
-                <p className="text-xs text-muted-foreground">
-                  Pedidos realizados
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Pedidos Totais
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 text-success" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-success">{stats.totalOrders}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Pedidos realizados
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Pedidos Pendentes
-                </CardTitle>
-                <Badge variant="destructive" className="h-4 w-4 rounded-full p-0">
-                  {stats.pendingOrders}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.pendingOrders}</div>
-                <p className="text-xs text-muted-foreground">
-                  Aguardando preparo
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Pedidos Pendentes
+                    </CardTitle>
+                    <Clock className="h-4 w-4 text-warning" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <div className="text-2xl font-bold text-warning">{stats.pendingOrders}</div>
+                      {stats.pendingOrders > 0 && (
+                        <Badge variant="destructive" className="animate-pulse-soft">
+                          Urgente!
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Aguardando preparo
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/menu')}>
+            <Card className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer animate-fade-in" onClick={() => navigate('/menu')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
+                  <Package className="h-5 w-5 text-primary" />
                   Gerenciar Cardápio
                 </CardTitle>
                 <CardDescription>
@@ -210,20 +238,20 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full">
+                <Button className="w-full" variant="premium">
                   <Plus className="h-4 w-4 mr-2" />
                   Gerenciar Itens
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/orders')}>
+            <Card className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer animate-fade-in" onClick={() => navigate('/orders')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
+                  <ShoppingCart className="h-5 w-5 text-primary" />
                   Pedidos
                   {stats.pendingOrders > 0 && (
-                    <Badge variant="destructive" className="ml-2">
+                    <Badge variant="destructive" className="ml-2 animate-pulse-soft">
                       {stats.pendingOrders}
                     </Badge>
                   )}
@@ -233,16 +261,23 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" variant="secondary">
-                  Ver Pedidos
+                <Button className="w-full" variant={stats.pendingOrders > 0 ? "warning" : "secondary"}>
+                  {stats.pendingOrders > 0 ? (
+                    <>
+                      <Clock className="h-4 w-4 mr-2" />
+                      Ver Pendentes
+                    </>
+                  ) : (
+                    "Ver Pedidos"
+                  )}
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/analytics')}>
+            <Card className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer animate-fade-in" onClick={() => navigate('/analytics')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+                  <BarChart3 className="h-5 w-5 text-primary" />
                   Analytics
                 </CardTitle>
                 <CardDescription>
@@ -251,15 +286,16 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <Button className="w-full" variant="outline">
+                  <TrendingUp className="h-4 w-4 mr-2" />
                   Ver Relatórios
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/settings')}>
+            <Card className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer animate-fade-in" onClick={() => navigate('/settings')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Store className="h-5 w-5" />
+                  <Store className="h-5 w-5 text-primary" />
                   Configurações
                 </CardTitle>
                 <CardDescription>
@@ -291,10 +327,15 @@ const Dashboard = () => {
                   <div className="flex-1 p-3 bg-muted rounded-md font-mono text-sm">
                     {menuLink}
                   </div>
-                  <Button onClick={copyMenuLink} variant="outline">
+                  <LoadingButton 
+                    onClick={copyMenuLink} 
+                    variant="outline"
+                    loading={copyingLink}
+                    loadingText="Copiando..."
+                  >
                     <Copy className="h-4 w-4 mr-2" />
                     Copiar
-                  </Button>
+                  </LoadingButton>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                   Cole este link no WhatsApp, Instagram, Facebook ou onde preferir!
