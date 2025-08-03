@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Plus, Minus, Clock, Store } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import CheckoutForm from '@/components/CheckoutForm';
 
 interface MenuItem {
   id: string;
@@ -35,6 +36,7 @@ const PublicMenu = () => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
     if (businessId) {
@@ -129,7 +131,7 @@ const PublicMenu = () => {
     return encodeURIComponent(message);
   };
 
-  const sendWhatsAppOrder = () => {
+  const handleProceedToCheckout = () => {
     if (cart.length === 0) {
       toast({
         title: "Carrinho vazio",
@@ -138,12 +140,16 @@ const PublicMenu = () => {
       });
       return;
     }
+    setShowCheckout(true);
+  };
 
-    const phone = business?.phone?.replace(/\D/g, '') || '';
-    const message = generateWhatsAppMessage();
-    const whatsappUrl = `https://wa.me/55${phone}?text=${message}`;
-    
-    window.open(whatsappUrl, '_blank');
+  const handleOrderComplete = () => {
+    setCart([]);
+    setShowCheckout(false);
+    toast({
+      title: "Pedido realizado!",
+      description: "Obrigado pelo seu pedido!",
+    });
   };
 
   if (loading) {
@@ -328,9 +334,9 @@ const PublicMenu = () => {
                       
                       <Button 
                         className="w-full mt-4" 
-                        onClick={sendWhatsAppOrder}
+                        onClick={handleProceedToCheckout}
                       >
-                        Fazer Pedido via WhatsApp
+                        Finalizar Pedido
                       </Button>
                     </div>
                   )}
@@ -340,6 +346,17 @@ const PublicMenu = () => {
           </div>
         </div>
       </div>
+
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <CheckoutForm
+          cart={cart}
+          business={business!}
+          total={getCartTotal()}
+          onOrderComplete={handleOrderComplete}
+          onCancel={() => setShowCheckout(false)}
+        />
+      )}
     </div>
   );
 };
