@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Store, Package, ShoppingCart, Copy, Link } from 'lucide-react';
+import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationBell } from '@/components/NotificationBell';
 
 interface Business {
   id: string;
@@ -126,6 +127,7 @@ const Dashboard = () => {
             )}
           </div>
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <span className="text-sm text-muted-foreground">
               {user.email}
             </span>
@@ -196,7 +198,7 @@ const Dashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/menu')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -233,6 +235,23 @@ const Dashboard = () => {
               <CardContent>
                 <Button className="w-full" variant="secondary">
                   Ver Pedidos
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/analytics')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Analytics
+                </CardTitle>
+                <CardDescription>
+                  Visualize relatórios de vendas e performance
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline">
+                  Ver Relatórios
                 </Button>
               </CardContent>
             </Card>
