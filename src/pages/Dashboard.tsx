@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Store, Package, ShoppingCart } from 'lucide-react';
+import { Plus, Store, Package, ShoppingCart, Copy, Link } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Business {
   id: string;
@@ -17,8 +18,10 @@ interface Business {
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
+  const [menuLink, setMenuLink] = useState<string>('');
   const [stats, setStats] = useState({
     totalItems: 0,
     totalOrders: 0,
@@ -46,6 +49,7 @@ const Dashboard = () => {
 
     if (data) {
       setBusiness(data);
+      setMenuLink(`${window.location.origin}/menu/${data.id}`);
     } else if (error) {
       // Criar business se não existir
       const { data: newBusiness } = await supabase
@@ -58,7 +62,28 @@ const Dashboard = () => {
         .select()
         .single();
       
-      if (newBusiness) setBusiness(newBusiness);
+      if (newBusiness) {
+        setBusiness(newBusiness);
+        setMenuLink(`${window.location.origin}/menu/${newBusiness.id}`);
+      }
+    }
+  };
+
+  const copyMenuLink = async () => {
+    if (menuLink) {
+      try {
+        await navigator.clipboard.writeText(menuLink);
+        toast({
+          title: "Link copiado!",
+          description: "O link do seu cardápio foi copiado para a área de transferência"
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível copiar o link",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -195,6 +220,11 @@ const Dashboard = () => {
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5" />
                   Pedidos
+                  {stats.pendingOrders > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {stats.pendingOrders}
+                    </Badge>
+                  )}
                 </CardTitle>
                 <CardDescription>
                   Acompanhe e gerencie os pedidos dos seus clientes
@@ -224,6 +254,35 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Menu Link Section */}
+          {menuLink && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="h-5 w-5" />
+                  Link do seu Cardápio
+                </CardTitle>
+                <CardDescription>
+                  Compartilhe este link nas suas redes sociais para que os clientes vejam seu cardápio
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <div className="flex-1 p-3 bg-muted rounded-md font-mono text-sm">
+                    {menuLink}
+                  </div>
+                  <Button onClick={copyMenuLink} variant="outline">
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Cole este link no WhatsApp, Instagram, Facebook ou onde preferir!
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
