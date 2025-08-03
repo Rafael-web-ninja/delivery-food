@@ -1,0 +1,207 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Save, Store } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAsyncOperation } from '@/hooks/useAsyncOperation';
+
+interface BusinessData {
+  id: string;
+  name: string;
+  description: string;
+  phone: string;
+  address: string;
+  logo_url: string;
+}
+
+const Settings = () => {
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [businessData, setBusinessData] = useState<BusinessData>({
+    id: '',
+    name: '',
+    description: '',
+    phone: '',
+    address: '',
+    logo_url: ''
+  });
+  const [loading, setLoading] = useState(true);
+
+  const { execute: saveSettings, loading: saving } = useAsyncOperation({
+    successMessage: "Configurações salvas com sucesso!",
+    onSuccess: () => {
+      // Opcional: redirecionar de volta ao dashboard
+    }
+  });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchBusinessData();
+    }
+  }, [user]);
+
+  const fetchBusinessData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('delivery_businesses')
+        .select('*')
+        .single();
+
+      if (data) {
+        setBusinessData(data);
+      } else if (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados do seu delivery",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    await saveSettings(async () => {
+      const { error } = await supabase
+        .from('delivery_businesses')
+        .update({
+          name: businessData.name,
+          description: businessData.description,
+          phone: businessData.phone,
+          address: businessData.address,
+          logo_url: businessData.logo_url
+        })
+        .eq('id', businessData.id);
+
+      if (error) throw error;
+    });
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <div className="animate-shimmer h-8 bg-muted rounded" />
+          <div className="animate-shimmer h-96 bg-muted rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Configurações</h1>
+            <p className="text-muted-foreground">Configure as informações do seu delivery</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <Card className="shadow-soft">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-primary" />
+              Informações do Delivery
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome do Delivery *</Label>
+                <Input
+                  id="name"
+                  value={businessData.name}
+                  onChange={(e) => setBusinessData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Pizza Express"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  value={businessData.phone}
+                  onChange={(e) => setBusinessData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={businessData.description}
+                onChange={(e) => setBusinessData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Descreva seu delivery..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Endereço</Label>
+              <Textarea
+                id="address"
+                value={businessData.address}
+                onChange={(e) => setBusinessData(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Rua, número, bairro, cidade..."
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="logo_url">URL do Logo (opcional)</Label>
+              <Input
+                id="logo_url"
+                value={businessData.logo_url}
+                onChange={(e) => setBusinessData(prev => ({ ...prev, logo_url: e.target.value }))}
+                placeholder="https://exemplo.com/logo.png"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <LoadingButton
+                onClick={handleSave}
+                loading={saving}
+                loadingText="Salvando..."
+                className="flex-1"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Configurações
+              </LoadingButton>
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
