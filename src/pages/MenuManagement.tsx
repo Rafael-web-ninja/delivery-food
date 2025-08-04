@@ -228,220 +228,211 @@ const MenuManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Gerenciar Cardápio</h1>
-            <p className="text-sm text-muted-foreground">
-              Adicione e organize os itens do seu delivery
-            </p>
-          </div>
-        </div>
-      </header>
+    <div className="px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Gerenciar Cardápio</h1>
+        <p className="text-sm text-muted-foreground">
+          Adicione e organize os itens do seu delivery
+        </p>
+      </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="items" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="items">Itens do Menu</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="items">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Itens do Cardápio ({items.length})</h2>
-          
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Item
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingItem ? 'Editar Item' : 'Adicionar Item'}
-                </DialogTitle>
-                <DialogDescription>
-                  Preencha as informações do item do cardápio
-                </DialogDescription>
-              </DialogHeader>
+      <Tabs defaultValue="items" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="items">Itens do Menu</TabsTrigger>
+          <TabsTrigger value="categories">Categorias</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="items">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Itens do Cardápio ({items.length})</h2>
+        
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingItem ? 'Editar Item' : 'Adicionar Item'}
+              </DialogTitle>
+              <DialogDescription>
+                Preencha as informações do item do cardápio
+              </DialogDescription>
+            </DialogHeader>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome do Item *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Ex: Pizza Margherita"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Descreva o item..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Item *</Label>
+                  <Label htmlFor="price">Preço (R$) *</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Ex: Pizza Margherita"
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    placeholder="25.90"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Descreva o item..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Preço (R$) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      placeholder="25.90"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="preparation_time">Tempo (min)</Label>
-                    <Input
-                      id="preparation_time"
-                      type="number"
-                      value={formData.preparation_time}
-                      onChange={(e) => setFormData({...formData, preparation_time: e.target.value})}
-                      placeholder="30"
-                    />
-                  </div>
-                </div>
-
-                {categories.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Categoria</Label>
-                    <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="image">Imagem</Label>
+                  <Label htmlFor="preparation_time">Tempo (min)</Label>
                   <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setFormData({...formData, image: e.target.files?.[0] || null})}
+                    id="preparation_time"
+                    type="number"
+                    value={formData.preparation_time}
+                    onChange={(e) => setFormData({...formData, preparation_time: e.target.value})}
+                    placeholder="30"
                   />
                 </div>
+              </div>
 
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={loading} className="flex-1">
-                    {loading ? 'Salvando...' : (editingItem ? 'Atualizar' : 'Adicionar')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
+              {categories.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria</Label>
+                  <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+              )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((item) => (
-            <Card key={item.id} className={!item.active ? 'opacity-60' : ''}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {item.description}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {item.image_url && (
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="w-full h-32 object-cover rounded-md mb-3"
-                  />
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-2xl font-bold text-primary">
-                    R$ {item.price.toFixed(2)}
-                  </span>
-                  <Button
-                    variant={item.active ? "default" : "secondary"}
-                    size="sm"
-                    onClick={() => toggleActive(item)}
-                  >
-                    {item.active ? 'Ativo' : 'Inativo'}
-                  </Button>
-                </div>
-                {item.preparation_time > 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Tempo de preparo: {item.preparation_time} min
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="image">Imagem</Label>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setFormData({...formData, image: e.target.files?.[0] || null})}
+                />
+              </div>
 
-            {items.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  Nenhum item cadastrado ainda
-                </p>
-                <Button onClick={() => setDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeiro Item
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" disabled={loading} className="flex-1">
+                  {loading ? 'Salvando...' : (editingItem ? 'Atualizar' : 'Adicionar')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancelar
                 </Button>
               </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="categories">
-            <CategoryManagement />
-          </TabsContent>
-        </Tabs>
-      </main>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((item) => (
+          <Card key={item.id} className={!item.active ? 'opacity-60' : ''}>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <CardTitle className="text-lg">{item.name}</CardTitle>
+                  <CardDescription className="mt-1">
+                    {item.description}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(item)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {item.image_url && (
+                <img
+                  src={item.image_url}
+                  alt={item.name}
+                  className="w-full h-32 object-cover rounded-md mb-3"
+                />
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-2xl font-bold text-primary">
+                  R$ {item.price.toFixed(2)}
+                </span>
+                <Button
+                  variant={item.active ? "default" : "secondary"}
+                  size="sm"
+                  onClick={() => toggleActive(item)}
+                >
+                  {item.active ? 'Ativo' : 'Inativo'}
+                </Button>
+              </div>
+              {item.preparation_time > 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Tempo de preparo: {item.preparation_time} min
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+        {items.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">
+              Nenhum item cadastrado ainda
+            </p>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Primeiro Item
+            </Button>
+          </div>
+        )}
+      </TabsContent>
+      
+      <TabsContent value="categories">
+        <CategoryManagement />
+      </TabsContent>
+    </Tabs>
     </div>
   );
 };

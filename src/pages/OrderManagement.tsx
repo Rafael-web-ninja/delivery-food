@@ -136,60 +136,69 @@ const OrderManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Gerenciar Pedidos</h1>
-            <p className="text-sm text-muted-foreground">
-              Acompanhe e atualize o status dos pedidos
-            </p>
-          </div>
-        </div>
-      </header>
+    <div className="px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Gerenciar Pedidos</h1>
+        <p className="text-sm text-muted-foreground">
+          Acompanhe e atualize o status dos pedidos
+        </p>
+      </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
-            <TabsTrigger value="pending">
-              Pendentes ({orders.filter(o => o.status === 'pending').length})
-            </TabsTrigger>
-            <TabsTrigger value="preparing">
-              Preparando ({orders.filter(o => o.status === 'preparing').length})
-            </TabsTrigger>
-            <TabsTrigger value="ready">
-              Prontos ({orders.filter(o => o.status === 'ready').length})
-            </TabsTrigger>
-            <TabsTrigger value="delivered">
-              Entregues ({orders.filter(o => o.status === 'delivered').length})
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all">
-            <OrdersList orders={orders} onStatusUpdate={updateOrderStatus} />
-          </TabsContent>
-          
-          <TabsContent value="pending">
-            <OrdersList orders={orders.filter(o => o.status === 'pending')} onStatusUpdate={updateOrderStatus} />
-          </TabsContent>
-          
-          <TabsContent value="preparing">
-            <OrdersList orders={orders.filter(o => o.status === 'preparing')} onStatusUpdate={updateOrderStatus} />
-          </TabsContent>
-          
-          <TabsContent value="ready">
-            <OrdersList orders={orders.filter(o => o.status === 'ready')} onStatusUpdate={updateOrderStatus} />
-          </TabsContent>
-          
-          <TabsContent value="delivered">
-            <OrdersList orders={orders.filter(o => o.status === 'delivered')} onStatusUpdate={updateOrderStatus} />
-          </TabsContent>
-        </Tabs>
-      </main>
+      <Tabs defaultValue="all" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
+          <TabsTrigger value="today">
+            Hoje ({orders.filter(o => {
+              const today = new Date().toDateString();
+              const orderDate = new Date(o.created_at).toDateString();
+              return today === orderDate;
+            }).length})
+          </TabsTrigger>
+          <TabsTrigger value="pending">
+            Pendentes ({orders.filter(o => o.status === 'pending').length})
+          </TabsTrigger>
+          <TabsTrigger value="preparing">
+            Preparando ({orders.filter(o => o.status === 'preparing').length})
+          </TabsTrigger>
+          <TabsTrigger value="ready">
+            Prontos ({orders.filter(o => o.status === 'ready').length})
+          </TabsTrigger>
+          <TabsTrigger value="delivered">
+            Entregues ({orders.filter(o => o.status === 'delivered').length})
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all">
+          <OrdersList orders={orders} onStatusUpdate={updateOrderStatus} />
+        </TabsContent>
+        
+        <TabsContent value="today">
+          <OrdersList 
+            orders={orders.filter(o => {
+              const today = new Date().toDateString();
+              const orderDate = new Date(o.created_at).toDateString();
+              return today === orderDate;
+            })} 
+            onStatusUpdate={updateOrderStatus} 
+          />
+        </TabsContent>
+        
+        <TabsContent value="pending">
+          <OrdersList orders={orders.filter(o => o.status === 'pending')} onStatusUpdate={updateOrderStatus} />
+        </TabsContent>
+        
+        <TabsContent value="preparing">
+          <OrdersList orders={orders.filter(o => o.status === 'preparing')} onStatusUpdate={updateOrderStatus} />
+        </TabsContent>
+        
+        <TabsContent value="ready">
+          <OrdersList orders={orders.filter(o => o.status === 'ready')} onStatusUpdate={updateOrderStatus} />
+        </TabsContent>
+        
+        <TabsContent value="delivered">
+          <OrdersList orders={orders.filter(o => o.status === 'delivered')} onStatusUpdate={updateOrderStatus} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -132,128 +132,82 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-0">
-        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Dashboard</h1>
-                {business && (
-                  <p className="text-sm text-muted-foreground">{business.name}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <NotificationBell />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/settings')}
-                className="flex items-center gap-2"
-              >
-                <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
-                  <span className="text-primary-foreground text-sm font-medium">
-                    {user.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-sm hidden md:block">{user.email}</span>
-              </Button>
-              <Button variant="outline" onClick={signOut} size="sm">
-                Sair
-              </Button>
-            </div>
-          </div>
-        </header>
-        
-        <main className="flex-1 px-4 py-8 overflow-auto">
-        <div className="grid gap-6">
-          <div>
-            <h2 className="text-3xl font-bold mb-2">Dashboard</h2>
-            <p className="text-muted-foreground">
-              Gerencie seu delivery e acompanhe suas vendas
-            </p>
-          </div>
+    <div className="px-4 py-8">
+      <div className="grid gap-6">
+        <div>
+          <h2 className="text-3xl font-bold mb-2">Dashboard</h2>
+          <p className="text-muted-foreground">
+            Gerencie seu delivery e acompanhe suas vendas
+          </p>
+        </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {loadingStats ? (
-              <>
-                <CardSkeleton />
-                <CardSkeleton />
-                <CardSkeleton />
-              </>
-            ) : (
-              <>
-                <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Itens do Cardápio
-                    </CardTitle>
-                    <Package className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary">{stats.totalItems}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Total de itens cadastrados
-                    </p>
-                  </CardContent>
-                </Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {loadingStats ? (
+            <>
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+            </>
+          ) : (
+            <>
+              <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Itens do Cardápio
+                  </CardTitle>
+                  <Package className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{stats.totalItems}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Total de itens cadastrados
+                  </p>
+                </CardContent>
+              </Card>
 
-                <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Pedidos Totais
-                    </CardTitle>
-                    <TrendingUp className="h-4 w-4 text-success" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-success">{stats.totalOrders}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Pedidos realizados
-                    </p>
-                  </CardContent>
-                </Card>
+              <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Pedidos Totais
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-success" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-success">{stats.totalOrders}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Pedidos realizados
+                  </p>
+                </CardContent>
+              </Card>
 
-                <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Pedidos Pendentes
-                    </CardTitle>
-                    <Clock className="h-4 w-4 text-warning" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <div className="text-2xl font-bold text-warning">{stats.pendingOrders}</div>
-                      {stats.pendingOrders > 0 && (
-                        <Badge variant="destructive" className="animate-pulse-soft">
-                          Urgente!
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Aguardando preparo
-                    </p>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </div>
+              <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Pedidos Pendentes
+                  </CardTitle>
+                  <Clock className="h-4 w-4 text-warning" />
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl font-bold text-warning">{stats.pendingOrders}</div>
+                    {stats.pendingOrders > 0 && (
+                      <Badge variant="destructive" className="animate-pulse-soft">
+                        Urgente!
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Aguardando preparo
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer animate-fade-in" onClick={() => navigate('/menu')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -335,43 +289,41 @@ const Dashboard = () => {
                 </Button>
               </CardContent>
             </Card>
-          </div>
+        </div>
 
-          {/* Menu Link Section */}
-          {menuLink && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link className="h-5 w-5" />
-                  Link do seu Cardápio
-                </CardTitle>
-                <CardDescription>
-                  Compartilhe este link nas suas redes sociais para que os clientes vejam seu cardápio
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <div className="flex-1 p-3 bg-muted rounded-md font-mono text-sm">
-                    {menuLink}
-                  </div>
-                  <LoadingButton 
-                    onClick={copyMenuLink} 
-                    variant="outline"
-                    loading={copyingLink}
-                    loadingText="Copiando..."
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copiar
-                  </LoadingButton>
+        {/* Menu Link Section */}
+        {menuLink && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Link className="h-5 w-5" />
+                Link do seu Cardápio
+              </CardTitle>
+              <CardDescription>
+                Compartilhe este link nas suas redes sociais para que os clientes vejam seu cardápio
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <div className="flex-1 p-3 bg-muted rounded-md font-mono text-sm">
+                  {menuLink}
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Cole este link no WhatsApp, Instagram, Facebook ou onde preferir!
-                </p>
-              </CardContent>
-            </Card>
-          )}
-          </div>
-        </main>
+                <LoadingButton 
+                  onClick={copyMenuLink} 
+                  variant="outline"
+                  loading={copyingLink}
+                  loadingText="Copiando..."
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar
+                </LoadingButton>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Cole este link no WhatsApp, Instagram, Facebook ou onde preferir!
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
