@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { CardSkeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
-import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle, Menu } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
+import { Sidebar } from '@/components/Sidebar';
 
 interface Business {
   id: string;
@@ -34,6 +35,7 @@ const Dashboard = () => {
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingBusiness, setLoadingBusiness] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const { execute: executeCopyLink, loading: copyingLink } = useAsyncOperation({
     successMessage: "Link copiado com sucesso!"
@@ -130,28 +132,53 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">DeliveryFácil</h1>
-            {business && (
-              <p className="text-sm text-muted-foreground">{business.name}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <NotificationBell />
-            <span className="text-sm text-muted-foreground">
-              {user.email}
-            </span>
-            <Button variant="outline" onClick={signOut}>
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
-      <main className="container mx-auto px-4 py-8">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:ml-0">
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Dashboard</h1>
+                {business && (
+                  <p className="text-sm text-muted-foreground">{business.name}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <NotificationBell />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/settings')}
+                className="flex items-center gap-2"
+              >
+                <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-primary-foreground text-sm font-medium">
+                    {user.email?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <span className="text-sm hidden md:block">{user.email}</span>
+              </Button>
+              <Button variant="outline" onClick={signOut} size="sm">
+                Sair
+              </Button>
+            </div>
+          </div>
+        </header>
+        
+        <main className="flex-1 px-4 py-8 overflow-auto">
         <div className="grid gap-6">
           <div>
             <h2 className="text-3xl font-bold mb-2">Dashboard</h2>
@@ -343,8 +370,9 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

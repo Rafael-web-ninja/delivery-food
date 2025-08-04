@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, User, Phone, MapPin, DollarSign } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { OrdersList } from '@/components/OrdersList';
 
 interface Order {
   id: string;
@@ -29,6 +31,7 @@ interface OrderItem {
   unit_price: number;
   total_price: number;
   notes: string;
+  menu_item_id: string;
   menu_items: {
     name: string;
   };
@@ -37,7 +40,7 @@ interface OrderItem {
 const statusTranslations = {
   pending: 'Pendente',
   preparing: 'Em Preparação',
-  out_for_delivery: 'Saiu para Entrega',
+  ready: 'Pronto',
   delivered: 'Entregue',
   cancelled: 'Cancelado'
 };
@@ -45,7 +48,7 @@ const statusTranslations = {
 const statusColors = {
   pending: 'destructive',
   preparing: 'default',
-  out_for_delivery: 'secondary',
+  ready: 'secondary',
   delivered: 'default',
   cancelled: 'outline'
 } as const;
@@ -102,14 +105,14 @@ const OrderManagement = () => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus as 'pending' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled' })
+        .update({ status: newStatus as any })
         .eq('id', orderId);
 
       if (error) throw error;
 
       toast({
         title: "Status atualizado!",
-        description: `Pedido alterado para: ${statusTranslations[newStatus as 'pending' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled']}`
+        description: `Pedido alterado para: ${statusTranslations[newStatus as keyof typeof statusTranslations]}`
       });
 
       fetchOrders();
@@ -120,10 +123,6 @@ const OrderManagement = () => {
         variant: "destructive"
       });
     }
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('pt-BR');
   };
 
   if (loading) {
@@ -153,116 +152,43 @@ const OrderManagement = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Pedidos ({orders.length})</h2>
-        </div>
-
-        {orders.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Nenhum pedido encontrado
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Os pedidos aparecerão aqui quando clientes fizerem pedidos
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <Card key={order.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
-                        {order.customer_name}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {formatDateTime(order.created_at)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          R$ {order.total_amount.toFixed(2)}
-                        </span>
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant={statusColors[order.status as keyof typeof statusColors]}>
-                        {statusTranslations[order.status as keyof typeof statusTranslations]}
-                      </Badge>
-                      <Select
-                        value={order.status}
-                        onValueChange={(value) => updateOrderStatus(order.id, value)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pendente</SelectItem>
-                          <SelectItem value="preparing">Em Preparação</SelectItem>
-                          <SelectItem value="out_for_delivery">Saiu para Entrega</SelectItem>
-                          <SelectItem value="delivered">Entregue</SelectItem>
-                          <SelectItem value="cancelled">Cancelado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{order.customer_phone}</span>
-                      </div>
-                      {order.customer_address && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{order.customer_address}</span>
-                        </div>
-                      )}
-                      <div className="text-sm">
-                        <span className="font-medium">Pagamento: </span>
-                        {paymentMethodTranslations[order.payment_method as keyof typeof paymentMethodTranslations]}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">Itens do Pedido:</h4>
-                      <div className="space-y-1">
-                        {order.order_items.map((item) => (
-                          <div key={item.id} className="text-sm flex justify-between">
-                            <span>{item.quantity}x {item.menu_items.name}</span>
-                            <span>R$ {item.total_price.toFixed(2)}</span>
-                          </div>
-                        ))}
-                        {order.delivery_fee > 0 && (
-                          <div className="text-sm flex justify-between border-t pt-1">
-                            <span>Taxa de entrega</span>
-                            <span>R$ {order.delivery_fee.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="text-sm flex justify-between font-bold border-t pt-1">
-                          <span>Total</span>
-                          <span>R$ {order.total_amount.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {order.notes && (
-                    <div className="bg-muted p-3 rounded-md">
-                      <p className="text-sm font-medium mb-1">Observações:</p>
-                      <p className="text-sm">{order.notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+        <Tabs defaultValue="all" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
+            <TabsTrigger value="pending">
+              Pendentes ({orders.filter(o => o.status === 'pending').length})
+            </TabsTrigger>
+            <TabsTrigger value="preparing">
+              Preparando ({orders.filter(o => o.status === 'preparing').length})
+            </TabsTrigger>
+            <TabsTrigger value="ready">
+              Prontos ({orders.filter(o => o.status === 'ready').length})
+            </TabsTrigger>
+            <TabsTrigger value="delivered">
+              Entregues ({orders.filter(o => o.status === 'delivered').length})
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all">
+            <OrdersList orders={orders} onStatusUpdate={updateOrderStatus} />
+          </TabsContent>
+          
+          <TabsContent value="pending">
+            <OrdersList orders={orders.filter(o => o.status === 'pending')} onStatusUpdate={updateOrderStatus} />
+          </TabsContent>
+          
+          <TabsContent value="preparing">
+            <OrdersList orders={orders.filter(o => o.status === 'preparing')} onStatusUpdate={updateOrderStatus} />
+          </TabsContent>
+          
+          <TabsContent value="ready">
+            <OrdersList orders={orders.filter(o => o.status === 'ready')} onStatusUpdate={updateOrderStatus} />
+          </TabsContent>
+          
+          <TabsContent value="delivered">
+            <OrdersList orders={orders.filter(o => o.status === 'delivered')} onStatusUpdate={updateOrderStatus} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

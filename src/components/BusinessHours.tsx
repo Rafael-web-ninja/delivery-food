@@ -63,15 +63,30 @@ export default function BusinessHours() {
         .eq('business_id', busId)
         .order('day_of_week');
 
-      if (data) {
-        setHours(data);
+      if (data && data.length > 0) {
+        // Mapear dados existentes
+        const existingHours = data.reduce((acc, hour) => {
+          acc[hour.day_of_week] = hour;
+          return acc;
+        }, {} as Record<number, any>);
+
+        // Criar array completo com 7 dias
+        const allHours = Array.from({ length: 7 }, (_, i) => 
+          existingHours[i] || {
+            day_of_week: i,
+            open_time: '08:00',
+            close_time: '18:00',
+            is_active: false
+          }
+        );
+        setHours(allHours);
       } else {
         // Criar horários padrão se não existirem
         const defaultHours = Array.from({ length: 7 }, (_, i) => ({
           day_of_week: i,
           open_time: '08:00',
           close_time: '18:00',
-          is_active: i !== 0 // Fechado aos domingos por padrão
+          is_active: false
         }));
         setHours(defaultHours);
       }

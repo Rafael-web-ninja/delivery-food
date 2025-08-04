@@ -67,13 +67,18 @@ const MenuManagement = () => {
   };
 
   const fetchCategories = async () => {
-    const { data, error } = await supabase
-      .from('menu_categories')
-      .select('*')
-      .order('name');
+    try {
+      const { data, error } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .eq('active', true)
+        .order('name');
 
-    if (data) setCategories(data);
-    if (error) console.error('Erro ao buscar categorias:', error);
+      if (data) setCategories(data);
+      if (error) console.error('Erro ao buscar categorias:', error);
+    } catch (error) {
+      console.error('Erro ao buscar categorias:', error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

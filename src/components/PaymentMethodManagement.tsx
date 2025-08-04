@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 interface PaymentMethod {
   id: string;
   name: string;
-  type: 'cash' | 'pix' | 'card' | 'other';
+  type: string;
   is_active: boolean;
   instructions?: string;
 }
