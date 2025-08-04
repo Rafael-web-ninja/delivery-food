@@ -31,8 +31,11 @@ export type Database = {
       }
       delivery_businesses: {
         Row: {
+          accent_color: string | null
           address: string | null
+          background_color: string | null
           created_at: string
+          delivery_fee: number | null
           description: string | null
           id: string
           is_active: boolean | null
@@ -40,11 +43,17 @@ export type Database = {
           name: string
           owner_id: string
           phone: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          text_color: string | null
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
+          background_color?: string | null
           created_at?: string
+          delivery_fee?: number | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -52,11 +61,17 @@ export type Database = {
           name: string
           owner_id: string
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          text_color?: string | null
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
+          background_color?: string | null
           created_at?: string
+          delivery_fee?: number | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -64,6 +79,9 @@ export type Database = {
           name?: string
           owner_id?: string
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          text_color?: string | null
           updated_at?: string
         }
         Relationships: []

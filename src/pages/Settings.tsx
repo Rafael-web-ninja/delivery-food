@@ -19,6 +19,12 @@ interface BusinessData {
   phone: string;
   address: string;
   logo_url: string;
+  delivery_fee: number;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  text_color: string;
 }
 
 const Settings = () => {
@@ -31,7 +37,13 @@ const Settings = () => {
     description: '',
     phone: '',
     address: '',
-    logo_url: ''
+    logo_url: '',
+    delivery_fee: 0,
+    primary_color: '#2563eb',
+    secondary_color: '#64748b',
+    accent_color: '#059669',
+    background_color: '#ffffff',
+    text_color: '#1e293b'
   });
   const [loading, setLoading] = useState(true);
 
@@ -87,7 +99,13 @@ const Settings = () => {
           description: businessData.description,
           phone: businessData.phone,
           address: businessData.address,
-          logo_url: businessData.logo_url
+          logo_url: businessData.logo_url,
+          delivery_fee: businessData.delivery_fee,
+          primary_color: businessData.primary_color,
+          secondary_color: businessData.secondary_color,
+          accent_color: businessData.accent_color,
+          background_color: businessData.background_color,
+          text_color: businessData.text_color
         })
         .eq('id', businessData.id);
 
@@ -181,6 +199,116 @@ const Settings = () => {
                 onChange={(e) => setBusinessData(prev => ({ ...prev, logo_url: e.target.value }))}
                 placeholder="https://exemplo.com/logo.png"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="delivery_fee">Taxa de entrega (R$)</Label>
+              <Input
+                id="delivery_fee"
+                type="number"
+                step="0.01"
+                min="0"
+                value={businessData.delivery_fee}
+                onChange={(e) => setBusinessData(prev => ({ ...prev, delivery_fee: Number(e.target.value) }))}
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Personalização de Cores */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-semibold">Personalização de Cores</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primary_color">Cor Primária</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="primary_color"
+                      type="color"
+                      value={businessData.primary_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, primary_color: e.target.value }))}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={businessData.primary_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, primary_color: e.target.value }))}
+                      placeholder="#2563eb"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="secondary_color">Cor Secundária</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="secondary_color"
+                      type="color"
+                      value={businessData.secondary_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, secondary_color: e.target.value }))}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={businessData.secondary_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, secondary_color: e.target.value }))}
+                      placeholder="#64748b"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accent_color">Cor de Destaque</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="accent_color"
+                      type="color"
+                      value={businessData.accent_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, accent_color: e.target.value }))}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={businessData.accent_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, accent_color: e.target.value }))}
+                      placeholder="#059669"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="background_color">Cor de Fundo</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="background_color"
+                      type="color"
+                      value={businessData.background_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, background_color: e.target.value }))}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={businessData.background_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, background_color: e.target.value }))}
+                      placeholder="#ffffff"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="text_color">Cor do Texto</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="text_color"
+                      type="color"
+                      value={businessData.text_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, text_color: e.target.value }))}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={businessData.text_color}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, text_color: e.target.value }))}
+                      placeholder="#1e293b"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2 pt-4">

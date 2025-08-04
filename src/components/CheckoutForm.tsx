@@ -99,8 +99,15 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
       toast({
         title: "Cadastro realizado!",
-        description: "Verifique seu email para confirmar a conta",
+        description: "Agora você pode finalizar seu pedido",
       });
+      
+      // Preencher automaticamente os dados do cliente
+      setCustomerData(prev => ({
+        ...prev,
+        email: authData.email,
+        name: authData.name
+      }));
     } catch (error: any) {
       toast({
         title: "Erro no cadastro",
@@ -112,7 +119,17 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     }
   };
 
-  const generateWhatsAppMessage = () => {
+  const generateWhatsAppMessage = async () => {
+    // Buscar a taxa de entrega
+    const { data: businessData } = await supabase
+      .from('delivery_businesses')
+      .select('delivery_fee')
+      .eq('id', business.id)
+      .single();
+    
+    const deliveryFee = businessData?.delivery_fee || 0;
+    const totalWithDelivery = total + Number(deliveryFee);
+    
     let message = `*Pedido - ${business.name}*\n\n`;
     
     message += `*Cliente:* ${customerData.name}\n`;
@@ -124,7 +141,13 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       message += `• ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toFixed(2)}\n`;
     });
     
-    message += `\n*Total: R$ ${total.toFixed(2)}*\n`;
+    message += `\n*Subtotal: R$ ${total.toFixed(2)}*\n`;
+    
+    if (deliveryFee > 0) {
+      message += `*Taxa de entrega: R$ ${Number(deliveryFee).toFixed(2)}*\n`;
+    }
+    
+    message += `*Total: R$ ${totalWithDelivery.toFixed(2)}*\n`;
     
     if (customerData.notes) {
       message += `\n*Observações:* ${customerData.notes}\n`;
@@ -137,15 +160,30 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
   const saveOrderToDatabase = async () => {
     try {
+      // Para usuários não logados, criamos o pedido diretamente
+      // Para usuários logados, precisamos buscar o business_id do usuário
+      let targetBusinessId = business.id;
+      
+      // Buscar a taxa de entrega do negócio
+      const { data: businessData } = await supabase
+        .from('delivery_businesses')
+        .select('delivery_fee')
+        .eq('id', business.id)
+        .single();
+      
+      const deliveryFee = businessData?.delivery_fee || 0;
+      const totalWithDelivery = total + Number(deliveryFee);
+
       // Criar o pedido
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          business_id: business.id,
+          business_id: targetBusinessId,
           customer_name: customerData.name,
           customer_phone: customerData.phone,
           customer_address: customerData.address,
-          total_amount: total,
+          total_amount: totalWithDelivery,
+          delivery_fee: deliveryFee,
           payment_method: 'cash',
           notes: customerData.notes,
           status: 'pending'
@@ -153,7 +191,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Order error:', orderError);
+        throw new Error('Erro ao criar pedido. Verifique os dados e tente novamente.');
+      }
 
       // Criar os itens do pedido
       const orderItems = cart.map(item => ({
@@ -168,7 +209,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Items error:', itemsError);
+        throw new Error('Erro ao adicionar itens do pedido.');
+      }
 
       return order;
     } catch (error) {
@@ -194,7 +238,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
       // Enviar para WhatsApp
       const phone = business.phone?.replace(/\D/g, '') || '';
-      const message = generateWhatsAppMessage();
+      const message = await generateWhatsAppMessage();
       const whatsappUrl = `https://wa.me/55${phone}?text=${message}`;
       
       window.open(whatsappUrl, '_blank');
@@ -206,9 +250,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       
       onOrderComplete();
     } catch (error: any) {
+      console.error('Erro ao finalizar pedido:', error);
       toast({
         title: "Erro ao finalizar pedido",
-        description: "Tente novamente em alguns instantes",
+        description: error.message || "Tente novamente em alguns instantes",
         variant: "destructive"
       });
     } finally {
