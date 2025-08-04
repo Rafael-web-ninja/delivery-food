@@ -97,9 +97,19 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const { error } = await signUp(authData.email, authData.password);
       if (error) throw error;
 
+      // Criar perfil do cliente
+      await supabase
+        .from('customer_profiles')
+        .insert({
+          user_id: user?.id,
+          name: authData.name,
+          phone: customerData.phone,
+          address: customerData.address
+        });
+
       toast({
         title: "Cadastro realizado!",
-        description: "Agora você pode finalizar seu pedido",
+        description: "Login automático realizado. Você já pode finalizar seu pedido!",
       });
       
       // Preencher automaticamente os dados do cliente
@@ -160,10 +170,6 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
   const saveOrderToDatabase = async () => {
     try {
-      // Para usuários não logados, criamos o pedido diretamente
-      // Para usuários logados, precisamos buscar o business_id do usuário
-      let targetBusinessId = business.id;
-      
       // Buscar a taxa de entrega do negócio
       const { data: businessData } = await supabase
         .from('delivery_businesses')
@@ -174,11 +180,11 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const deliveryFee = businessData?.delivery_fee || 0;
       const totalWithDelivery = total + Number(deliveryFee);
 
-      // Criar o pedido
+      // Criar o pedido (sem RLS pois é para clientes públicos)
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          business_id: targetBusinessId,
+          business_id: business.id,
           customer_name: customerData.name,
           customer_phone: customerData.phone,
           customer_address: customerData.address,
@@ -186,7 +192,8 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
           delivery_fee: deliveryFee,
           payment_method: 'cash',
           notes: customerData.notes,
-          status: 'pending'
+          status: 'pending',
+          user_id: user?.id || null // Associar ao usuário se logado
         })
         .select()
         .single();

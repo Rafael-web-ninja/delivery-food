@@ -29,6 +29,69 @@ export type Database = {
         }
         Relationships: []
       }
+      business_hours: {
+        Row: {
+          business_id: string
+          close_time: string
+          created_at: string
+          day_of_week: number
+          id: string
+          is_active: boolean
+          open_time: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          close_time: string
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_active?: boolean
+          open_time: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          close_time?: string
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_active?: boolean
+          open_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      customer_profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       delivery_businesses: {
         Row: {
           accent_color: string | null
@@ -249,6 +312,7 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           business_id: string
@@ -263,6 +327,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           total_amount: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           business_id?: string
@@ -277,6 +342,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {

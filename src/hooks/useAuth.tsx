@@ -52,15 +52,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
     
-    // Login automaticamente após cadastro bem-sucedido
-    if (!error && data.user && !data.user.email_confirmed_at) {
-      // Fazer login imediatamente para usuários não confirmados
+    // Login automático após cadastro (desabilitamos verificação de email)
+    if (!error && data.user) {
+      // Fazer login imediatamente após cadastro
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (signInError) {
         console.log('Auto-login failed:', signInError);
+        return { error: signInError };
       }
     }
     
