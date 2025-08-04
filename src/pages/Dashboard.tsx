@@ -100,12 +100,7 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth', { replace: true });
-    }
-  }, [user, loading, navigate]);
-
-  useEffect(() => {
+    // AuthGate handles authentication, we just need to fetch data when user is available
     if (user) {
       fetchBusiness();
       fetchStats();
@@ -119,19 +114,7 @@ const Dashboard = () => {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-xl text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  // AuthGate handles loading and authentication states
 
   return (
     <div className="px-4 py-8">
