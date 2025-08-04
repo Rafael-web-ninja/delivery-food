@@ -354,6 +354,39 @@ export type Database = {
           },
         ]
       }
+      payment_methods: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          instructions: string | null
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
