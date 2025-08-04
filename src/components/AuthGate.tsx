@@ -1,45 +1,35 @@
-import { ReactNode } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { useSession } from "@supabase/auth-helpers-react"; // ajuste conforme o hook usado no Lovable
 
-interface AuthGateProps {
-  children: ReactNode;
-  requireAuth?: boolean;
-}
+export default function AuthGate({ children }) {
+  const session = useSession();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-export default function AuthGate({ children, requireAuth = true }: AuthGateProps) {
-  const { user, loading, initialized } = useAuth();
-  const navigate = useNavigate();
+  useEffect(() => {
+    try {
+      if (!session) {
+        setLoading(false); // se não logado, apenas libera para exibir fallback
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Erro na autenticação:", err);
+      setError(err);
+      setLoading(false);
+    }
+  }, [session]);
 
-  // 1. Loading state - aguardando inicialização
-  if (!initialized || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <LoadingSpinner size="lg" />
-          <p className="text-muted-foreground text-sm">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <div style={{ padding: 20 }}>Carregando autenticação...</div>;
   }
 
-  // 2. Usuário não logado - redirecionar para auth
-  if (requireAuth && !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Acesso Restrito</h2>
-          <p className="text-muted-foreground">Você precisa estar logado para acessar esta página.</p>
-          <Button onClick={() => navigate('/auth')}>
-            Fazer Login
-          </Button>
-        </div>
-      </div>
-    );
+  if (error) {
+    return <div style={{ padding: 20 }}>Falha na autenticação. Recarregue a página.</div>;
   }
 
-  // 3. Usuário autenticado ou não requer auth - renderizar conteúdo
+  // Se você quer bloquear acesso de não logados:
+  // if (!session) return <div>Você não está logado.</div>;
+
   return <>{children}</>;
 }
