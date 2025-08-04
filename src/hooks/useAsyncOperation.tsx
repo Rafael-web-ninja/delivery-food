@@ -22,6 +22,8 @@ export function useAsyncOperation<T = any>(options: UseAsyncOperationOptions = {
     error: null,
   });
 
+  const { successMessage, errorMessage, onSuccess, onError } = options;
+
   const execute = useCallback(async (operation: () => Promise<T>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
@@ -29,29 +31,29 @@ export function useAsyncOperation<T = any>(options: UseAsyncOperationOptions = {
       const result = await operation();
       setState(prev => ({ ...prev, data: result, loading: false }));
       
-      if (options.successMessage) {
+      if (successMessage) {
         toast({
           title: "Sucesso",
-          description: options.successMessage,
+          description: successMessage,
         });
       }
       
-      options.onSuccess?.();
+      onSuccess?.();
       return result;
     } catch (error: any) {
-      const errorMessage = error?.message || options.errorMessage || 'Ocorreu um erro inesperado';
-      setState(prev => ({ ...prev, error: errorMessage, loading: false }));
+      const errorMsg = error?.message || errorMessage || 'Ocorreu um erro inesperado';
+      setState(prev => ({ ...prev, error: errorMsg, loading: false }));
       
       toast({
         title: "Erro",
-        description: errorMessage,
+        description: errorMsg,
         variant: "destructive",
       });
       
-      options.onError?.(error);
+      onError?.(error);
       throw error;
     }
-  }, [toast, options]);
+  }, [toast, successMessage, errorMessage, onSuccess, onError]);
 
   const reset = useCallback(() => {
     setState({ data: null, loading: false, error: null });
