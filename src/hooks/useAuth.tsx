@@ -15,94 +15,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  console.log('AuthProvider render start');
+  // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
-  console.log('AuthProvider state initialized');
 
-  // Função estável para atualizar estado de auth
-  const updateAuthState = useCallback((newSession: Session | null) => {
-    console.log('Auth: Updating state with session:', newSession?.user?.email || 'null');
-    setSession(newSession);
-    setUser(newSession?.user ?? null);
-    setLoading(false);
-    setInitialized(true);
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    let authSubscription: any = null;
-
-    const initializeAuth = async () => {
-      try {
-        console.log('Auth: Initializing...');
-        
-        // Verificar sessão existente
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Auth: Error getting session:', error);
-          if (mounted) {
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            setInitialized(true);
-          }
-          return;
-        }
-
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-          setInitialized(true);
-        }
-
-        // Configurar listener de mudanças de auth - APENAS UMA VEZ
-        if (!authSubscription) {
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, newSession) => {
-              console.log('Auth: State change event:', event, newSession?.user?.email || 'null');
-              
-              // Ignorar eventos INITIAL_SESSION para evitar loops
-              if (event === 'INITIAL_SESSION') {
-                return;
-              }
-              
-              if (mounted) {
-                setSession(newSession);
-                setUser(newSession?.user ?? null);
-                setLoading(false);
-                setInitialized(true);
-              }
-            }
-          );
-          authSubscription = subscription;
-        }
-
-      } catch (error) {
-        console.error('Auth: Initialization failed:', error);
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          setLoading(false);
-          setInitialized(true);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    return () => {
-      mounted = false;
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
-    };
-  }, []); // Remove updateAuthState from dependencies
-
+  // STABLE CALLBACKS - NO DEPENDENCIES THAT CHANGE
   const signUp = useCallback(async (email: string, password: string, businessName?: string) => {
     try {
       console.log('Auth: Starting signup for:', email);
@@ -194,14 +113,88 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // EFFECT WITH NO DEPENDENCIES TO PREVENT LOOPS
+  useEffect(() => {
+    let mounted = true;
+    let authSubscription: any = null;
+
+    const initializeAuth = async () => {
+      try {
+        console.log('Auth: Initializing...');
+        
+        // Verificar sessão existente
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Auth: Error getting session:', error);
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            setInitialized(true);
+          }
+          return;
+        }
+
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+          setInitialized(true);
+        }
+
+        // Configurar listener de mudanças de auth - APENAS UMA VEZ
+        if (!authSubscription) {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, newSession) => {
+              console.log('Auth: State change event:', event, newSession?.user?.email || 'null');
+              
+              // Ignorar eventos INITIAL_SESSION para evitar loops
+              if (event === 'INITIAL_SESSION') {
+                return;
+              }
+              
+              if (mounted) {
+                setSession(newSession);
+                setUser(newSession?.user ?? null);
+                setLoading(false);
+                setInitialized(true);
+              }
+            }
+          );
+          authSubscription = subscription;
+        }
+
+      } catch (error) {
+        console.error('Auth: Initialization failed:', error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          setInitialized(true);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
+  }, []); // NO DEPENDENCIES TO PREVENT INFINITE LOOPS
+
+  // CONTEXT VALUE WITH STABLE REFERENCES
   const contextValue = {
-    user,
-    session,
+    user: user ?? null,
+    session: session ?? null,
     signUp,
     signIn,
     signOut,
-    loading,
-    initialized
+    loading: Boolean(loading),
+    initialized: Boolean(initialized)
   };
 
   return (

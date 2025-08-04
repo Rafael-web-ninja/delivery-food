@@ -4,17 +4,20 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Index = () => {
-  console.log('Index render start');
+  // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { user } = useAuth();
-  console.log('Index useAuth result:', { user: !!user });
   const navigate = useNavigate();
 
-  // AuthGate handles authentication, we just redirect authenticated users to dashboard
+  // EFFECT ALWAYS RUNS - CONDITIONAL LOGIC INSIDE
   useEffect(() => {
+    // AuthGate handles authentication, we just redirect authenticated users to dashboard
     if (user) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
+
+  // CONDITIONAL RENDERING AFTER ALL HOOKS
+  // If user exists, useEffect will redirect, but we still render until redirect happens
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

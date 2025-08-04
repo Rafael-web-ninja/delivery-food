@@ -23,9 +23,8 @@ interface Business {
 }
 
 const Dashboard = () => {
-  console.log('Dashboard render start');
+  // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { user, signOut, loading } = useAuth();
-  console.log('Dashboard useAuth result:', { user: !!user, loading });
   const { toast } = useToast();
   const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -101,6 +100,14 @@ const Dashboard = () => {
     }
   }, []);
 
+  const copyMenuLink = useCallback(async () => {
+    await executeCopyLink(async () => {
+      if (!menuLink) throw new Error('Link não disponível');
+      await navigator.clipboard.writeText(menuLink);
+    });
+  }, [executeCopyLink, menuLink]);
+
+  // EFFECTS ALWAYS RUN - CONDITIONAL LOGIC INSIDE
   useEffect(() => {
     // AuthGate handles authentication, we just need to fetch data when user is available
     if (user) {
@@ -109,14 +116,8 @@ const Dashboard = () => {
     }
   }, [user, fetchBusiness, fetchStats]);
 
-  const copyMenuLink = async () => {
-    await executeCopyLink(async () => {
-      if (!menuLink) throw new Error('Link não disponível');
-      await navigator.clipboard.writeText(menuLink);
-    });
-  };
-
   // AuthGate handles loading and authentication states
+  // No conditional returns here that would affect hook order
 
   return (
     <div className="px-4 py-8">

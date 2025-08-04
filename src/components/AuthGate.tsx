@@ -9,17 +9,19 @@ interface AuthGateProps {
 }
 
 export default function AuthGate({ children, requireAuth = true }: AuthGateProps) {
-  console.log('AuthGate render:', { requireAuth, timestamp: Date.now() });
+  // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { user, loading, initialized } = useAuth();
-  console.log('AuthGate useAuth result:', { user: !!user, loading, initialized });
   const navigate = useNavigate();
 
+  // EFFECT ALWAYS RUNS - CONDITIONAL LOGIC INSIDE
   useEffect(() => {
-    if (!loading && initialized && requireAuth && !user) {
+    // Only redirect if we need auth, not loading, initialized, and no user
+    if (requireAuth && !loading && initialized && !user) {
       navigate("/auth");
     }
   }, [loading, initialized, requireAuth, user, navigate]);
 
+  // CONDITIONAL RENDERING AFTER ALL HOOKS
   if (loading || !initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">
