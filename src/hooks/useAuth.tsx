@@ -43,13 +43,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.error('Auth: Error getting session:', error);
           if (mounted) {
-            updateAuthState(null);
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            setInitialized(true);
           }
           return;
         }
 
         if (mounted) {
-          updateAuthState(session);
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+          setInitialized(true);
         }
 
         // Configurar listener de mudanças de auth - APENAS UMA VEZ
@@ -64,7 +70,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
               
               if (mounted) {
-                updateAuthState(newSession);
+                setSession(newSession);
+                setUser(newSession?.user ?? null);
+                setLoading(false);
+                setInitialized(true);
               }
             }
           );
@@ -74,7 +83,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error('Auth: Initialization failed:', error);
         if (mounted) {
-          updateAuthState(null);
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          setInitialized(true);
         }
       }
     };
@@ -87,7 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         authSubscription.unsubscribe();
       }
     };
-  }, [updateAuthState]);
+  }, []); // Remove updateAuthState from dependencies
 
   const signUp = useCallback(async (email: string, password: string, businessName?: string) => {
     try {
