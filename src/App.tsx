@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AuthErrorBoundary } from "@/components/AuthErrorBoundary";
+import AuthGate from "@/components/AuthGate";
 import DashboardLayout from "@/components/DashboardLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -22,27 +23,27 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthErrorBoundary>
       <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/menu/:businessId" element={<PublicMenu />} />
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/menu" element={<MenuManagement />} />
-              <Route path="/orders" element={<OrderManagement />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
+              <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
+              <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
+              <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<AuthGate><Dashboard /></AuthGate>} />
+                <Route path="/menu" element={<AuthGate><MenuManagement /></AuthGate>} />
+                <Route path="/orders" element={<AuthGate><OrderManagement /></AuthGate>} />
+                <Route path="/analytics" element={<AuthGate><Analytics /></AuthGate>} />
+                <Route path="/settings" element={<AuthGate><Settings /></AuthGate>} />
+              </Route>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<AuthGate requireAuth={false}><NotFound /></AuthGate>} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </AuthErrorBoundary>
   </QueryClientProvider>
 );
