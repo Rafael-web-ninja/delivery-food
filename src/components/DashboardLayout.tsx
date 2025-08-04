@@ -1,23 +1,46 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { NotificationBell } from '@/components/NotificationBell';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const DashboardLayout = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Não mostrar o layout nas páginas públicas
   const isPublicRoute = location.pathname.startsWith('/menu/') || 
                        location.pathname === '/auth' || 
                        location.pathname === '/';
 
+  useEffect(() => {
+    // Redirecionar para auth se não estiver autenticado e não for rota pública
+    if (!loading && !user && !isPublicRoute) {
+      navigate('/auth', { replace: true });
+    }
+  }, [user, loading, isPublicRoute, navigate]);
+
   if (isPublicRoute) {
     return <Outlet />;
+  }
+
+  // Mostrar loading enquanto verifica autenticação
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Se não estiver autenticado, não renderizar nada (o useEffect vai redirecionar)
+  if (!user) {
+    return null;
   }
 
   return (

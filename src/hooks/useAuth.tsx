@@ -21,18 +21,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        
+        if (isMounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
         if (isMounted) {
           setSession(session);
           setUser(session?.user ?? null);
@@ -41,6 +55,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
+    initializeAuth();
+
     return () => {
       isMounted = false;
       subscription.unsubscribe();
@@ -48,45 +64,68 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, businessName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          business_name: businessName
-        }
-      }
-    });
-    
-    // Login automático após cadastro (desabilitamos verificação de email)
-    if (!error && data.user) {
-      // Fazer login imediatamente após cadastro
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+    try {
+      setLoading(true);
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            business_name: businessName
+          }
+        }
       });
-      if (signInError) {
-        console.log('Auto-login failed:', signInError);
-        return { error: signInError };
+      
+      // Login automático após cadastro (desabilitamos verificação de email)
+      if (!error && data.user) {
+        // Fazer login imediatamente após cadastro
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) {
+          console.error('Auto-login failed:', signInError);
+          return { error: signInError };
+        }
       }
+      
+      return { error };
+    } catch (error) {
+      console.error('SignUp error:', error);
+      return { error };
+    } finally {
+      setLoading(false);
     }
-    
-    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } catch (error) {
+      console.error('SignIn error:', error);
+      return { error };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      setLoading(true);
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('SignOut error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
