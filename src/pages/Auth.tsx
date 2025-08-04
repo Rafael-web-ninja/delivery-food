@@ -8,21 +8,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUp, signIn, user } = useAuth();
+  const { signUp, signIn, user, loading: authLoading, initialized } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    console.log('Auth page: Auth state -', {
+      user: user?.email || 'null',
+      authLoading,
+      initialized
+    });
+
+    // Só redirecionar quando a auth estiver inicializada
+    if (initialized && !authLoading && user) {
+      console.log('Auth page: User authenticated, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, authLoading, initialized, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +90,20 @@ const Auth = () => {
     setLoading(false);
   };
 
+  // Mostrar loading enquanto a auth não estiver inicializada
+  if (!initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center space-y-4 p-6">
+            <LoadingSpinner />
+            <p className="text-sm text-muted-foreground">Inicializando...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -108,6 +131,7 @@ const Auth = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -119,9 +143,10 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Sua senha"
                     required
+                    disabled={loading}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
@@ -138,6 +163,7 @@ const Auth = () => {
                     onChange={(e) => setBusinessName(e.target.value)}
                     placeholder="Ex: Pizzaria do João"
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -149,6 +175,7 @@ const Auth = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -161,9 +188,10 @@ const Auth = () => {
                     placeholder="Mínimo 6 caracteres"
                     required
                     minLength={6}
+                    disabled={loading}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
                   {loading ? 'Cadastrando...' : 'Cadastrar Delivery'}
                 </Button>
               </form>
