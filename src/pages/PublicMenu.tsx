@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Plus, Minus, Clock, Store } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ShoppingCart, Plus, Minus, Phone, MapPin, Clock, User, LogIn } from 'lucide-react';
 import CheckoutForm from '@/components/CheckoutForm';
+import BusinessStatus from '@/components/BusinessStatus';
+import CustomerProfile from '@/components/CustomerProfile';
+import CustomerOrders from '@/components/CustomerOrders';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MenuItem {
   id: string;
@@ -32,10 +37,12 @@ interface CartItem extends MenuItem {
 const PublicMenu = () => {
   const { businessId } = useParams();
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
@@ -107,6 +114,22 @@ const PublicMenu = () => {
       return prev.filter(cartItem => cartItem.id !== itemId);
     });
   };
+  
+  const updateCartItem = (itemId: string, change: number) => {
+    const existingItem = items.find(item => item.id === itemId);
+    if (!existingItem) return;
+    
+    if (change > 0) {
+      addToCart(existingItem);
+    } else {
+      removeFromCart(itemId);
+    }
+  };
+  
+  const getCartItemQuantity = (itemId: string) => {
+    const cartItem = cart.find(item => item.id === itemId);
+    return cartItem ? cartItem.quantity : 0;
+  };
 
   const getCartTotal = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -174,62 +197,105 @@ const PublicMenu = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground">
+      <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <Store className="h-8 w-8" />
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">{business.name}</h1>
-              {business.description && (
-                <p className="text-primary-foreground/80">{business.description}</p>
+              <h1 className="text-3xl font-bold text-gray-900">{business?.name}</h1>
+              {business?.description && (
+                <p className="text-gray-600 mt-1">{business.description}</p>
               )}
+              
+              <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                {business?.phone && (
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    <span>{business.phone}</span>
+                  </div>
+                )}
+                {business?.address && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{business.address}</span>
+                  </div>
+                )}
+                {business && <BusinessStatus businessId={business.id} />}
+              </div>
+            </div>
+            
+            {/* Carrinho e Login */}
+            <div className="flex items-center gap-4">
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Olá, {user.email}</span>
+                  <Button variant="outline" onClick={signOut} size="sm">
+                    Sair
+                  </Button>
+                </div>
+              ) : (
+                <Link to="/auth">
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>Entrar</span>
+                  </Button>
+                </Link>
+              )}
+              
+              <Button 
+                onClick={() => setShowCheckout(true)}
+                className="relative flex items-center gap-2"
+                disabled={cart.length === 0}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                <span>Carrinho</span>
+                {cart.length > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </Badge>
+                )}
+              </Button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
+      {/* Conteúdo Principal */}
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Menu Items */}
-          <div className="lg:col-span-3">
-            <h2 className="text-2xl font-bold mb-6">Cardápio</h2>
+        {user ? (
+          <Tabs defaultValue="menu" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="menu">Cardápio</TabsTrigger>
+              <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
+              <TabsTrigger value="orders">Meus Pedidos</TabsTrigger>
+            </TabsList>
             
-            {items.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum item disponível no momento.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TabsContent value="menu">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {items.map((item) => (
-                  <Card key={item.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{item.name}</CardTitle>
-                          {item.description && (
-                            <CardDescription className="mt-1">
-                              {item.description}
-                            </CardDescription>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {item.image_url && (
-                        <img
-                          src={item.image_url}
+                  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                      {item.image_url ? (
+                        <img 
+                          src={item.image_url} 
                           alt={item.name}
-                          className="w-full h-32 object-cover rounded-md mb-3"
+                          className="w-full h-full object-cover"
                         />
+                      ) : (
+                        <div className="text-gray-400">Sem imagem</div>
                       )}
-                      
-                      <div className="flex justify-between items-center mb-3">
+                    </div>
+                    
+                    <CardHeader>
+                      <CardTitle className="text-lg">{item.name}</CardTitle>
+                      {item.description && (
+                        <CardDescription>{item.description}</CardDescription>
+                      )}
+                      <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-primary">
-                          R$ {item.price.toFixed(2)}
+                          R$ {Number(item.price).toFixed(2)}
                         </span>
-                        
                         {item.preparation_time > 0 && (
                           <Badge variant="secondary" className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -237,114 +303,123 @@ const PublicMenu = () => {
                           </Badge>
                         )}
                       </div>
-
+                    </CardHeader>
+                    
+                    <CardContent>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          {cart.find(cartItem => cartItem.id === item.id) ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeFromCart(item.id)}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <span className="font-medium px-2">
-                                {cart.find(cartItem => cartItem.id === item.id)?.quantity}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addToCart(item)}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              onClick={() => addToCart(item)}
-                              className="flex-1"
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Adicionar
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateCartItem(item.id, -1)}
+                            disabled={getCartItemQuantity(item.id) === 0}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-8 text-center font-semibold">
+                            {getCartItemQuantity(item.id)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateCartItem(item.id, 1)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
                         </div>
+                        
+                        <Button 
+                          onClick={() => addToCart(item)}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Adicionar
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Cart Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Carrinho ({getCartItemCount()})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {cart.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      Carrinho vazio
-                    </p>
+            </TabsContent>
+            
+            <TabsContent value="profile">
+              <CustomerProfile />
+            </TabsContent>
+            
+            <TabsContent value="orders">
+              <CustomerOrders />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item) => (
+              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                  {item.image_url ? (
+                    <img 
+                      src={item.image_url} 
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <div className="space-y-3">
-                      {cart.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.quantity}x R$ {item.price.toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeFromCart(item.id)}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="text-sm font-medium px-1">
-                              {item.quantity}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => addToCart(item)}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="border-t pt-3 mt-3">
-                        <div className="flex justify-between items-center font-bold">
-                          <span>Total:</span>
-                          <span>R$ {getCartTotal().toFixed(2)}</span>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        className="w-full mt-4" 
-                        onClick={handleProceedToCheckout}
+                    <div className="text-gray-400">Sem imagem</div>
+                  )}
+                </div>
+                
+                <CardHeader>
+                  <CardTitle className="text-lg">{item.name}</CardTitle>
+                  {item.description && (
+                    <CardDescription>{item.description}</CardDescription>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold text-primary">
+                      R$ {Number(item.price).toFixed(2)}
+                    </span>
+                    {item.preparation_time > 0 && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {item.preparation_time}min
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateCartItem(item.id, -1)}
+                        disabled={getCartItemQuantity(item.id) === 0}
                       >
-                        Finalizar Pedido
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center font-semibold">
+                        {getCartItemQuantity(item.id)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateCartItem(item.id, 1)}
+                      >
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                  )}
+                    
+                    <Button 
+                      onClick={() => addToCart(item)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Adicionar
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
-            </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Checkout Modal */}
