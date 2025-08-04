@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Clock } from 'lucide-react';
+import { ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Clock, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import DateRangePicker from '@/components/DateRangePicker';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -22,6 +24,7 @@ const Analytics = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
+  const [customDateRange, setCustomDateRange] = useState<{start: string, end: string} | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -29,13 +32,21 @@ const Analytics = () => {
       return;
     }
     fetchAnalytics();
-  }, [user, navigate, timeRange]);
+  }, [user, navigate, timeRange, customDateRange]);
 
   const fetchAnalytics = async () => {
     try {
-      const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
+      let startDate: Date;
+      let endDate = new Date();
+      
+      if (customDateRange) {
+        startDate = new Date(customDateRange.start);
+        endDate = new Date(customDateRange.end);
+      } else {
+        const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+      }
 
       // Get business
       const { data: business } = await supabase
@@ -64,7 +75,8 @@ const Analytics = () => {
           )
         `)
         .eq('business_id', business.id)
-        .gte('created_at', startDate.toISOString());
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
 
       if (!orders) return;
 
@@ -132,6 +144,11 @@ const Analytics = () => {
     }
   };
 
+  const handleDateRangeChange = (startDate: string, endDate: string) => {
+    setCustomDateRange({ start: startDate, end: endDate });
+    setTimeRange('custom');
+  };
+
   const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
 
   if (loading) {
@@ -159,24 +176,49 @@ const Analytics = () => {
             <Button
               variant={timeRange === '7d' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange('7d')}
+              onClick={() => {
+                setTimeRange('7d');
+                setCustomDateRange(null);
+              }}
             >
               7 dias
             </Button>
             <Button
               variant={timeRange === '30d' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange('30d')}
+              onClick={() => {
+                setTimeRange('30d');
+                setCustomDateRange(null);
+              }}
             >
               30 dias
             </Button>
             <Button
               variant={timeRange === '90d' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange('90d')}
+              onClick={() => {
+                setTimeRange('90d');
+                setCustomDateRange(null);
+              }}
             >
               90 dias
             </Button>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === 'custom' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  {customDateRange ? 'Período personalizado' : 'Selecionar período'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end">
+                <DateRangePicker onDateRangeChange={handleDateRangeChange} />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </header>

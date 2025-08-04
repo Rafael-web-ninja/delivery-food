@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CategoryManagement from '@/components/CategoryManagement';
 
 interface MenuItem {
   id: string;
@@ -237,8 +239,15 @@ const MenuManagement = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Itens do Cardápio ({items.length})</h2>
+        <Tabs defaultValue="items" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="items">Itens do Menu</TabsTrigger>
+            <TabsTrigger value="categories">Categorias</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="items">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Itens do Cardápio ({items.length})</h2>
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -410,17 +419,23 @@ const MenuManagement = () => {
           ))}
         </div>
 
-        {items.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Nenhum item cadastrado ainda
-            </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Primeiro Item
-            </Button>
-          </div>
-        )}
+            {items.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">
+                  Nenhum item cadastrado ainda
+                </p>
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Primeiro Item
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="categories">
+            <CategoryManagement />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

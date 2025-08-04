@@ -156,7 +156,7 @@ export default function BusinessHours() {
                   type="checkbox"
                   checked={hour.is_active}
                   onChange={(e) => updateHour(index, 'is_active', e.target.checked)}
-                  className="mr-3 h-4 w-4"
+                  className="mr-3 h-4 w-4 accent-primary"
                   id={`day-${index}`}
                 />
                 <Label htmlFor={`day-${index}`} className="text-sm font-medium cursor-pointer">{day}</Label>
@@ -170,7 +170,7 @@ export default function BusinessHours() {
                       type="time"
                       value={hour.open_time}
                       onChange={(e) => updateHour(index, 'open_time', e.target.value)}
-                      className="block mt-1 px-3 py-2 border rounded-md"
+                      className="block mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground focus:border-primary focus:outline-none"
                     />
                   </div>
                   <div>
@@ -179,7 +179,7 @@ export default function BusinessHours() {
                       type="time"
                       value={hour.close_time}
                       onChange={(e) => updateHour(index, 'close_time', e.target.value)}
-                      className="block mt-1 px-3 py-2 border rounded-md"
+                      className="block mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground focus:border-primary focus:outline-none"
                     />
                   </div>
                 </>

@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BusinessHours from '@/components/BusinessHours';
+import PaymentMethodManagement from '@/components/PaymentMethodManagement';
 import { useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { ArrowLeft, Save, Store } from 'lucide-react';
