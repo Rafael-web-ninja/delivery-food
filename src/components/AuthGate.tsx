@@ -9,7 +9,9 @@ interface AuthGateProps {
 }
 
 export default function AuthGate({ children, requireAuth = true }: AuthGateProps) {
+  console.log('AuthGate render:', { requireAuth, timestamp: Date.now() });
   const { user, loading, initialized } = useAuth();
+  console.log('AuthGate useAuth result:', { user: !!user, loading, initialized });
   const navigate = useNavigate();
 
   useEffect(() => {

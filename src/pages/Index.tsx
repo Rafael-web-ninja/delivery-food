@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Index = () => {
+  console.log('Index render start');
   const { user } = useAuth();
+  console.log('Index useAuth result:', { user: !!user });
   const navigate = useNavigate();
 
   // AuthGate handles authentication, we just redirect authenticated users to dashboard

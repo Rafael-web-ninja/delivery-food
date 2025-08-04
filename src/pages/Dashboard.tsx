@@ -23,7 +23,9 @@ interface Business {
 }
 
 const Dashboard = () => {
+  console.log('Dashboard render start');
   const { user, signOut, loading } = useAuth();
+  console.log('Dashboard useAuth result:', { user: !!user, loading });
   const { toast } = useToast();
   const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
