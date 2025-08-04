@@ -145,13 +145,20 @@ const OrderManagement = () => {
       </div>
 
       <Tabs defaultValue="all" className="space-y-6">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
           <TabsTrigger value="today">
             Hoje ({orders.filter(o => {
               const today = new Date().toDateString();
               const orderDate = new Date(o.created_at).toDateString();
               return today === orderDate;
+            }).length})
+          </TabsTrigger>
+          <TabsTrigger value="week">
+            Semana ({orders.filter(o => {
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+              return new Date(o.created_at) >= oneWeekAgo;
             }).length})
           </TabsTrigger>
           <TabsTrigger value="pending">
@@ -193,6 +200,17 @@ const OrderManagement = () => {
         
         <TabsContent value="ready">
           <OrdersList orders={orders.filter(o => o.status === 'ready')} onStatusUpdate={updateOrderStatus} />
+        </TabsContent>
+        
+        <TabsContent value="week">
+          <OrdersList 
+            orders={orders.filter(o => {
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+              return new Date(o.created_at) >= oneWeekAgo;
+            })} 
+            onStatusUpdate={updateOrderStatus} 
+          />
         </TabsContent>
         
         <TabsContent value="delivered">

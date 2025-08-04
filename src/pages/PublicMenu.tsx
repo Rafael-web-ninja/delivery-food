@@ -64,7 +64,8 @@ const PublicMenu = () => {
           .from('delivery_businesses')
           .select('*')
           .eq('id', businessId)
-          .single(),
+          .eq('is_active', true)
+          .maybeSingle(),
         supabase
           .from('menu_items')
           .select('*')
