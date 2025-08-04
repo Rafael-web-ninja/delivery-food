@@ -1,60 +1,16 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useState, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { NotificationBell } from '@/components/NotificationBell';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const DashboardLayout = () => {
-  const { user, signOut, loading, initialized } = useAuth();
+  const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
 
-  // Não mostrar o layout nas páginas públicas
-  const isPublicRoute = location.pathname.startsWith('/menu/') || 
-                       location.pathname === '/auth' || 
-                       location.pathname === '/';
-
-  useEffect(() => {
-    console.log('DashboardLayout: Auth state -', {
-      user: user?.email || 'null',
-      loading,
-      initialized,
-      isPublicRoute
-    });
-
-    // Só redirecionar quando a auth estiver inicializada
-    if (initialized && !loading && !user && !isPublicRoute) {
-      console.log('DashboardLayout: Redirecting to auth');
-      navigate('/auth', { replace: true });
-    }
-  }, [user, loading, initialized, isPublicRoute, navigate]);
-
-  // Sempre permitir rotas públicas
-  if (isPublicRoute) {
-    return <Outlet />;
-  }
-
-  // Mostrar loading enquanto a auth não estiver inicializada
-  if (!initialized || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <LoadingSpinner />
-          <p className="text-muted-foreground text-sm">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Se não estiver autenticado e não for rota pública, não renderizar nada
-  // (o useEffect vai redirecionar)
-  if (!user) {
-    return null;
-  }
+  // AuthGate já garante que só usuarios autenticados chegam aqui
 
   return (
     <div className="min-h-screen bg-background flex">
