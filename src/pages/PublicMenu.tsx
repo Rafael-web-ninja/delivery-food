@@ -28,6 +28,12 @@ interface Business {
   description: string;
   phone: string;
   address: string;
+  logo_url: string;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  text_color: string;
 }
 
 interface CartItem extends MenuItem {
@@ -196,32 +202,93 @@ const PublicMenu = () => {
     );
   }
 
+  // Aplicar cores personalizadas
+  useEffect(() => {
+    if (business) {
+      const root = document.documentElement;
+      
+      // Converter hex para HSL para compatibilidade com o sistema
+      const hexToHsl = (hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+        
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          
+          switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+          }
+          h /= 6;
+        }
+        
+        return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+      };
+      
+      // Aplicar cores do negócio
+      root.style.setProperty('--primary', hexToHsl(business.primary_color || '#2563eb'));
+      root.style.setProperty('--secondary', hexToHsl(business.secondary_color || '#64748b'));
+      root.style.setProperty('--accent', hexToHsl(business.accent_color || '#059669'));
+      root.style.setProperty('--background', hexToHsl(business.background_color || '#ffffff'));
+      root.style.setProperty('--foreground', hexToHsl(business.text_color || '#1e293b'));
+    }
+    
+    // Cleanup ao desmontar componente
+    return () => {
+      const root = document.documentElement;
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--secondary');
+      root.style.removeProperty('--accent');
+      root.style.removeProperty('--background');
+      root.style.removeProperty('--foreground');
+    };
+  }, [business]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-card shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{business?.name}</h1>
-              {business?.description && (
-                <p className="text-gray-600 mt-1">{business.description}</p>
+            <div className="flex items-center gap-4">
+              {business?.logo_url && (
+                <img 
+                  src={business.logo_url} 
+                  alt={`${business.name} logo`}
+                  className="h-16 w-16 object-contain rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               )}
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">{business?.name}</h1>
+                {business?.description && (
+                  <p className="text-muted-foreground mt-1">{business.description}</p>
+                )}
               
-              <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                {business?.phone && (
-                  <div className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    <span>{business.phone}</span>
-                  </div>
-                )}
-                {business?.address && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{business.address}</span>
-                  </div>
-                )}
-                {business && <BusinessStatus businessId={business.id} />}
+                <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                  {business?.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      <span>{business.phone}</span>
+                    </div>
+                  )}
+                  {business?.address && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      <span>{business.address}</span>
+                    </div>
+                  )}
+                  {business && <BusinessStatus businessId={business.id} />}
+                </div>
               </div>
             </div>
             
@@ -229,7 +296,7 @@ const PublicMenu = () => {
             <div className="flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Olá, {user.email}</span>
+                  <span className="text-sm text-muted-foreground">Olá, {user.email}</span>
                   <Button variant="outline" onClick={signOut} size="sm">
                     Sair
                   </Button>

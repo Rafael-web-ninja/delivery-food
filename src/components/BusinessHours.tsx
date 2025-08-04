@@ -151,14 +151,15 @@ export default function BusinessHours() {
 
           return (
             <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
-              <div className="w-20">
+              <div className="w-32 flex items-center">
                 <input
                   type="checkbox"
                   checked={hour.is_active}
                   onChange={(e) => updateHour(index, 'is_active', e.target.checked)}
-                  className="mr-2"
+                  className="mr-3 h-4 w-4"
+                  id={`day-${index}`}
                 />
-                <Label className="text-sm font-medium">{day}</Label>
+                <Label htmlFor={`day-${index}`} className="text-sm font-medium cursor-pointer">{day}</Label>
               </div>
               
               {hour.is_active && (

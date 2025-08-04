@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { ArrowLeft, Save, Store } from 'lucide-react';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
+import ImageUpload from '@/components/ImageUpload';
 
 interface BusinessData {
   id: string;
@@ -191,12 +192,11 @@ const Settings = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="logo_url">URL do Logo (opcional)</Label>
-                  <Input
-                    id="logo_url"
-                    value={businessData.logo_url}
-                    onChange={(e) => setBusinessData(prev => ({ ...prev, logo_url: e.target.value }))}
-                    placeholder="https://exemplo.com/logo.png"
+                  <ImageUpload
+                    currentUrl={businessData.logo_url}
+                    onUrlChange={(url) => setBusinessData(prev => ({ ...prev, logo_url: url }))}
+                    label="Logo do Delivery (opcional)"
+                    folder="logos"
                   />
                 </div>
 

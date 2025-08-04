@@ -180,21 +180,23 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const deliveryFee = businessData?.delivery_fee || 0;
       const totalWithDelivery = total + Number(deliveryFee);
 
-      // Criar o pedido (sem RLS pois é para clientes públicos)
+      // Criar o pedido
+      const orderData = {
+        business_id: business.id,
+        customer_name: customerData.name,
+        customer_phone: customerData.phone,
+        customer_address: customerData.address || '',
+        total_amount: totalWithDelivery,
+        delivery_fee: deliveryFee,
+        payment_method: 'cash' as const,
+        notes: customerData.notes || '',
+        status: 'pending' as const,
+        user_id: user?.id || null
+      };
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          business_id: business.id,
-          customer_name: customerData.name,
-          customer_phone: customerData.phone,
-          customer_address: customerData.address,
-          total_amount: totalWithDelivery,
-          delivery_fee: deliveryFee,
-          payment_method: 'cash',
-          notes: customerData.notes,
-          status: 'pending',
-          user_id: user?.id || null // Associar ao usuário se logado
-        })
+        .insert(orderData)
         .select()
         .single();
 
