@@ -17,7 +17,7 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<OrderNotification[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     // Subscribe to new orders
     const channel = supabase
@@ -87,7 +87,7 @@ export const useNotifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, toast]);
+  }, [user?.id, toast]);
 
   const markAsRead = (orderId: string) => {
     setNotifications(prev => prev.filter(notif => notif.id !== orderId));

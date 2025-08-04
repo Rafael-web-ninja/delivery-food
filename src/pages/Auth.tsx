@@ -20,7 +20,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 

@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,20 +41,9 @@ const Dashboard = () => {
     successMessage: "Link copiado com sucesso!"
   });
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchBusiness();
-      fetchStats();
-    }
-  }, [user]);
-
-  const fetchBusiness = async () => {
+  const fetchBusiness = useCallback(async () => {
+    if (!user) return;
+    
     setLoadingBusiness(true);
     try {
       const { data, error } = await supabase
@@ -87,16 +76,9 @@ const Dashboard = () => {
     } finally {
       setLoadingBusiness(false);
     }
-  };
+  }, [user]);
 
-  const copyMenuLink = async () => {
-    await executeCopyLink(async () => {
-      if (!menuLink) throw new Error('Link não disponível');
-      await navigator.clipboard.writeText(menuLink);
-    });
-  };
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoadingStats(true);
     try {
       const [itemsResult, ordersResult, pendingResult] = await Promise.all([
@@ -115,6 +97,26 @@ const Dashboard = () => {
     } finally {
       setLoadingStats(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth', { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchBusiness();
+      fetchStats();
+    }
+  }, [user, fetchBusiness, fetchStats]);
+
+  const copyMenuLink = async () => {
+    await executeCopyLink(async () => {
+      if (!menuLink) throw new Error('Link não disponível');
+      await navigator.clipboard.writeText(menuLink);
+    });
   };
 
   if (loading) {
