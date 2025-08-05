@@ -148,11 +148,15 @@ Todas as cores devem ser HSL para melhor controle e suporte a dark mode
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Previne overflow horizontal */
+    overflow-x: hidden;
   }
 
-  /* Scroll suave */
+  /* Container principal para evitar overflow */
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   /* Loading skeleton animation */
