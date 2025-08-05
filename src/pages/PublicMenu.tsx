@@ -395,7 +395,7 @@ const PublicMenu = () => {
               )}
               <Button
                 onClick={() => setShowCheckout(true)}
-                className="relative flex items-center gap-2"
+                className="relative flex items-center gap-2 border-0"
                 disabled={cart.length === 0}
                 style={{
                   backgroundColor: business.cart_button_color || '#16A34A',
@@ -500,7 +500,7 @@ const PublicMenu = () => {
 
                         <Button
                           onClick={() => addToCart(item)}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 border-0"
                           style={{
                             backgroundColor: business.button_color || '#16A34A',
                             color: business.button_text_color || '#FFFFFF'
@@ -598,7 +598,7 @@ const PublicMenu = () => {
 
                      <Button
                        onClick={() => addToCart(item)}
-                       className="flex items-center gap-2"
+                       className="flex items-center gap-2 border-0"
                        style={{
                          backgroundColor: business.button_color || '#16A34A',
                          color: business.button_text_color || '#FFFFFF'
@@ -624,6 +624,7 @@ const PublicMenu = () => {
           total={getCartTotal()}
           onOrderComplete={handleOrderComplete}
           onCancel={() => setShowCheckout(false)}
+          onRemoveItem={removeFromCart}
         />
       )}
     </div>

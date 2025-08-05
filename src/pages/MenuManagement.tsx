@@ -391,7 +391,7 @@ const MenuManagement = () => {
                 <img
                   src={item.image_url}
                   alt={item.name}
-                  className="w-full h-48 object-cover rounded-md mb-3"
+                  className="w-full h-[250px] object-cover rounded-md mb-3"
                 />
               )}
               <div className="flex justify-between items-center">

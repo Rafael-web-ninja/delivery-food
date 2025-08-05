@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { User, MapPin, Phone, Mail } from 'lucide-react';
+import { User, MapPin, Phone, Mail, X } from 'lucide-react';
 
 interface CartItem {
   id: string;
@@ -29,9 +29,10 @@ interface CheckoutFormProps {
   total: number;
   onOrderComplete: () => void;
   onCancel: () => void;
+  onRemoveItem?: (itemId: string) => void;
 }
 
-export default function CheckoutForm({ cart, business, total, onOrderComplete, onCancel }: CheckoutFormProps) {
+export default function CheckoutForm({ cart, business, total, onOrderComplete, onCancel, onRemoveItem }: CheckoutFormProps) {
   const { toast } = useToast();
   const { user, signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -325,9 +326,19 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
             <div className="bg-muted/50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">Resumo do Pedido</h3>
               {cart.map(item => (
-                <div key={item.id} className="flex justify-between text-sm">
+                <div key={item.id} className="flex justify-between items-center text-sm py-1">
                   <span>{item.quantity}x {item.name}</span>
-                  <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                  <div className="flex items-center gap-2">
+                    <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveItem?.(item.id)}
+                      className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               <div className="border-t mt-2 pt-2 font-semibold flex justify-between">
