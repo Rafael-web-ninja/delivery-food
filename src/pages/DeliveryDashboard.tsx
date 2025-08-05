@@ -12,7 +12,7 @@ import {
 import { useAuthWithRole } from "@/hooks/useAuthWithRole";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import Dashboard from "@/pages/Dashboard";
+
 import MenuManagement from "@/pages/MenuManagement";
 import OrderManagement from "@/pages/OrderManagement";
 import Analytics from "@/pages/Analytics";
@@ -88,9 +88,69 @@ export default function DeliveryDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard">
-            <Dashboard />
-          </TabsContent>
+           <TabsContent value="dashboard">
+             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+               <Card>
+                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium">
+                     Total de Pedidos
+                   </CardTitle>
+                   <Package className="h-4 w-4 text-muted-foreground" />
+                 </CardHeader>
+                 <CardContent>
+                   <div className="text-2xl font-bold">0</div>
+                   <p className="text-xs text-muted-foreground">
+                     Últimos 30 dias
+                   </p>
+                 </CardContent>
+               </Card>
+               
+               <Card>
+                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium">
+                     Receita Total
+                   </CardTitle>
+                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                 </CardHeader>
+                 <CardContent>
+                   <div className="text-2xl font-bold">R$ 0,00</div>
+                   <p className="text-xs text-muted-foreground">
+                     Últimos 30 dias
+                   </p>
+                 </CardContent>
+               </Card>
+               
+               <Card>
+                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium">
+                     Itens do Cardápio
+                   </CardTitle>
+                   <Menu className="h-4 w-4 text-muted-foreground" />
+                 </CardHeader>
+                 <CardContent>
+                   <div className="text-2xl font-bold">0</div>
+                   <p className="text-xs text-muted-foreground">
+                     Produtos cadastrados
+                   </p>
+                 </CardContent>
+               </Card>
+               
+               <Card>
+                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium">
+                     Status
+                   </CardTitle>
+                   <Bell className="h-4 w-4 text-muted-foreground" />
+                 </CardHeader>
+                 <CardContent>
+                   <div className="text-2xl font-bold text-green-600">Ativo</div>
+                   <p className="text-xs text-muted-foreground">
+                     Delivery funcionando
+                   </p>
+                 </CardContent>
+               </Card>
+             </div>
+           </TabsContent>
 
           <TabsContent value="menu">
             <MenuManagement />

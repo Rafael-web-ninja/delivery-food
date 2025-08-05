@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,7 @@ interface AnalyticsData {
 }
 
 const Analytics = () => {
-  const { user } = useAuth();
+  const { user } = useAuthWithRole();
   const navigate = useNavigate();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);

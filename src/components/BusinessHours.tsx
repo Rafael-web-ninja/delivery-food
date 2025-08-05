@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 
 interface BusinessHour {
   id?: string;
@@ -26,7 +26,7 @@ const DAYS_OF_WEEK = [
 
 export default function BusinessHours() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useAuthWithRole();
   const [loading, setLoading] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [hours, setHours] = useState<BusinessHour[]>([]);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +32,7 @@ interface Category {
 }
 
 const MenuManagement = () => {
-  const { user } = useAuth();
+  const { user } = useAuthWithRole();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [items, setItems] = useState<MenuItem[]>([]);

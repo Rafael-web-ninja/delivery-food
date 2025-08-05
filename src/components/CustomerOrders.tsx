@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,7 +33,7 @@ const statusMap = {
 };
 
 export default function CustomerOrders() {
-  const { user } = useAuth();
+  const { user } = useAuthWithRole();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 

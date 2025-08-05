@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
 
@@ -34,7 +34,7 @@ interface CheckoutFormProps {
 
 export default function CheckoutForm({ cart, business, total, onOrderComplete, onCancel, onRemoveItem }: CheckoutFormProps) {
   const { toast } = useToast();
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp } = useAuthWithRole();
   const [loading, setLoading] = useState(false);
   
   // Formulário de dados do cliente

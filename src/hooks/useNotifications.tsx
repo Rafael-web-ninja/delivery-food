@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderNotification {
@@ -12,7 +12,7 @@ interface OrderNotification {
 }
 
 export const useNotifications = () => {
-  const { user } = useAuth();
+  const { user } = useAuthWithRole();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<OrderNotification[]>([]);
 

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Phone, MapPin } from 'lucide-react';
 
@@ -16,7 +16,7 @@ interface CustomerProfileData {
 
 export default function CustomerProfile() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useAuthWithRole();
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<CustomerProfileData>({
     name: '',
