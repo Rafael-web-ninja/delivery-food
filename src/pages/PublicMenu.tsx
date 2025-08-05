@@ -1,12 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Plus, Minus, Phone, MapPin, Clock, User, LogIn } from 'lucide-react';
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Phone,
+  MapPin,
+  Clock,
+  User
+} from 'lucide-react';
 import CheckoutForm from '@/components/CheckoutForm';
 import BusinessStatus from '@/components/BusinessStatus';
 import CustomerProfile from '@/components/CustomerProfile';
@@ -41,7 +55,7 @@ interface CartItem extends MenuItem {
 }
 
 const PublicMenu = () => {
-  const { businessId } = useParams();
+  const { businessId } = useParams<{ businessId: string }>();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -51,12 +65,76 @@ const PublicMenu = () => {
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
 
+  // 1️⃣ Carregar dados ao montar / businessId mudar
   useEffect(() => {
     if (businessId) {
       fetchBusinessAndMenu();
     }
   }, [businessId]);
 
+  // 2️⃣ Aplicar cores personalizadas SEMPRE antes dos retornos
+  useEffect(() => {
+    if (!business) return;
+    const root = document.documentElement;
+    const hexToHsl = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h = 0,
+        s = 0,
+        l = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / d + 2;
+            break;
+          case b:
+            h = (r - g) / d + 4;
+            break;
+        }
+        h /= 6;
+      }
+      return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(
+        l * 100
+      )}%`;
+    };
+    root.style.setProperty(
+      '--primary',
+      hexToHsl(business.primary_color || '#2563eb')
+    );
+    root.style.setProperty(
+      '--secondary',
+      hexToHsl(business.secondary_color || '#64748b')
+    );
+    root.style.setProperty(
+      '--accent',
+      hexToHsl(business.accent_color || '#059669')
+    );
+    root.style.setProperty(
+      '--background',
+      hexToHsl(business.background_color || '#ffffff')
+    );
+    root.style.setProperty(
+      '--foreground',
+      hexToHsl(business.text_color || '#1e293b')
+    );
+    return () => {
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--secondary');
+      root.style.removeProperty('--accent');
+      root.style.removeProperty('--background');
+      root.style.removeProperty('--foreground');
+    };
+  }, [business]);
+
+  // Função de fetch
   const fetchBusinessAndMenu = async () => {
     try {
       const [businessResult, itemsResult] = await Promise.all([
@@ -76,97 +154,78 @@ const PublicMenu = () => {
 
       if (businessResult.data) setBusiness(businessResult.data);
       if (itemsResult.data) setItems(itemsResult.data);
-      
     } catch (error) {
       console.error('Erro ao carregar cardápio:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar o cardápio",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'Não foi possível carregar o cardápio',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // Gerenciamento de carrinho
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
-      const existing = prev.find(cartItem => cartItem.id === item.id);
+      const existing = prev.find(ci => ci.id === item.id);
       if (existing) {
-        return prev.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
+        return prev.map(ci =>
+          ci.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
         );
       }
       return [...prev, { ...item, quantity: 1 }];
     });
-
     toast({
-      title: "Item adicionado!",
-      description: `${item.name} foi adicionado ao carrinho`,
+      title: 'Item adicionado!',
+      description: `${item.name} foi adicionado ao carrinho`
     });
   };
 
   const removeFromCart = (itemId: string) => {
     setCart(prev => {
-      const existing = prev.find(cartItem => cartItem.id === itemId);
+      const existing = prev.find(ci => ci.id === itemId);
       if (existing && existing.quantity > 1) {
-        return prev.map(cartItem =>
-          cartItem.id === itemId
-            ? { ...cartItem, quantity: cartItem.quantity - 1 }
-            : cartItem
+        return prev.map(ci =>
+          ci.id === itemId ? { ...ci, quantity: ci.quantity - 1 } : ci
         );
       }
-      return prev.filter(cartItem => cartItem.id !== itemId);
+      return prev.filter(ci => ci.id !== itemId);
     });
   };
-  
+
   const updateCartItem = (itemId: string, change: number) => {
-    const existingItem = items.find(item => item.id === itemId);
-    if (!existingItem) return;
-    
-    if (change > 0) {
-      addToCart(existingItem);
-    } else {
-      removeFromCart(itemId);
-    }
-  };
-  
-  const getCartItemQuantity = (itemId: string) => {
-    const cartItem = cart.find(item => item.id === itemId);
-    return cartItem ? cartItem.quantity : 0;
+    const existing = items.find(i => i.id === itemId);
+    if (!existing) return;
+    change > 0 ? addToCart(existing) : removeFromCart(itemId);
   };
 
-  const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
+  const getCartItemQuantity = (itemId: string) =>
+    cart.find(ci => ci.id === itemId)?.quantity || 0;
 
-  const getCartItemCount = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
-  };
+  const getCartTotal = () =>
+    cart.reduce((sum, ci) => sum + ci.price * ci.quantity, 0);
 
   const generateWhatsAppMessage = () => {
-    if (cart.length === 0) return '';
-    
-    let message = `*Pedido - ${business?.name}*\n\n`;
-    
-    cart.forEach(item => {
-      message += `• ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toFixed(2)}\n`;
+    if (!business || cart.length === 0) return '';
+    let message = `*Pedido - ${business.name}*\n\n`;
+    cart.forEach(ci => {
+      message += `• ${ci.quantity}x ${ci.name} - R$ ${(
+        ci.price * ci.quantity
+      ).toFixed(2)}\n`;
     });
-    
     message += `\n*Total: R$ ${getCartTotal().toFixed(2)}*\n\n`;
     message += `Por favor, confirme meu pedido!`;
-    
     return encodeURIComponent(message);
   };
 
   const handleProceedToCheckout = () => {
     if (cart.length === 0) {
       toast({
-        title: "Carrinho vazio",
-        description: "Adicione itens ao carrinho antes de fazer o pedido",
-        variant: "destructive"
+        title: 'Carrinho vazio',
+        description: 'Adicione itens ao carrinho antes de fazer o pedido',
+        variant: 'destructive'
       });
       return;
     }
@@ -177,17 +236,16 @@ const PublicMenu = () => {
     setCart([]);
     setShowCheckout(false);
     toast({
-      title: "Pedido realizado!",
-      description: "Obrigado pelo seu pedido!",
+      title: 'Pedido realizado!',
+      description: 'Obrigado pelo seu pedido!'
     });
   };
 
+  // ——————— RETORNOS ANTECIPADOS ———————
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-xl text-muted-foreground">Carregando cardápio...</p>
-        </div>
+        <p className="text-xl text-muted-foreground">Carregando cardápio...</p>
       </div>
     );
   }
@@ -197,134 +255,88 @@ const PublicMenu = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Delivery não encontrado</h1>
-          <p className="text-muted-foreground">O link pode estar incorreto ou o delivery pode estar indisponível.</p>
+          <p className="text-muted-foreground">
+            O link pode estar incorreto ou o delivery pode estar indisponível.
+          </p>
         </div>
       </div>
     );
   }
 
-  // Aplicar cores personalizadas
-  useEffect(() => {
-    if (business) {
-      const root = document.documentElement;
-      
-      // Converter hex para HSL para compatibilidade com o sistema
-      const hexToHsl = (hex: string) => {
-        const r = parseInt(hex.slice(1, 3), 16) / 255;
-        const g = parseInt(hex.slice(3, 5), 16) / 255;
-        const b = parseInt(hex.slice(5, 7), 16) / 255;
-        
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        let h = 0, s = 0, l = (max + min) / 2;
-        
-        if (max !== min) {
-          const d = max - min;
-          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-          
-          switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-          }
-          h /= 6;
-        }
-        
-        return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-      };
-      
-      // Aplicar cores do negócio
-      root.style.setProperty('--primary', hexToHsl(business.primary_color || '#2563eb'));
-      root.style.setProperty('--secondary', hexToHsl(business.secondary_color || '#64748b'));
-      root.style.setProperty('--accent', hexToHsl(business.accent_color || '#059669'));
-      root.style.setProperty('--background', hexToHsl(business.background_color || '#ffffff'));
-      root.style.setProperty('--foreground', hexToHsl(business.text_color || '#1e293b'));
-    }
-    
-    // Cleanup ao desmontar componente
-    return () => {
-      const root = document.documentElement;
-      root.style.removeProperty('--primary');
-      root.style.removeProperty('--secondary');
-      root.style.removeProperty('--accent');
-      root.style.removeProperty('--background');
-      root.style.removeProperty('--foreground');
-    };
-  }, [business]);
-
+  // ——————— JSX PRINCIPAL ———————
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-card shadow-sm border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {business?.logo_url && (
-                <img 
-                  src={business.logo_url} 
-                  alt={`${business.name} logo`}
-                  className="h-16 w-16 object-contain rounded-lg"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {business.logo_url && (
+              <img
+                src={business.logo_url}
+                alt={`${business.name} logo`}
+                className="h-16 w-16 object-contain rounded-lg"
+                onError={e => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                {business.name}
+              </h1>
+              {business.description && (
+                <p className="text-muted-foreground mt-1">
+                  {business.description}
+                </p>
               )}
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">{business?.name}</h1>
-                {business?.description && (
-                  <p className="text-muted-foreground mt-1">{business.description}</p>
+              <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                {business.phone && (
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    <span>{business.phone}</span>
+                  </div>
                 )}
-              
-                <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                  {business?.phone && (
-                    <div className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
-                      <span>{business.phone}</span>
-                    </div>
-                  )}
-                  {business?.address && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{business.address}</span>
-                    </div>
-                  )}
-                  {business && <BusinessStatus businessId={business.id} />}
-                </div>
+                {business.address && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{business.address}</span>
+                  </div>
+                )}
+                <BusinessStatus businessId={business.id} />
               </div>
             </div>
-            
-            {/* Carrinho e Login */}
-            <div className="flex items-center gap-4">
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Olá, {user.email}</span>
-                  <Button variant="outline" onClick={signOut} size="sm">
-                    Sair
-                  </Button>
-                </div>
-              ) : (
-                <Link to="/auth">
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span>Entrar</span>
-                  </Button>
-                </Link>
+          </div>
+          <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  Olá, {user.email}
+                </span>
+                <Button variant="outline" onClick={signOut} size="sm">
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Entrar
+                </Button>
+              </Link>
+            )}
+            <Button
+              onClick={() => setShowCheckout(true)}
+              className="relative flex items-center gap-2"
+              disabled={cart.length === 0}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span>Carrinho</span>
+              {cart.length > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500">
+                  {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
+                </Badge>
               )}
-              
-              <Button 
-                onClick={() => setShowCheckout(true)}
-                className="relative flex items-center gap-2"
-                disabled={cart.length === 0}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span>Carrinho</span>
-                {cart.length > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500">
-                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                  </Badge>
-                )}
-              </Button>
-            </div>
+            </Button>
           </div>
         </div>
       </div>
@@ -338,15 +350,18 @@ const PublicMenu = () => {
               <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
               <TabsTrigger value="orders">Meus Pedidos</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="menu">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {items.map((item) => (
-                  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                {items.map(item => (
+                  <Card
+                    key={item.id}
+                    className="overflow-hidden hover:shadow-lg transition-shadow"
+                  >
                     <div className="aspect-video bg-gray-100 flex items-center justify-center">
                       {item.image_url ? (
-                        <img 
-                          src={item.image_url} 
+                        <img
+                          src={item.image_url}
                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
@@ -354,7 +369,7 @@ const PublicMenu = () => {
                         <div className="text-gray-400">Sem imagem</div>
                       )}
                     </div>
-                    
+
                     <CardHeader>
                       <CardTitle className="text-lg">{item.name}</CardTitle>
                       {item.description && (
@@ -362,17 +377,20 @@ const PublicMenu = () => {
                       )}
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-primary">
-                          R$ {Number(item.price).toFixed(2)}
+                          R$ {item.price.toFixed(2)}
                         </span>
                         {item.preparation_time > 0 && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
+                          <Badge
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
                             <Clock className="h-3 w-3" />
                             {item.preparation_time}min
                           </Badge>
                         )}
                       </div>
                     </CardHeader>
-                    
+
                     <CardContent>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -395,8 +413,8 @@ const PublicMenu = () => {
                             <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-                        
-                        <Button 
+
+                        <Button
                           onClick={() => addToCart(item)}
                           className="flex items-center gap-2"
                         >
@@ -409,23 +427,26 @@ const PublicMenu = () => {
                 ))}
               </div>
             </TabsContent>
-            
+
             <TabsContent value="profile">
               <CustomerProfile />
             </TabsContent>
-            
+
             <TabsContent value="orders">
               <CustomerOrders />
             </TabsContent>
           </Tabs>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
-              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            {items.map(item => (
+              <Card
+                key={item.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow"
+              >
                 <div className="aspect-video bg-gray-100 flex items-center justify-center">
                   {item.image_url ? (
-                    <img 
-                      src={item.image_url} 
+                    <img
+                      src={item.image_url}
                       alt={item.name}
                       className="w-full h-full object-cover"
                     />
@@ -433,7 +454,7 @@ const PublicMenu = () => {
                     <div className="text-gray-400">Sem imagem</div>
                   )}
                 </div>
-                
+
                 <CardHeader>
                   <CardTitle className="text-lg">{item.name}</CardTitle>
                   {item.description && (
@@ -441,17 +462,20 @@ const PublicMenu = () => {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-bold text-primary">
-                      R$ {Number(item.price).toFixed(2)}
+                      R$ {item.price.toFixed(2)}
                     </span>
                     {item.preparation_time > 0 && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
                         <Clock className="h-3 w-3" />
                         {item.preparation_time}min
                       </Badge>
                     )}
                   </div>
                 </CardHeader>
-                
+
                 <CardContent>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -474,8 +498,8 @@ const PublicMenu = () => {
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    
-                    <Button 
+
+                    <Button
                       onClick={() => addToCart(item)}
                       className="flex items-center gap-2"
                     >
