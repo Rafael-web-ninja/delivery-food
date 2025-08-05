@@ -42,18 +42,28 @@ export function useAuthWithRole() {
   };
 
   const updateAuthState = async (session: Session | null) => {
-    if (session?.user) {
-      const role = await fetchUserRole(session.user.id);
+    try {
+      if (session?.user) {
+        const role = await fetchUserRole(session.user.id);
+        setAuthState({
+          user: session.user,
+          session,
+          role,
+          loading: false,
+        });
+      } else {
+        setAuthState({
+          user: null,
+          session: null,
+          role: null,
+          loading: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating auth state:', error);
       setAuthState({
-        user: session.user,
-        session,
-        role,
-        loading: false,
-      });
-    } else {
-      setAuthState({
-        user: null,
-        session: null,
+        user: session?.user || null,
+        session: session || null,
         role: null,
         loading: false,
       });
