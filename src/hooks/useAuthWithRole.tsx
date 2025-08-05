@@ -23,21 +23,39 @@ export function useAuthWithRole() {
 
   const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
     try {
+      console.log('Fetching user role for userId:', userId);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
         .single();
 
+      console.log('User role query result:', { data, error });
+
       if (error) {
+        // Se não encontrar o role, criar um padrão
+        if (error.code === 'PGRST116') {
+          console.log('No user role found, creating default role');
+          const { data: insertData, error: insertError } = await supabase
+            .from('user_roles')
+            .insert({ user_id: userId, role: 'cliente' })
+            .select('role')
+            .single();
+          
+          if (insertError) {
+            console.error('Error creating default user role:', insertError);
+            return 'cliente'; // Fallback padrão
+          }
+          return insertData?.role || 'cliente';
+        }
         console.error('Error fetching user role:', error);
-        return null;
+        return 'cliente'; // Fallback padrão
       }
 
-      return data?.role || null;
+      return data?.role || 'cliente';
     } catch (error) {
       console.error('Error fetching user role:', error);
-      return null;
+      return 'cliente'; // Fallback padrão
     }
   };
 
