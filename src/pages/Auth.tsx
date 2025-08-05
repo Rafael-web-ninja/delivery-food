@@ -32,6 +32,7 @@ const Auth = () => {
       } else {
         // Redirect based on user role
         const dashboardPath = role === 'cliente' ? '/painel-cliente' : '/painel-delivery';
+        console.log(`🔄 [Auth] Redirecting ${role} to ${dashboardPath}`);
         navigate(dashboardPath, { replace: true });
       }
     }

@@ -409,25 +409,20 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
     console.log(`👋 [useAuthWithRole:${mountId}] Sign out attempt`);
     
     try {
-      updateAuthState({ isLoading: true, error: null });
-      
       const { error } = await supabase.auth.signOut();
       if (error) {
-        throw error;
+        console.error(`❌ [useAuthWithRole:${mountId}] Sign out error:`, error);
+        return { error };
       }
       
-      // Limpar cache e refs
-      roleCacheRef.current = null;
-      controlRef.current.currentUserId = null;
-      
+      // Limpar cache e refs - será limpo no listener SIGNED_OUT
       console.log(`✅ [useAuthWithRole:${mountId}] Sign out successful`);
       return { error: null };
     } catch (error: any) {
       console.error(`❌ [useAuthWithRole:${mountId}] Sign out error:`, error);
-      updateAuthState({ isLoading: false, error: error.message });
       return { error };
     }
-  }, [updateAuthState]);
+  }, []);
 
   const updateUserRole = useCallback(async (newRole: UserRole) => {
     const mountId = controlRef.current.mountId;

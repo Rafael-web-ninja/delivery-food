@@ -33,7 +33,8 @@ export function RoleBasedRedirect({
     if (role && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
       // Redirect based on user role
       const defaultRedirect = role === 'cliente' ? '/painel-cliente' : '/painel-delivery';
-      navigate(redirectTo || defaultRedirect);
+      console.log(`🔄 [RoleBasedRedirect] Redirecting ${role} to ${defaultRedirect}`);
+      navigate(redirectTo || defaultRedirect, { replace: true });
       return;
     }
 

@@ -358,21 +358,6 @@ const PublicMenu = () => {
                     {business.description}
                   </p>
                 )}
-                <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 text-sm text-muted-foreground">
-                  {business.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 flex-shrink-0" />
-                      <span>{business.phone}</span>
-                    </div>
-                  )}
-                  {business.address && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-center lg:text-left">{business.address}</span>
-                    </div>
-                  )}
-                  <BusinessStatus businessId={business.id} />
-                </div>
               </div>
             </div>
             <div className="flex items-center gap-4 flex-shrink-0">
@@ -415,6 +400,25 @@ const PublicMenu = () => {
             </div>
           </div>
         </div>
+        
+        {/* Informações de contato e status - movidas para baixo */}
+        <div className="container mx-auto px-4 pb-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 text-sm text-muted-foreground">
+            {business.phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 flex-shrink-0" />
+                <span>{business.phone}</span>
+              </div>
+            )}
+            {business.address && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 flex-shrink-0" />
+                <span className="text-center lg:text-left">{business.address}</span>
+              </div>
+            )}
+            <BusinessStatus businessId={business.id} />
+          </div>
+        </div>
       </div>
 
       {/* Conteúdo Principal */}
@@ -428,10 +432,12 @@ const PublicMenu = () => {
             </TabsList>
 
             <TabsContent value="menu">
-              <MenuFilters 
-                businessId={businessId!} 
-                onFilterChange={setFilters} 
-              />
+              <div className="mb-6">
+                <MenuFilters 
+                  businessId={businessId!} 
+                  onFilterChange={setFilters} 
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {items.map(item => (
                   <Card

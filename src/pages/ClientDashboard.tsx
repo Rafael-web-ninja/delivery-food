@@ -14,26 +14,34 @@ export default function ClientDashboard() {
   const { toast } = useToast();
 
   const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (error) {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao fazer logout",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Logout realizado com sucesso"
+        });
+        // A navegação será feita automaticamente pelo RoleBasedRedirect
+      }
+    } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao fazer logout",
+        description: "Erro inesperado ao fazer logout",
         variant: "destructive"
-      });
-    } else {
-      navigate('/');
-      toast({
-        title: "Sucesso",
-        description: "Logout realizado com sucesso"
       });
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+      <div className="border-b bg-card shadow-sm">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Painel do Cliente</h1>
