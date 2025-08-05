@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +60,46 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
   const handleAuthChange = (field: string, value: string) => {
     setAuthData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Carregar dados do perfil do usuário logado
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const { data: profile } = await supabase
+            .from('customer_profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (profile) {
+            setCustomerData(prev => ({
+              ...prev,
+              name: profile.name || '',
+              phone: profile.phone || '',
+              address: profile.address || '',
+              email: user.email || ''
+            }));
+          } else {
+            // Se não tem perfil, usar apenas o email do usuário
+            setCustomerData(prev => ({
+              ...prev,
+              email: user.email || ''
+            }));
+          }
+        } catch (error) {
+          console.log('Erro ao carregar perfil:', error);
+          // Em caso de erro, apenas usar o email
+          setCustomerData(prev => ({
+            ...prev,
+            email: user.email || ''
+          }));
+        }
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
 
   const handleLogin = async () => {
     setLoading(true);

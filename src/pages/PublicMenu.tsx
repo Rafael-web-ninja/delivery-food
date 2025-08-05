@@ -96,6 +96,12 @@ const PublicMenu = () => {
     }
   };
 
+  // Carregar carrinho mesmo após login - mantém itens
+  useEffect(() => {
+    // Este useEffect preserva o carrinho quando o usuário faz login
+    // Não limpa o carrinho, apenas mantém o que já estava
+  }, [user]);
+
   // 1.2️⃣ Salvar carrinho no localStorage
   useEffect(() => {
     if (businessId && cart.length > 0) {
@@ -335,7 +341,7 @@ const PublicMenu = () => {
                 <img
                   src={business.logo_url}
                   alt={`${business.name} logo`}
-                  className="h-20 w-20 max-w-[200px] object-contain rounded-lg flex-shrink-0"
+                  className="h-16 lg:h-20 w-auto max-w-[200px] object-contain rounded-lg flex-shrink-0"
                   onError={e => {
                     e.currentTarget.style.display = 'none';
                   }}

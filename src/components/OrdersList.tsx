@@ -34,23 +34,26 @@ interface OrdersListProps {
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500',
   preparing: 'bg-blue-500',
-  ready: 'bg-green-500',
-  delivered: 'bg-gray-500'
+  out_for_delivery: 'bg-green-500',
+  delivered: 'bg-gray-500',
+  cancelled: 'bg-red-500'
 };
 
 const statusLabels: Record<string, string> = {
   pending: 'Pendente',
   preparing: 'Preparando',
-  ready: 'Pronto',
-  delivered: 'Entregue'
+  out_for_delivery: 'Saiu para Entrega',
+  delivered: 'Entregue',
+  cancelled: 'Cancelado'
 };
 
 export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
   const nextStatus: Record<string, string> = {
     pending: 'preparing',
-    preparing: 'ready',
-    ready: 'delivered',
-    delivered: 'delivered'
+    preparing: 'out_for_delivery',
+    out_for_delivery: 'delivered',
+    delivered: 'delivered',
+    cancelled: 'cancelled'
   };
 
   return (
@@ -134,7 +137,7 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
                       <CheckCircle className="h-4 w-4 mr-2" />
                       {order.status === 'pending' && 'Iniciar Preparo'}
                       {order.status === 'preparing' && 'Marcar Pronto'}
-                      {order.status === 'ready' && 'Marcar Entregue'}
+                      {order.status === 'out_for_delivery' && 'Marcar Entregue'}
                     </Button>
                   )}
                 </div>

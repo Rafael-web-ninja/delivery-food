@@ -10,6 +10,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import CustomerDashboard from "./pages/CustomerDashboard";
+import { DashboardRouter } from "./components/DashboardRouter";
 import MenuManagement from "./pages/MenuManagement";
 import OrderManagement from "./pages/OrderManagement";
 import PublicMenu from "./pages/PublicMenu";
@@ -32,7 +34,7 @@ const App = () => (
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               <Route element={<DashboardLayout />}>
-                <Route path="/dashboard" element={<AuthGate><Dashboard /></AuthGate>} />
+                <Route path="/dashboard" element={<AuthGate><DashboardRouter /></AuthGate>} />
                 <Route path="/menu" element={<AuthGate><MenuManagement /></AuthGate>} />
                 <Route path="/orders" element={<AuthGate><OrderManagement /></AuthGate>} />
                 <Route path="/analytics" element={<AuthGate><Analytics /></AuthGate>} />
