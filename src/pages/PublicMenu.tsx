@@ -350,7 +350,7 @@ const PublicMenu = () => {
                 </div>
               )}
               <div className="flex-1 text-center lg:text-left">
-                <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
                   {business.name}
                 </h1>
                 {business.description && (
@@ -391,7 +391,8 @@ const PublicMenu = () => {
                 <span>Carrinho</span>
                 {cart.length > 0 && (
                   <Badge 
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0 min-w-[20px]"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0 border-2 border-background"
+                    style={{ minWidth: '24px', minHeight: '24px' }}
                   >
                     {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
                   </Badge>
@@ -401,22 +402,28 @@ const PublicMenu = () => {
           </div>
         </div>
         
-        {/* Informações de contato e status - movidas para baixo */}
+        {/* Informações de contato e status - organizadas melhor */}
         <div className="container mx-auto px-4 pb-4">
-          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 text-sm text-muted-foreground">
-            {business.phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 flex-shrink-0" />
-                <span>{business.phone}</span>
+          <div className="bg-muted/30 rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-center gap-4 text-sm">
+                {business.phone && (
+                  <div className="flex items-center gap-2 bg-background px-3 py-2 rounded-md">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <span className="font-medium">{business.phone}</span>
+                  </div>
+                )}
+                {business.address && (
+                  <div className="flex items-center gap-2 bg-background px-3 py-2 rounded-md">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-center sm:text-left">{business.address}</span>
+                  </div>
+                )}
               </div>
-            )}
-            {business.address && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 flex-shrink-0" />
-                <span className="text-center lg:text-left">{business.address}</span>
+              <div className="flex-shrink-0">
+                <BusinessStatus businessId={business.id} />
               </div>
-            )}
-            <BusinessStatus businessId={business.id} />
+            </div>
           </div>
         </div>
       </div>

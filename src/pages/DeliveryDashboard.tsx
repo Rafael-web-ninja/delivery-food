@@ -31,52 +31,6 @@ const menuItems = [
   { id: "settings", title: "Configurações", icon: SettingsIcon },
 ];
 
-function Sidebar({ activeView, onViewChange, collapsed, onToggle }: { 
-  activeView: string; 
-  onViewChange: (view: string) => void;
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className={cn(
-      "bg-card border-r transition-all duration-300 ease-in-out",
-      collapsed ? "w-16" : "w-64"
-    )}>
-      <div className="flex h-16 items-center border-b px-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className="h-8 w-8 p-0"
-        >
-          <MenuIcon className="h-4 w-4" />
-        </Button>
-        {!collapsed && (
-          <h2 className="ml-3 text-lg font-semibold">DeliveryFácil</h2>
-        )}
-      </div>
-      
-      <nav className="p-4">
-        <div className="space-y-2">
-          {menuItems.map((item) => (
-            <Button
-              key={item.id}
-              variant={activeView === item.id ? "secondary" : "ghost"}
-              className={cn(
-                "w-full justify-start",
-                collapsed ? "px-2" : "px-4"
-              )}
-              onClick={() => onViewChange(item.id)}
-            >
-              <item.icon className={cn("h-4 w-4", !collapsed && "mr-3")} />
-              {!collapsed && <span>{item.title}</span>}
-            </Button>
-          ))}
-        </div>
-      </nav>
-    </div>
-  );
-}
 
 function DashboardOverview() {
   return (
@@ -86,9 +40,9 @@ function DashboardOverview() {
         <CreditCard className="h-4 w-4" />
         <AlertDescription>
           Para usar todas as funcionalidades do cardápio e pedidos, você precisa assinar um plano. 
-          <Button variant="link" className="ml-2 h-auto p-0 text-amber-800 underline">
-            Ver planos disponíveis
-          </Button>
+              <Button variant="link" className="ml-2 h-auto p-0 text-amber-800 underline" onClick={() => window.open('/', '_blank')}>
+                Ver planos disponíveis
+              </Button>
         </AlertDescription>
       </Alert>
 
@@ -207,25 +161,28 @@ export default function DeliveryDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
-      <Sidebar 
-        activeView={activeView} 
-        onViewChange={setActiveView}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      
-      <main className="flex-1">
-        {/* Header */}
+    <div className="min-h-screen w-full bg-background">
+      <main className="w-full">
+        {/* Header com Sidebar */}
         <div className="border-b bg-card shadow-sm">
           <div className="flex h-16 items-center px-6">
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold text-foreground">
-                {menuItems.find(item => item.id === activeView)?.title || "Dashboard"}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Bem-vindo, {user?.email}
-              </p>
+            <div className="flex items-center gap-4 flex-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="h-8 w-8 p-0"
+              >
+                <MenuIcon className="h-4 w-4" />
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-xl font-semibold text-foreground">
+                  {menuItems.find(item => item.id === activeView)?.title || "Dashboard"}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Bem-vindo, {user?.email}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <NotificationBell />
@@ -237,8 +194,47 @@ export default function DeliveryDashboard() {
           </div>
         </div>
 
+        {/* Sidebar Overlay para Mobile */}
+        {!sidebarCollapsed && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
+            onClick={() => setSidebarCollapsed(true)}
+          />
+        )}
+        
+        {/* Sidebar */}
+        <div className={cn(
+          "fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] bg-card border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+          sidebarCollapsed ? "-translate-x-full lg:w-16" : "translate-x-0 w-64"
+        )}>
+          <nav className="p-4">
+            <div className="space-y-2">
+              {menuItems.map((item) => (
+                <Button
+                  key={item.id}
+                  variant={activeView === item.id ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start",
+                    sidebarCollapsed ? "px-2 lg:flex hidden" : "px-4"
+                  )}
+                  onClick={() => {
+                    setActiveView(item.id);
+                    setSidebarCollapsed(true); // Fechar em mobile
+                  }}
+                >
+                  <item.icon className={cn("h-4 w-4", !sidebarCollapsed && "mr-3")} />
+                  {!sidebarCollapsed && <span>{item.title}</span>}
+                </Button>
+              ))}
+            </div>
+          </nav>
+        </div>
+
         {/* Content */}
-        <div className="p-6">
+        <div className={cn(
+          "p-6 transition-all duration-300",
+          sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+        )}>
           {renderContent()}
         </div>
       </main>
