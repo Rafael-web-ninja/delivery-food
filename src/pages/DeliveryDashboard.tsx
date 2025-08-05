@@ -161,80 +161,85 @@ export default function DeliveryDashboard() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <main className="w-full">
-        {/* Header com Sidebar */}
-        <div className="border-b bg-card shadow-sm">
-          <div className="flex h-16 items-center px-6">
-            <div className="flex items-center gap-4 flex-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="h-8 w-8 p-0"
-              >
-                <MenuIcon className="h-4 w-4" />
-              </Button>
-              <div className="flex-1">
-                <h1 className="text-xl font-semibold text-foreground">
-                  {menuItems.find(item => item.id === activeView)?.title || "Dashboard"}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Bem-vindo, {user?.email}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <NotificationBell />
-              <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
-                <LogOut className="h-4 w-4" />
-                Sair
-              </Button>
+    <div className="min-h-screen w-full bg-gray-50">
+      {/* Header Fixo */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b shadow-sm">
+        <div className="flex h-full items-center px-6">
+          <div className="flex items-center gap-4 flex-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="h-8 w-8 p-0"
+            >
+              <MenuIcon className="h-4 w-4" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-xl font-semibold text-gray-900">
+                {menuItems.find(item => item.id === activeView)?.title || "Dashboard"}
+              </h1>
+              <p className="text-sm text-gray-600">
+                Bem-vindo, {user?.email}
+              </p>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
+      </header>
 
-        {/* Sidebar Overlay para Mobile */}
-        {!sidebarCollapsed && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
-            onClick={() => setSidebarCollapsed(true)}
-          />
-        )}
-        
-        {/* Sidebar */}
-        <div className={cn(
-          "fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] bg-card border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0",
-          sidebarCollapsed ? "-translate-x-full lg:w-16" : "translate-x-0 w-64"
-        )}>
-          <nav className="p-4">
-            <div className="space-y-2">
-              {menuItems.map((item) => (
-                <Button
-                  key={item.id}
-                  variant={activeView === item.id ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    sidebarCollapsed ? "px-2 lg:flex hidden" : "px-4"
-                  )}
-                  onClick={() => {
-                    setActiveView(item.id);
-                    setSidebarCollapsed(true); // Fechar em mobile
-                  }}
-                >
-                  <item.icon className={cn("h-4 w-4", !sidebarCollapsed && "mr-3")} />
-                  {!sidebarCollapsed && <span>{item.title}</span>}
-                </Button>
-              ))}
-            </div>
-          </nav>
-        </div>
+      {/* Sidebar Overlay para Mobile */}
+      {!sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+      
+      {/* Sidebar Fixo */}
+      <aside className={cn(
+        "fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] bg-white border-r shadow-sm transform transition-all duration-300 ease-in-out lg:translate-x-0",
+        sidebarCollapsed ? "-translate-x-full lg:w-16" : "translate-x-0 w-64"
+      )}>
+        <nav className="p-4">
+          <div className="space-y-2">
+            {menuItems.map((item) => (
+              <Button
+                key={item.id}
+                variant={activeView === item.id ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start transition-all hover:bg-gray-100",
+                  activeView === item.id && "bg-primary text-primary-foreground hover:bg-primary/90",
+                  sidebarCollapsed ? "px-2 lg:flex hidden" : "px-4"
+                )}
+                onClick={() => {
+                  setActiveView(item.id);
+                  if (window.innerWidth < 1024) setSidebarCollapsed(true); // Fechar em mobile
+                }}
+              >
+                <item.icon className={cn(
+                  "h-5 w-5", 
+                  !sidebarCollapsed && "mr-3",
+                  activeView === item.id ? "text-primary-foreground" : "text-gray-600"
+                )} />
+                {!sidebarCollapsed && <span className="font-medium">{item.title}</span>}
+              </Button>
+            ))}
+          </div>
+        </nav>
+      </aside>
 
-        {/* Content */}
-        <div className={cn(
-          "p-6 transition-all duration-300",
-          sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
-        )}>
+      {/* Main Content - Full Width */}
+      <main className={cn(
+        "pt-16 min-h-screen transition-all duration-300",
+        sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+      )}>
+        <div className="w-full max-w-none p-6">
           {renderContent()}
         </div>
       </main>

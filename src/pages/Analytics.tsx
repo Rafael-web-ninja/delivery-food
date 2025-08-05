@@ -1,366 +1,322 @@
-import { useState, useEffect } from 'react';
-import { useAuthWithRole } from '@/hooks/useAuthWithRole';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Clock, Calendar } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import DateRangePicker from '@/components/DateRangePicker';
-
-interface AnalyticsData {
-  totalRevenue: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  salesTrend: Array<{ date: string; revenue: number; orders: number }>;
-  categoryPerformance: Array<{ name: string; value: number; orders: number }>;
-  orderStatus: Array<{ status: string; count: number }>;
-}
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DateRangePicker from "@/components/DateRangePicker";
+import { 
+  BarChart3, 
+  TrendingUp, 
+  DollarSign, 
+  ShoppingCart, 
+  Users,
+  Download,
+  Clock,
+  Star
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
 
 const Analytics = () => {
-  const { user } = useAuthWithRole();
-  const navigate = useNavigate();
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('7d');
-  const [customDateRange, setCustomDateRange] = useState<{start: string, end: string} | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [selectedMetric, setSelectedMetric] = useState("revenue");
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    fetchAnalytics();
-  }, [user, navigate, timeRange, customDateRange]);
+  // Mock data - em produção viria da API
+  const revenueData = [
+    { name: "Jan", revenue: 12000, orders: 120 },
+    { name: "Fev", revenue: 15000, orders: 145 },
+    { name: "Mar", revenue: 18000, orders: 160 },
+    { name: "Abr", revenue: 22000, orders: 190 },
+    { name: "Mai", revenue: 25000, orders: 210 },
+    { name: "Jun", revenue: 28000, orders: 240 },
+  ];
 
-  const fetchAnalytics = async () => {
-    try {
-      let startDate: Date;
-      let endDate = new Date();
-      
-      if (customDateRange) {
-        startDate = new Date(customDateRange.start);
-        endDate = new Date(customDateRange.end);
-      } else {
-        const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
-        startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-      }
+  const hourlyData = [
+    { hour: "00h", orders: 2 },
+    { hour: "06h", orders: 5 },
+    { hour: "12h", orders: 45 },
+    { hour: "18h", orders: 65 },
+    { hour: "21h", orders: 38 },
+  ];
 
-      // Get business
-      const { data: business } = await supabase
-        .from('delivery_businesses')
-        .select('id')
-        .eq('owner_id', user?.id)
-        .single();
+  const topProducts = [
+    { name: "Pizza Margherita", sales: 156, revenue: 2340 },
+    { name: "Hambúrguer Especial", sales: 142, revenue: 2130 },
+    { name: "Batata Frita", sales: 98, revenue: 980 },
+    { name: "Refrigerante", sales: 87, revenue: 435 },
+  ];
 
-      if (!business) return;
+  const customerData = [
+    { name: "Novos", value: 65, color: "#FF6B6B" },
+    { name: "Recorrentes", value: 35, color: "#4ECDC4" },
+  ];
 
-      // Get orders for the time range
-      const { data: orders } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            quantity,
-            unit_price,
-            total_price,
-            menu_item_id,
-            menu_items (
-              name,
-              category_id,
-              menu_categories (name)
-            )
-          )
-        `)
-        .eq('business_id', business.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      if (!orders) return;
-
-      // Calculate analytics
-      const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total_amount), 0);
-      const totalOrders = orders.length;
-      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-      // Sales trend by day
-      const salesByDay = new Map();
-      orders.forEach(order => {
-        const date = new Date(order.created_at).toISOString().split('T')[0];
-        if (!salesByDay.has(date)) {
-          salesByDay.set(date, { revenue: 0, orders: 0 });
-        }
-        const day = salesByDay.get(date);
-        day.revenue += Number(order.total_amount);
-        day.orders += 1;
-      });
-
-      const salesTrend = Array.from(salesByDay.entries())
-        .map(([date, data]) => ({ date, ...data }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-      // Category performance
-      const categoryStats = new Map();
-      orders.forEach(order => {
-        order.order_items?.forEach(item => {
-          const category = item.menu_items?.menu_categories?.name || 'Sem categoria';
-          if (!categoryStats.has(category)) {
-            categoryStats.set(category, { value: 0, orders: 0 });
-          }
-          const stats = categoryStats.get(category);
-          stats.value += Number(item.total_price);
-          stats.orders += item.quantity;
-        });
-      });
-
-      const categoryPerformance = Array.from(categoryStats.entries())
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => b.value - a.value);
-
-      // Order status distribution
-      const statusCounts = new Map();
-      orders.forEach(order => {
-        const status = order.status;
-        statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
-      });
-
-      const orderStatus = Array.from(statusCounts.entries())
-        .map(([status, count]) => ({ status, count }));
-
-      setAnalytics({
-        totalRevenue,
-        totalOrders,
-        averageOrderValue,
-        salesTrend,
-        categoryPerformance,
-        orderStatus
-      });
-    } catch (error) {
-      console.error('Erro ao carregar analytics:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleExport = (format: string) => {
+    console.log(`Exportando relatório em ${format}`);
+    // Implementar exportação real
   };
-
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setCustomDateRange({ start: startDate, end: endDate });
-    setTimeRange('custom');
-  };
-
-  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-xl text-muted-foreground">Carregando analytics...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold">Analytics</h1>
-          </div>
+    <div className="space-y-6">
+      {/* Header com Filtros */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Relatórios</h1>
+          <p className="text-muted-foreground">
+            Análise detalhada de vendas e performance
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="week">Semana</SelectItem>
+              <SelectItem value="month">Mês</SelectItem>
+              <SelectItem value="year">Ano</SelectItem>
+            </SelectContent>
+          </Select>
           
-          <div className="flex items-center gap-2">
-            <Button
-              variant={timeRange === '7d' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setTimeRange('7d');
-                setCustomDateRange(null);
-              }}
-            >
-              7 dias
+          <DateRangePicker />
+          
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => handleExport('pdf')}>
+              <Download className="h-4 w-4 mr-2" />
+              PDF
             </Button>
-            <Button
-              variant={timeRange === '30d' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setTimeRange('30d');
-                setCustomDateRange(null);
-              }}
-            >
-              30 dias
+            <Button variant="outline" onClick={() => handleExport('excel')}>
+              <Download className="h-4 w-4 mr-2" />
+              Excel
             </Button>
-            <Button
-              variant={timeRange === '90d' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setTimeRange('90d');
-                setCustomDateRange(null);
-              }}
-            >
-              90 dias
-            </Button>
-            
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={timeRange === 'custom' ? 'default' : 'outline'}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  {customDateRange ? 'Período personalizado' : 'Selecionar período'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end">
-                <DateRangePicker onDateRangeChange={handleDateRangeChange} />
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                R$ {analytics?.totalRevenue.toFixed(2) || '0,00'}
-              </div>
-            </CardContent>
-          </Card>
+      {/* KPI Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-br from-pink-500 to-red-500 text-white border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">
+              Receita Total
+            </CardTitle>
+            <DollarSign className="h-5 w-5 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">R$ 28.450</div>
+            <p className="text-sm opacity-80 flex items-center mt-2">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              +12.5% vs mês anterior
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Pedidos</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics?.totalOrders || 0}</div>
-            </CardContent>
-          </Card>
+        <Card className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">
+              Total de Pedidos
+            </CardTitle>
+            <ShoppingCart className="h-5 w-5 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">1.247</div>
+            <p className="text-sm opacity-80 flex items-center mt-2">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              +8.2% vs mês anterior
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                R$ {analytics?.averageOrderValue.toFixed(2) || '0,00'}
-              </div>
-            </CardContent>
-          </Card>
+        <Card className="bg-gradient-to-br from-green-500 to-emerald-500 text-white border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">
+              Ticket Médio
+            </CardTitle>
+            <BarChart3 className="h-5 w-5 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">R$ 22,80</div>
+            <p className="text-sm opacity-80 flex items-center mt-2">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              +3.8% vs mês anterior
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pedidos por Dia</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {analytics?.totalOrders && timeRange ? (
-                  (analytics.totalOrders / parseInt(timeRange)).toFixed(1)
-                ) : '0'}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="bg-gradient-to-br from-purple-500 to-pink-500 text-white border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">
+              Clientes Ativos
+            </CardTitle>
+            <Users className="h-5 w-5 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">892</div>
+            <p className="text-sm opacity-80 flex items-center mt-2">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              +15.3% vs mês anterior
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Sales Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Vendas por Dia</CardTitle>
-              <CardDescription>Receita e número de pedidos ao longo do tempo</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={analytics?.salesTrend || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    name="Receita (R$)"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="orders"
-                    stroke="hsl(var(--secondary))"
-                    strokeWidth={2}
-                    name="Pedidos"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Category Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance por Categoria</CardTitle>
-              <CardDescription>Receita gerada por cada categoria</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics?.categoryPerformance || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Order Status Distribution */}
+      {/* Charts Section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Distribuição de Status dos Pedidos</CardTitle>
-            <CardDescription>Status atual dos pedidos no período selecionado</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Receita por Período
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" stroke="#888" />
+                <YAxis stroke="#888" />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#FF6B6B" 
+                  strokeWidth={3}
+                  dot={{ fill: '#FF6B6B', strokeWidth: 2, r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Orders by Hour */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Pedidos por Horário
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={hourlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="hour" stroke="#888" />
+                <YAxis stroke="#888" />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                  }}
+                />
+                <Bar dataKey="orders" fill="#4ECDC4" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Top Products */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-primary" />
+              Produtos Mais Vendidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium">{product.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {product.sales} vendas
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-primary">R$ {product.revenue}</p>
+                    <p className="text-sm text-muted-foreground">receita</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Customer Insights */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Tipos de Cliente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
-                  data={analytics?.orderStatus || []}
-                  dataKey="count"
-                  nameKey="status"
+                  data={customerData}
                   cx="50%"
                   cy="50%"
-                  outerRadius={100}
-                  fill="hsl(var(--primary))"
-                  label
+                  outerRadius={80}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}%`}
                 >
-                  {analytics?.orderStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {customerData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+            
+            <div className="space-y-2 mt-4">
+              {customerData.map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="text-sm">{item.name}</span>
+                  </div>
+                  <span className="text-sm font-medium">{item.value}%</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
 };
