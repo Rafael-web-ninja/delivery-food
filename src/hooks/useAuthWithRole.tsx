@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ export function useAuthWithRole() {
     loading: true,
   });
   const { toast } = useToast();
+  const lastFetchedUserId = useRef<string | null>(null);
 
   const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
     try {
@@ -48,9 +49,22 @@ export function useAuthWithRole() {
     console.log('Updating auth state with session:', !!session);
     
     if (session?.user) {
+      // Evitar múltiplas buscas para o mesmo usuário
+      if (lastFetchedUserId.current === session.user.id) {
+        console.log('User role already fetched, updating session only');
+        setAuthState(prev => ({
+          ...prev,
+          user: session.user,
+          session,
+          loading: false,
+        }));
+        return;
+      }
+
       try {
         const role = await fetchUserRole(session.user.id);
         console.log('Setting auth state with role:', role);
+        lastFetchedUserId.current = session.user.id;
         
         setAuthState({
           user: session.user,
@@ -60,6 +74,7 @@ export function useAuthWithRole() {
         });
       } catch (error) {
         console.error('Error updating auth state:', error);
+        lastFetchedUserId.current = session.user.id;
         // Mesmo em erro, definir loading como false
         setAuthState({
           user: session.user,
@@ -70,6 +85,7 @@ export function useAuthWithRole() {
       }
     } else {
       console.log('No session, setting auth state to null');
+      lastFetchedUserId.current = null;
       setAuthState({
         user: null,
         session: null,
@@ -83,9 +99,13 @@ export function useAuthWithRole() {
     // Setup auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN') {
+        console.log('Auth state changed:', event);
+        
+        // Só buscar role em eventos que alteram o usuário logado
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           await updateAuthState(session);
         } else if (event === 'SIGNED_OUT') {
+          lastFetchedUserId.current = null;
           setAuthState({
             user: null,
             session: null,
@@ -93,7 +113,7 @@ export function useAuthWithRole() {
             loading: false,
           });
         } else if (event === 'TOKEN_REFRESHED' && session) {
-          // Para renovação de token, apenas atualizar a sessão sem buscar role novamente
+          // Para renovação de token, apenas atualizar a sessão sem buscar role
           setAuthState(prev => ({
             ...prev,
             session,
