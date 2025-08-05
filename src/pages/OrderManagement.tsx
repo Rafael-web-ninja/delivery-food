@@ -11,13 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrdersList } from '@/components/OrdersList';
 
+type OrderStatus = 'pending' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+
 interface Order {
   id: string;
   customer_name: string;
   customer_phone: string;
   customer_address: string;
   payment_method: string;
-  status: string;
+  status: OrderStatus;
   total_amount: number;
   delivery_fee: number;
   notes: string;
@@ -40,7 +42,7 @@ interface OrderItem {
 const statusTranslations = {
   pending: 'Pendente',
   preparing: 'Em Preparação',
-  ready: 'Pronto',
+  out_for_delivery: 'Saiu para Entrega',
   delivered: 'Entregue',
   cancelled: 'Cancelado'
 };
@@ -48,7 +50,7 @@ const statusTranslations = {
 const statusColors = {
   pending: 'destructive',
   preparing: 'default',
-  ready: 'secondary',
+  out_for_delivery: 'secondary',
   delivered: 'default',
   cancelled: 'outline'
 } as const;
@@ -101,10 +103,10 @@ const OrderManagement = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       // Validar status antes de enviar
-      const validStatuses = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
+      const validStatuses = ['pending', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'];
       if (!validStatuses.includes(newStatus)) {
         throw new Error('Status inválido');
       }
@@ -174,8 +176,8 @@ const OrderManagement = () => {
           <TabsTrigger value="preparing">
             Preparando ({orders.filter(o => o.status === 'preparing').length})
           </TabsTrigger>
-          <TabsTrigger value="ready">
-            Prontos ({orders.filter(o => o.status === 'ready').length})
+          <TabsTrigger value="out_for_delivery">
+            Saindo ({orders.filter(o => o.status === 'out_for_delivery').length})
           </TabsTrigger>
           <TabsTrigger value="delivered">
             Entregues ({orders.filter(o => o.status === 'delivered').length})
@@ -205,8 +207,8 @@ const OrderManagement = () => {
           <OrdersList orders={orders.filter(o => o.status === 'preparing')} onStatusUpdate={updateOrderStatus} />
         </TabsContent>
         
-        <TabsContent value="ready">
-          <OrdersList orders={orders.filter(o => o.status === 'ready')} onStatusUpdate={updateOrderStatus} />
+        <TabsContent value="out_for_delivery">
+          <OrdersList orders={orders.filter(o => o.status === 'out_for_delivery')} onStatusUpdate={updateOrderStatus} />
         </TabsContent>
         
         <TabsContent value="week">
