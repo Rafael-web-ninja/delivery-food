@@ -222,7 +222,7 @@ export default function DeliveryDashboard() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-50/50">
+    <div className="min-h-screen w-full flex">
       {/* Header Clean e Moderno */}
       <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b border-gray-200 shadow-soft">
         <div className="flex h-full items-center px-6">
@@ -300,12 +300,12 @@ export default function DeliveryDashboard() {
         </nav>
       </aside>
 
-      {/* Main Content - Full Width */}
+      {/* Main Content - Full Width com fundo cinza */}
       <main className={cn(
-        "pt-16 min-h-screen transition-all duration-300",
-        sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+        "flex-1 pt-16 min-h-screen w-full bg-gray-50/50 transition-all duration-300",
+        sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
       )}>
-        <div className="w-full p-6 max-w-none">
+        <div className="w-full h-full p-6">
           {renderContent()}
         </div>
       </main>
