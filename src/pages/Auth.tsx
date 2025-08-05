@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole, UserRole } from '@/hooks/useAuthWithRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
@@ -14,38 +15,52 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
+  const [userRole, setUserRole] = useState<UserRole>('cliente');
   const [loading, setLoading] = useState(false);
-  const { signUp, signIn, user, loading: authLoading, initialized } = useAuth();
+  const { signUp, signIn, user, role, loading: authLoading } = useAuthWithRole();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    console.log('Auth page: Auth state -', {
-      user: user?.email || 'null',
-      authLoading,
-      initialized
-    });
-
-    // Só redirecionar quando a auth estiver inicializada
-    if (initialized && !authLoading && user) {
-      console.log('Auth page: User authenticated, redirecting to dashboard');
-      navigate('/dashboard', { replace: true });
+    if (!authLoading && user && role) {
+      // Get return URL from location state or redirect based on role
+      const returnTo = location.state?.returnTo;
+      
+      if (returnTo) {
+        navigate(returnTo, { replace: true });
+      } else {
+        // Redirect based on user role
+        const dashboardPath = role === 'cliente' ? '/painel-cliente' : '/painel-delivery';
+        navigate(dashboardPath, { replace: true });
+      }
     }
-  }, [user, authLoading, initialized, navigate]);
+  }, [user, role, authLoading, navigate, location.state]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !businessName) {
+    
+    // For delivery owners, business name is required
+    if (userRole === 'dono_delivery' && !businessName) {
       toast({
         title: "Erro",
-        description: "Preencha todos os campos",
+        description: "Nome do delivery é obrigatório para donos de delivery",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!email || !password) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
         variant: "destructive"
       });
       return;
     }
 
     setLoading(true);
-    const { error } = await signUp(email, password, businessName);
+    const { error } = await signUp(email, password, userRole, businessName);
     
     if (error) {
       toast({
@@ -90,14 +105,13 @@ const Auth = () => {
     setLoading(false);
   };
 
-  // Mostrar loading enquanto a auth não estiver inicializada
-  if (!initialized) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center space-y-4 p-6">
             <LoadingSpinner />
-            <p className="text-sm text-muted-foreground">Inicializando...</p>
+            <p className="text-sm text-muted-foreground">Carregando...</p>
           </CardContent>
         </Card>
       </div>
@@ -155,17 +169,32 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="businessName">Nome do seu Delivery</Label>
-                  <Input
-                    id="businessName"
-                    type="text"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="Ex: Pizzaria do João"
-                    required
-                    disabled={loading}
-                  />
+                  <Label htmlFor="userRole">Tipo de Conta</Label>
+                  <Select value={userRole} onValueChange={(value: UserRole) => setUserRole(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de conta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cliente">Cliente</SelectItem>
+                      <SelectItem value="dono_delivery">Dono do Delivery</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                
+                {userRole === 'dono_delivery' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="businessName">Nome do seu Delivery *</Label>
+                    <Input
+                      id="businessName"
+                      type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="Ex: Pizzaria do João"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
@@ -192,7 +221,7 @@ const Auth = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading || authLoading}>
-                  {loading ? 'Cadastrando...' : 'Cadastrar Delivery'}
+                  {loading ? 'Cadastrando...' : 'Criar Conta'}
                 </Button>
               </form>
             </TabsContent>

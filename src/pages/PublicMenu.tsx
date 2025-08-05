@@ -26,7 +26,7 @@ import BusinessStatus from '@/components/BusinessStatus';
 import CustomerProfile from '@/components/CustomerProfile';
 import CustomerOrders from '@/components/CustomerOrders';
 import { MenuFilters } from '@/components/MenuFilters';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 
 interface MenuItem {
   id: string;
@@ -65,7 +65,7 @@ interface CartItem extends MenuItem {
 const PublicMenu = () => {
   const { businessId } = useParams<{ businessId: string }>();
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthWithRole();
   const [business, setBusiness] = useState<Business | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [allItems, setAllItems] = useState<MenuItem[]>([]);
