@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -9,60 +9,129 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   role: UserRole | null;
-  loading: boolean;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  hasPermission: boolean;
+  error: string | null;
 }
 
 interface RoleCache {
   userId: string;
   role: UserRole;
   timestamp: number;
+  ttl: number;
 }
 
-export function useAuthWithRole() {
+interface UseAuthWithRoleOptions {
+  allowedRoles?: UserRole[];
+  cacheTTL?: number;
+  retryAttempts?: number;
+  retryDelay?: number;
+}
+
+interface UseAuthWithRoleReturn extends AuthState {
+  loading: boolean; // Alias for backward compatibility
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  signUp: (email: string, password: string, role?: UserRole, businessName?: string) => Promise<{ data: any; error: any }>;
+  signOut: () => Promise<{ error: any }>;
+  updateUserRole: (newRole: UserRole) => Promise<{ error: any }>;
+  refresh: () => Promise<void>;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+/**
+ * Hook robusto para autenticação e autorização com prevenção de loops infinitos
+ * @param options Configurações opcionais (roles permitidos, TTL do cache, etc.)
+ * @returns Estado de autenticação e funções de controle
+ */
+export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWithRoleReturn {
+  const {
+    allowedRoles = [],
+    cacheTTL = CACHE_TTL,
+    retryAttempts = MAX_RETRY_ATTEMPTS,
+    retryDelay = RETRY_DELAY
+  } = options;
+
+  const { toast } = useToast();
+  
+  // ============= ESTADO E CONTROLE =============
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     session: null,
     role: null,
-    loading: true,
+    isLoading: true,
+    isAuthenticated: false,
+    hasPermission: false,
+    error: null,
   });
-  const { toast } = useToast();
-  
-  // Cache para evitar múltiplas buscas
+
+  // Flags de controle para evitar loops infinitos
+  const controlRef = useRef({
+    isInitialized: false,
+    isInitializing: false,
+    currentUserId: null as string | null,
+    mountId: Math.random().toString(36), // ID único por instância
+  });
+
+  // Cache de roles com TTL
   const roleCacheRef = useRef<RoleCache | null>(null);
-  const isInitializedRef = useRef(false);
-  const isFetchingRoleRef = useRef(false);
+  
+  // Controle de requisições
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  console.log('🔄 useAuthWithRole hook initialized');
+  console.log(`🔄 [useAuthWithRole:${controlRef.current.mountId}] Hook initialized with options:`, options);
 
-  // Função estável para buscar role do usuário
-  const fetchUserRole = useCallback(async (userId: string): Promise<UserRole | null> => {
-    console.log('🔍 fetchUserRole called for userId:', userId);
+  // ============= UTILIDADES =============
+  
+  /**
+   * Verifica se o cache é válido para o usuário especificado
+   */
+  const isCacheValid = useCallback((cache: RoleCache | null, userId: string): boolean => {
+    if (!cache || cache.userId !== userId) {
+      console.log(`📦 [useAuthWithRole:${controlRef.current.mountId}] Cache miss: different user or no cache`);
+      return false;
+    }
+    
+    const isExpired = Date.now() - cache.timestamp > cache.ttl;
+    if (isExpired) {
+      console.log(`⏰ [useAuthWithRole:${controlRef.current.mountId}] Cache expired`);
+      return false;
+    }
+    
+    console.log(`✅ [useAuthWithRole:${controlRef.current.mountId}] Cache hit for user:`, userId);
+    return true;
+  }, []);
+
+  /**
+   * Busca role do usuário com cache e retry logic
+   */
+  const fetchUserRole = useCallback(async (userId: string, attempt = 1): Promise<UserRole | null> => {
+    const mountId = controlRef.current.mountId;
+    console.log(`🔍 [useAuthWithRole:${mountId}] Fetching role for user ${userId} (attempt ${attempt})`);
     
     // Verificar cache primeiro
-    if (roleCacheRef.current?.userId === userId) {
-      console.log('✅ Using cached role:', roleCacheRef.current.role);
-      return roleCacheRef.current.role;
+    if (isCacheValid(roleCacheRef.current, userId)) {
+      return roleCacheRef.current!.role;
     }
 
-    // Evitar múltiplas chamadas simultâneas
-    if (isFetchingRoleRef.current) {
-      console.log('⏳ Already fetching role, waiting...');
-      return null;
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+
+    abortControllerRef.current = new AbortController();
 
     try {
-      isFetchingRoleRef.current = true;
-      console.log('🌐 Making API call to get_user_role');
-      
       const { data, error } = await supabase.rpc('get_user_role', { 
         user_uuid: userId 
       });
 
-      console.log('📦 User role query result:', { data, error });
-
       if (error) {
-        console.error('❌ Error fetching user role:', error);
-        return 'cliente'; // Fallback padrão
+        throw error;
       }
 
       const role = data || 'cliente';
@@ -71,132 +140,179 @@ export function useAuthWithRole() {
       roleCacheRef.current = {
         userId,
         role,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        ttl: cacheTTL
       };
 
-      console.log('✅ Role fetched and cached:', role);
+      console.log(`✅ [useAuthWithRole:${mountId}] Role fetched and cached:`, role);
       return role;
-    } catch (error) {
-      console.error('❌ Exception in fetchUserRole:', error);
-      return 'cliente'; // Fallback padrão
-    } finally {
-      isFetchingRoleRef.current = false;
-    }
-  }, []);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log(`🚫 [useAuthWithRole:${mountId}] Request aborted`);
+        return null;
+      }
 
-  // Função para atualizar estado de auth
-  const updateAuthState = useCallback(async (session: Session | null, shouldFetchRole = true) => {
-    console.log('🔄 updateAuthState called:', { 
-      hasSession: !!session, 
-      userId: session?.user?.id,
-      shouldFetchRole 
-    });
-    
-    if (session?.user) {
-      let role: UserRole | null = null;
+      console.error(`❌ [useAuthWithRole:${mountId}] Error fetching role (attempt ${attempt}):`, error);
       
-      if (shouldFetchRole) {
-        role = await fetchUserRole(session.user.id);
-      } else {
-        // Usar role do cache se disponível
-        role = roleCacheRef.current?.userId === session.user.id 
-          ? roleCacheRef.current.role 
-          : null;
+      // Lógica de retry
+      if (attempt < retryAttempts) {
+        console.log(`🔄 [useAuthWithRole:${mountId}] Retrying in ${retryDelay}ms...`);
+        
+        return new Promise((resolve) => {
+          retryTimeoutRef.current = setTimeout(async () => {
+            const result = await fetchUserRole(userId, attempt + 1);
+            resolve(result);
+          }, retryDelay);
+        });
       }
       
-      console.log('📝 Setting auth state:', { 
-        userId: session.user.id, 
-        role, 
-        loading: false 
-      });
-      
-      setAuthState({
-        user: session.user,
-        session,
-        role,
-        loading: false,
-      });
-    } else {
-      console.log('🔄 Clearing auth state');
-      roleCacheRef.current = null;
-      setAuthState({
-        user: null,
-        session: null,
-        role: null,
-        loading: false,
-      });
+      return 'cliente'; // Fallback role
     }
-  }, [fetchUserRole]);
+  }, [isCacheValid, cacheTTL, retryAttempts, retryDelay]);
 
-  // Effect principal para gerenciar autenticação
-  useEffect(() => {
-    console.log('🚀 Setting up auth state listener');
+  /**
+   * Atualiza estado de auth de forma segura
+   */
+  const updateAuthState = useCallback((updates: Partial<AuthState>) => {
+    const mountId = controlRef.current.mountId;
+    console.log(`📝 [useAuthWithRole:${mountId}] Updating auth state:`, updates);
     
-    // Setup auth state listener
+    setAuthState(prev => {
+      const newState = { ...prev, ...updates };
+      
+      // Calcular estados derivados
+      newState.isAuthenticated = !!newState.user;
+      newState.hasPermission = allowedRoles.length === 0 || 
+        (newState.role !== null && allowedRoles.includes(newState.role));
+      
+      return newState;
+    });
+  }, [allowedRoles]);
+
+  // ============= INICIALIZAÇÃO =============
+  
+  useEffect(() => {
+    const { isInitialized, isInitializing, mountId } = controlRef.current;
+    
+    // Evitar re-inicialização
+    if (isInitialized || isInitializing) {
+      console.log(`⚠️ [useAuthWithRole:${mountId}] Already initialized/initializing, skipping`);
+      return;
+    }
+
+    console.log(`🚀 [useAuthWithRole:${mountId}] Starting initialization`);
+    controlRef.current.isInitializing = true;
+
+    // Setup do listener de mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔔 Auth event received:', event, { hasSession: !!session });
+        console.log(`🔔 [useAuthWithRole:${mountId}] Auth event:`, event, { hasSession: !!session });
         
         switch (event) {
           case 'SIGNED_IN':
-            console.log('✅ User signed in');
-            await updateAuthState(session, true);
+            if (session?.user) {
+              updateAuthState({ 
+                user: session.user, 
+                session, 
+                isLoading: true, 
+                error: null 
+              });
+              
+              const role = await fetchUserRole(session.user.id);
+              updateAuthState({ role, isLoading: false });
+              controlRef.current.currentUserId = session.user.id;
+            }
             break;
             
           case 'SIGNED_OUT':
-            console.log('👋 User signed out');
+            console.log(`👋 [useAuthWithRole:${mountId}] User signed out, clearing state`);
             roleCacheRef.current = null;
-            setAuthState({
+            controlRef.current.currentUserId = null;
+            updateAuthState({
               user: null,
               session: null,
               role: null,
-              loading: false,
+              isLoading: false,
+              error: null
             });
             break;
             
           case 'TOKEN_REFRESHED':
-            console.log('🔄 Token refreshed - updating session only');
+            console.log(`🔄 [useAuthWithRole:${mountId}] Token refreshed, updating session only`);
             if (session) {
-              setAuthState(prev => ({
-                ...prev,
-                session,
-                loading: false,
-              }));
+              updateAuthState({ session });
             }
             break;
             
           case 'USER_UPDATED':
-            console.log('👤 User updated');
-            await updateAuthState(session, true);
+            console.log(`👤 [useAuthWithRole:${mountId}] User updated`);
+            if (session?.user) {
+              updateAuthState({ user: session.user, session });
+              
+              // Re-fetch role apenas se o ID do usuário mudou
+              if (controlRef.current.currentUserId !== session.user.id) {
+                updateAuthState({ isLoading: true });
+                const role = await fetchUserRole(session.user.id);
+                updateAuthState({ role, isLoading: false });
+                controlRef.current.currentUserId = session.user.id;
+              }
+            }
             break;
             
           default:
-            console.log('🔄 Other auth event:', event);
+            console.log(`ℹ️ [useAuthWithRole:${mountId}] Unhandled auth event:`, event);
             break;
         }
       }
     );
 
-    // Verificar sessão inicial apenas uma vez
-    if (!isInitializedRef.current) {
-      console.log('🔍 Checking for existing session');
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('📦 Initial session check:', { hasSession: !!session });
-        updateAuthState(session, true);
-        isInitializedRef.current = true;
-      });
-    }
+    // Verificar sessão inicial
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log(`📦 [useAuthWithRole:${mountId}] Initial session check:`, { hasSession: !!session });
+      
+      if (session?.user) {
+        updateAuthState({ 
+          user: session.user, 
+          session, 
+          isLoading: true, 
+          error: null 
+        });
+        
+        const role = await fetchUserRole(session.user.id);
+        updateAuthState({ role, isLoading: false });
+        controlRef.current.currentUserId = session.user.id;
+      } else {
+        updateAuthState({ isLoading: false });
+      }
+      
+      controlRef.current.isInitialized = true;
+      controlRef.current.isInitializing = false;
+    });
 
+    // Cleanup
     return () => {
-      console.log('🧹 Cleaning up auth listener');
+      console.log(`🧹 [useAuthWithRole:${mountId}] Cleaning up listeners and timers`);
       subscription.unsubscribe();
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
     };
-  }, []); // Dependências vazias - só executa uma vez
+  }, []); // Dependências vazias - executa apenas uma vez
 
-  // Funções de autenticação memoizadas
+  // ============= FUNÇÕES DE AUTENTICAÇÃO =============
+  
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log('🔐 Sign in attempt for:', email);
+    const mountId = controlRef.current.mountId;
+    console.log(`🔐 [useAuthWithRole:${mountId}] Sign in attempt for:`, email);
+    
     try {
+      updateAuthState({ isLoading: true, error: null });
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -206,17 +322,27 @@ export function useAuthWithRole() {
         throw error;
       }
 
-      console.log('✅ Sign in successful');
+      console.log(`✅ [useAuthWithRole:${mountId}] Sign in successful`);
       return { data, error: null };
     } catch (error: any) {
-      console.error('❌ Sign in error:', error);
+      console.error(`❌ [useAuthWithRole:${mountId}] Sign in error:`, error);
+      updateAuthState({ isLoading: false, error: error.message });
       return { data: null, error };
     }
-  }, []);
+  }, [updateAuthState]);
 
-  const signUp = useCallback(async (email: string, password: string, role: UserRole = 'cliente', businessName?: string) => {
-    console.log('📝 Sign up attempt for:', email, 'with role:', role);
+  const signUp = useCallback(async (
+    email: string, 
+    password: string, 
+    role: UserRole = 'cliente', 
+    businessName?: string
+  ) => {
+    const mountId = controlRef.current.mountId;
+    console.log(`📝 [useAuthWithRole:${mountId}] Sign up attempt for:`, email, 'with role:', role);
+    
     try {
+      updateAuthState({ isLoading: true, error: null });
+      
       const redirectUrl = `${window.location.origin}/`;
       
       const { data, error } = await supabase.auth.signUp({
@@ -231,12 +357,13 @@ export function useAuthWithRole() {
         throw error;
       }
 
-      // Se usuário confirmado imediatamente, configurar role e negócio
+      // Setup pós-cadastro
       if (data.user && data.session) {
         setTimeout(async () => {
           try {
-            console.log('🔧 Setting up user role and business');
-            // Set user role
+            console.log(`🔧 [useAuthWithRole:${mountId}] Setting up user role and business`);
+            
+            // Definir role do usuário
             const { error: roleError } = await supabase
               .from('user_roles')
               .upsert({ 
@@ -245,10 +372,10 @@ export function useAuthWithRole() {
               });
 
             if (roleError) {
-              console.error('❌ Error setting user role:', roleError);
+              console.error(`❌ [useAuthWithRole:${mountId}] Error setting user role:`, roleError);
             }
 
-            // Se é dono de delivery, criar negócio
+            // Criar negócio se necessário
             if (role === 'dono_delivery' && businessName) {
               const { error: businessError } = await supabase
                 .from('delivery_businesses')
@@ -259,52 +386,60 @@ export function useAuthWithRole() {
                 });
 
               if (businessError) {
-                console.error('❌ Error creating business:', businessError);
+                console.error(`❌ [useAuthWithRole:${mountId}] Error creating business:`, businessError);
               }
             }
           } catch (error) {
-            console.error('❌ Error in post-signup setup:', error);
+            console.error(`❌ [useAuthWithRole:${mountId}] Error in post-signup setup:`, error);
           }
         }, 100);
       }
 
-      console.log('✅ Sign up successful');
+      console.log(`✅ [useAuthWithRole:${mountId}] Sign up successful`);
       return { data, error: null };
     } catch (error: any) {
-      console.error('❌ Sign up error:', error);
+      console.error(`❌ [useAuthWithRole:${mountId}] Sign up error:`, error);
+      updateAuthState({ isLoading: false, error: error.message });
       return { data: null, error };
     }
-  }, []);
+  }, [updateAuthState]);
 
   const signOut = useCallback(async () => {
-    console.log('👋 Sign out attempt');
+    const mountId = controlRef.current.mountId;
+    console.log(`👋 [useAuthWithRole:${mountId}] Sign out attempt`);
+    
     try {
+      updateAuthState({ isLoading: true, error: null });
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
         throw error;
       }
       
+      // Limpar cache e refs
       roleCacheRef.current = null;
-      setAuthState({
-        user: null,
-        session: null,
-        role: null,
-        loading: false,
-      });
-
-      console.log('✅ Sign out successful');
+      controlRef.current.currentUserId = null;
+      
+      console.log(`✅ [useAuthWithRole:${mountId}] Sign out successful`);
       return { error: null };
     } catch (error: any) {
-      console.error('❌ Sign out error:', error);
+      console.error(`❌ [useAuthWithRole:${mountId}] Sign out error:`, error);
+      updateAuthState({ isLoading: false, error: error.message });
       return { error };
     }
-  }, []);
+  }, [updateAuthState]);
 
   const updateUserRole = useCallback(async (newRole: UserRole) => {
-    console.log('🔄 Update user role to:', newRole);
-    if (!authState.user) return { error: new Error('User not authenticated') };
+    const mountId = controlRef.current.mountId;
+    console.log(`🔄 [useAuthWithRole:${mountId}] Update user role to:`, newRole);
+    
+    if (!authState.user) {
+      return { error: new Error('User not authenticated') };
+    }
 
     try {
+      updateAuthState({ isLoading: true, error: null });
+      
       const { error } = await supabase
         .from('user_roles')
         .upsert({ 
@@ -319,34 +454,65 @@ export function useAuthWithRole() {
       // Atualizar cache e estado
       if (roleCacheRef.current) {
         roleCacheRef.current.role = newRole;
+        roleCacheRef.current.timestamp = Date.now();
       }
 
-      setAuthState(prev => ({
-        ...prev,
-        role: newRole
-      }));
+      updateAuthState({ role: newRole, isLoading: false });
 
-      console.log('✅ User role updated successfully');
+      console.log(`✅ [useAuthWithRole:${mountId}] User role updated successfully`);
       return { error: null };
     } catch (error: any) {
-      console.error('❌ Error updating user role:', error);
+      console.error(`❌ [useAuthWithRole:${mountId}] Error updating user role:`, error);
+      updateAuthState({ isLoading: false, error: error.message });
       return { error };
     }
-  }, [authState.user]);
+  }, [authState.user, updateAuthState]);
 
-  // Retorno memoizado para evitar re-renders desnecessários
+  const refresh = useCallback(async () => {
+    const mountId = controlRef.current.mountId;
+    console.log(`🔄 [useAuthWithRole:${mountId}] Manual refresh requested`);
+    
+    if (!authState.user) {
+      console.log(`⚠️ [useAuthWithRole:${mountId}] No user to refresh`);
+      return;
+    }
+
+    try {
+      updateAuthState({ isLoading: true, error: null });
+      
+      // Limpar cache para forçar nova busca
+      roleCacheRef.current = null;
+      
+      const role = await fetchUserRole(authState.user.id);
+      updateAuthState({ role, isLoading: false });
+      
+      console.log(`✅ [useAuthWithRole:${mountId}] Manual refresh completed`);
+    } catch (error: any) {
+      console.error(`❌ [useAuthWithRole:${mountId}] Error during manual refresh:`, error);
+      updateAuthState({ isLoading: false, error: error.message });
+    }
+  }, [authState.user, fetchUserRole, updateAuthState]);
+
+  // ============= VALOR DE RETORNO MEMOIZADO =============
+  
   const returnValue = useMemo(() => ({
     ...authState,
+    loading: authState.isLoading, // Backward compatibility alias
     signIn,
     signUp,
     signOut,
     updateUserRole,
-  }), [authState, signIn, signUp, signOut, updateUserRole]);
+    refresh,
+  }), [authState, signIn, signUp, signOut, updateUserRole, refresh]);
 
-  console.log('📊 Current auth state:', { 
-    hasUser: !!returnValue.user, 
-    role: returnValue.role, 
-    loading: returnValue.loading 
+  // Log do estado atual
+  console.log(`📊 [useAuthWithRole:${controlRef.current.mountId}] Current state:`, {
+    hasUser: !!returnValue.user,
+    role: returnValue.role,
+    isLoading: returnValue.isLoading,
+    isAuthenticated: returnValue.isAuthenticated,
+    hasPermission: returnValue.hasPermission,
+    error: returnValue.error
   });
 
   return returnValue;
