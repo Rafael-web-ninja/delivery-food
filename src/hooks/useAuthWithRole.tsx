@@ -220,7 +220,9 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
               
               // Usar setTimeout para evitar problemas de callback
               setTimeout(async () => {
+                console.log(`🔍 [useAuthWithRole:${mountId}] Fetching role for SIGNED_IN user: ${session.user.id}`);
                 const role = await fetchUserRole(session.user.id);
+                console.log(`✅ [useAuthWithRole:${mountId}] Role fetched for SIGNED_IN: ${role}`);
                 updateAuthState({ role, isLoading: false });
                 controlRef.current.currentUserId = session.user.id;
               }, 0);

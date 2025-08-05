@@ -19,10 +19,18 @@ export function RoleBasedRedirect({
   const location = useLocation();
 
   useEffect(() => {
+    console.log('🔍 DIAGNÓSTICO - RoleBasedRedirect:');
+    console.log('User:', user);
+    console.log('Role:', role);
+    console.log('Loading:', loading);
+    console.log('Current pathname:', location.pathname);
+    console.log('Allowed roles:', allowedRoles);
+    
     if (loading) return;
 
     // If not authenticated, redirect to auth page
     if (!user) {
+      console.log('🚫 [RoleBasedRedirect] No user, redirecting to /auth');
       navigate('/auth', { 
         state: { returnTo: location.pathname } 
       });
@@ -33,14 +41,15 @@ export function RoleBasedRedirect({
     if (role && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
       // Redirect based on user role
       const defaultRedirect = role === 'cliente' ? '/painel-cliente' : '/dashboard';
-      console.log(`🔄 [RoleBasedRedirect] Redirecting ${role} to ${defaultRedirect}`);
+      console.log(`🔄 [RoleBasedRedirect] Role ${role} not allowed, redirecting to ${defaultRedirect}`);
       navigate(redirectTo || defaultRedirect, { replace: true });
       return;
     }
 
-    // If user has role but no specific redirect rules, redirect to appropriate dashboard
+    // If user has role but is on root path, redirect to appropriate dashboard
     if (role && location.pathname === '/') {
       const dashboardPath = role === 'cliente' ? '/painel-cliente' : '/dashboard';
+      console.log(`🚀 [RoleBasedRedirect] On root path, redirecting ${role} to ${dashboardPath}`);
       navigate(dashboardPath);
       return;
     }

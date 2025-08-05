@@ -23,17 +23,35 @@ const Auth = () => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('🔍 DIAGNÓSTICO - Estado atual Auth.tsx:');
+    console.log('User:', user);
+    console.log('Role:', role);
+    console.log('Auth Loading:', authLoading);
+    console.log('Current path:', window.location.pathname);
+    
     if (!authLoading && user && role) {
       // Get return URL from location state or redirect based on role
       const returnTo = location.state?.returnTo;
       
+      console.log(`🔄 [Auth] User authenticated with role: ${role}`);
+      console.log(`🔄 [Auth] Return to: ${returnTo}`);
+      
       if (returnTo) {
+        console.log(`🚀 [Auth] Redirecting to return URL: ${returnTo}`);
         navigate(returnTo, { replace: true });
       } else {
         // Redirect based on user role
         const dashboardPath = role === 'cliente' ? '/painel-cliente' : '/dashboard';
-        console.log(`🔄 [Auth] Redirecting ${role} to ${dashboardPath}`);
+        console.log(`🚀 [Auth] Redirecting ${role} to ${dashboardPath}`);
         navigate(dashboardPath, { replace: true });
+        
+        // Força redirecionamento se não acontecer
+        setTimeout(() => {
+          if (window.location.pathname === '/auth') {
+            console.log(`🔥 [Auth] FORÇANDO redirecionamento para ${dashboardPath}`);
+            window.location.replace(dashboardPath);
+          }
+        }, 500);
       }
     }
   }, [user, role, authLoading, navigate, location.state]);
