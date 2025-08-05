@@ -103,9 +103,15 @@ const OrderManagement = () => {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      // Validar status antes de enviar
+      const validStatuses = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
+      if (!validStatuses.includes(newStatus)) {
+        throw new Error('Status inválido');
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus as any })
+        .update({ status: newStatus })
         .eq('id', orderId);
 
       if (error) throw error;
@@ -117,6 +123,7 @@ const OrderManagement = () => {
 
       fetchOrders();
     } catch (error: any) {
+      console.error('Erro ao atualizar status:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status",

@@ -97,8 +97,14 @@ export type Database = {
           accent_color: string | null
           address: string | null
           background_color: string | null
+          button_color: string | null
+          button_text_color: string | null
+          cart_button_color: string | null
+          cart_button_text_color: string | null
           created_at: string
           delivery_fee: number | null
+          delivery_time_bg_color: string | null
+          delivery_time_text_color: string | null
           description: string | null
           id: string
           is_active: boolean | null
@@ -115,8 +121,14 @@ export type Database = {
           accent_color?: string | null
           address?: string | null
           background_color?: string | null
+          button_color?: string | null
+          button_text_color?: string | null
+          cart_button_color?: string | null
+          cart_button_text_color?: string | null
           created_at?: string
           delivery_fee?: number | null
+          delivery_time_bg_color?: string | null
+          delivery_time_text_color?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -133,8 +145,14 @@ export type Database = {
           accent_color?: string | null
           address?: string | null
           background_color?: string | null
+          button_color?: string | null
+          button_text_color?: string | null
+          cart_button_color?: string | null
+          cart_button_text_color?: string | null
           created_at?: string
           delivery_fee?: number | null
+          delivery_time_bg_color?: string | null
+          delivery_time_text_color?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
