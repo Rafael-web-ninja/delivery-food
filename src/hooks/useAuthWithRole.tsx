@@ -24,35 +24,20 @@ export function useAuthWithRole() {
   const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
     try {
       console.log('Fetching user role for userId:', userId);
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
+      
+      // Usar a função SQL existente que já tem fallback
+      const { data, error } = await supabase.rpc('get_user_role', { 
+        user_uuid: userId 
+      });
 
       console.log('User role query result:', { data, error });
 
       if (error) {
-        // Se não encontrar o role, criar um padrão
-        if (error.code === 'PGRST116') {
-          console.log('No user role found, creating default role');
-          const { data: insertData, error: insertError } = await supabase
-            .from('user_roles')
-            .insert({ user_id: userId, role: 'cliente' })
-            .select('role')
-            .single();
-          
-          if (insertError) {
-            console.error('Error creating default user role:', insertError);
-            return 'cliente'; // Fallback padrão
-          }
-          return insertData?.role || 'cliente';
-        }
         console.error('Error fetching user role:', error);
         return 'cliente'; // Fallback padrão
       }
 
-      return data?.role || 'cliente';
+      return data || 'cliente';
     } catch (error) {
       console.error('Error fetching user role:', error);
       return 'cliente'; // Fallback padrão
@@ -60,28 +45,34 @@ export function useAuthWithRole() {
   };
 
   const updateAuthState = async (session: Session | null) => {
-    try {
-      if (session?.user) {
+    console.log('Updating auth state with session:', !!session);
+    
+    if (session?.user) {
+      try {
         const role = await fetchUserRole(session.user.id);
+        console.log('Setting auth state with role:', role);
+        
         setAuthState({
           user: session.user,
           session,
           role,
           loading: false,
         });
-      } else {
+      } catch (error) {
+        console.error('Error updating auth state:', error);
+        // Mesmo em erro, definir loading como false
         setAuthState({
-          user: null,
-          session: null,
-          role: null,
+          user: session.user,
+          session,
+          role: 'cliente',
           loading: false,
         });
       }
-    } catch (error) {
-      console.error('Error updating auth state:', error);
+    } else {
+      console.log('No session, setting auth state to null');
       setAuthState({
-        user: session?.user || null,
-        session: session || null,
+        user: null,
+        session: null,
         role: null,
         loading: false,
       });
