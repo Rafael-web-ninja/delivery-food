@@ -91,7 +91,10 @@ const Analytics = () => {
             </SelectContent>
           </Select>
           
-          <DateRangePicker />
+          <DateRangePicker onDateRangeChange={(start, end) => {
+            setSelectedPeriod('custom');
+            // Handle date range change logic here
+          }} />
           
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => handleExport('pdf')}>
