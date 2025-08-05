@@ -32,15 +32,15 @@ export function RoleBasedRedirect({
     // If user has role and it's not allowed for this component
     if (role && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
       // Redirect based on user role
-      const defaultRedirect = role === 'cliente' ? '/painel-cliente' : '/painel-delivery';
+      const defaultRedirect = role === 'cliente' ? '/painel-cliente' : '/dashboard';
       console.log(`🔄 [RoleBasedRedirect] Redirecting ${role} to ${defaultRedirect}`);
       navigate(redirectTo || defaultRedirect, { replace: true });
       return;
     }
 
     // If user has role but no specific redirect rules, redirect to appropriate dashboard
-    if (role && location.pathname === '/dashboard') {
-      const dashboardPath = role === 'cliente' ? '/painel-cliente' : '/painel-delivery';
+    if (role && location.pathname === '/') {
+      const dashboardPath = role === 'cliente' ? '/painel-cliente' : '/dashboard';
       navigate(dashboardPath);
       return;
     }

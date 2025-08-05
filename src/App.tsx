@@ -33,7 +33,7 @@ function App() {
           
           {/* Delivery Dashboard - Only for delivery owners */}
           <Route 
-            path="/painel-delivery" 
+            path="/dashboard" 
             element={
               <RoleBasedRedirect allowedRoles={['dono_delivery']}>
                 <DeliveryDashboard />
@@ -41,15 +41,6 @@ function App() {
             } 
           />
 
-          {/* Legacy dashboard route - redirects based on role */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <RoleBasedRedirect>
-                <div>Redirecionando...</div>
-              </RoleBasedRedirect>
-            } 
-          />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
