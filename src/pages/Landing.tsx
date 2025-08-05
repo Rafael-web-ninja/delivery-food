@@ -259,7 +259,7 @@ export default function Landing() {
                   </div>}
                 
                 <CardContent className="p-8">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  <h3 className="font-bold mb-2 text-slate-50 text-sm">{plan.name}</h3>
                   <div className="mb-6">
                     <span className="text-4xl font-bold text-gray-900">R$ {plan.price}</span>
                     <span className="text-gray-600">/mês</span>
