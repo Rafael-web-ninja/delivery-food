@@ -360,41 +360,59 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
       }
 
       // Setup pós-cadastro
-      if (data.user && data.session) {
-        setTimeout(async () => {
-          try {
-            console.log(`🔧 [useAuthWithRole:${mountId}] Setting up user role and business`);
-            
-            // Definir role do usuário
-            const { error: roleError } = await supabase
-              .from('user_roles')
-              .upsert({ 
-                user_id: data.user!.id, 
-                role: role 
+      if (data.user) {
+        try {
+          console.log(`🔧 [useAuthWithRole:${mountId}] Setting up user role and business`);
+          
+          // Definir role do usuário
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .upsert({ 
+              user_id: data.user.id, 
+              role: role 
+            });
+
+          if (roleError) {
+            console.error(`❌ [useAuthWithRole:${mountId}] Error setting user role:`, roleError);
+            throw new Error(`Erro ao definir role do usuário: ${roleError.message}`);
+          }
+
+          // Criar negócio se necessário
+          if (role === 'dono_delivery' && businessName) {
+            const { error: businessError } = await supabase
+              .from('delivery_businesses')
+              .insert({
+                owner_id: data.user.id,
+                name: businessName,
+                is_active: true
               });
 
-            if (roleError) {
-              console.error(`❌ [useAuthWithRole:${mountId}] Error setting user role:`, roleError);
+            if (businessError) {
+              console.error(`❌ [useAuthWithRole:${mountId}] Error creating business:`, businessError);
+              throw new Error(`Erro ao criar negócio: ${businessError.message}`);
             }
-
-            // Criar negócio se necessário
-            if (role === 'dono_delivery' && businessName) {
-              const { error: businessError } = await supabase
-                .from('delivery_businesses')
-                .insert({
-                  owner_id: data.user!.id,
-                  name: businessName,
-                  is_active: true
-                });
-
-              if (businessError) {
-                console.error(`❌ [useAuthWithRole:${mountId}] Error creating business:`, businessError);
-              }
-            }
-          } catch (error) {
-            console.error(`❌ [useAuthWithRole:${mountId}] Error in post-signup setup:`, error);
           }
-        }, 100);
+
+          // Criar perfil para cliente se necessário
+          if (role === 'cliente') {
+            const { error: profileError } = await supabase
+              .from('customer_profiles')
+              .insert({
+                user_id: data.user.id,
+                name: '',
+                phone: '',
+                address: ''
+              });
+
+            if (profileError) {
+              console.error(`❌ [useAuthWithRole:${mountId}] Error creating customer profile:`, profileError);
+              // Não é um erro crítico, apenas log
+            }
+          }
+        } catch (setupError: any) {
+          console.error(`❌ [useAuthWithRole:${mountId}] Error in post-signup setup:`, setupError);
+          throw setupError;
+        }
       }
 
       console.log(`✅ [useAuthWithRole:${mountId}] Sign up successful`);

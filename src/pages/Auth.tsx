@@ -36,7 +36,7 @@ const Auth = () => {
       console.log(`🔄 [Auth] User authenticated with role: ${role}`);
       console.log(`🔄 [Auth] Return to: ${returnTo}`);
       
-      if (returnTo) {
+      if (returnTo && returnTo !== '/auth') {
         console.log(`🚀 [Auth] Redirecting to return URL: ${returnTo}`);
         navigate(returnTo, { replace: true });
       } else {
@@ -92,8 +92,14 @@ const Auth = () => {
     } else {
       toast({
         title: "Cadastro realizado!",
-        description: "Verifique seu email para confirmar a conta",
+        description: "Redirecionando para seu painel...",
       });
+      
+      // Aguardar um pouco para o usuário ser autenticado
+      setTimeout(() => {
+        const dashboardPath = userRole === 'cliente' ? '/painel-cliente' : '/dashboard';
+        navigate(dashboardPath, { replace: true });
+      }, 1000);
     }
     setLoading(false);
   };

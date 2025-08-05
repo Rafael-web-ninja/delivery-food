@@ -16,6 +16,11 @@ export const useNotifications = () => {
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<OrderNotification[]>([]);
 
+  console.log('🔔 useNotifications - estado atual:', { 
+    user: user?.email, 
+    notificationsCount: notifications.length 
+  });
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -42,10 +47,15 @@ export const useNotifications = () => {
           filter: `business_id=eq.${business.id}`,
         },
         (payload) => {
+          console.log('🔔 Nova notificação de pedido recebida:', payload);
           const newOrder = payload.new as OrderNotification;
           
           // Add to notifications
-          setNotifications(prev => [newOrder, ...prev.slice(0, 9)]); // Keep last 10
+          setNotifications(prev => {
+            const updated = [newOrder, ...prev.slice(0, 9)]; // Keep last 10
+            console.log('📝 Notificações atualizadas:', updated);
+            return updated;
+          });
           
           // Show toast notification
           toast({

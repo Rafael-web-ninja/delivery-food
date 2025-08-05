@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
+import Landing from "@/pages/Landing";
 import ClientDashboard from "@/pages/ClientDashboard";
 import DeliveryDashboard from "@/pages/DeliveryDashboard";
 import PublicMenu from "@/pages/PublicMenu";
@@ -17,7 +18,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/dashboard-old" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/menu/:businessId" element={<PublicMenu />} />
           
