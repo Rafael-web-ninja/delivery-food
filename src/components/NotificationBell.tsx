@@ -21,12 +21,11 @@ export const NotificationBell = () => {
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="h-4 w-4" />
           {hasUnread && (
-            <div 
-              className="absolute -top-1 -right-1 h-5 w-5 text-xs rounded-full flex items-center justify-center min-w-[20px] text-white font-semibold border-2 border-background"
-              style={{ backgroundColor: '#dc2626' }}
+            <Badge 
+              className="absolute -top-1 -right-1 h-5 w-5 text-xs rounded-full flex items-center justify-center min-w-[20px] p-0 border-2 border-background bg-red-600 hover:bg-red-600 text-white"
             >
               {notifications.length}
-            </div>
+            </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>

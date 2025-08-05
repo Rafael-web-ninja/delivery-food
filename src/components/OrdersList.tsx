@@ -56,6 +56,13 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
     cancelled: 'cancelled'
   };
 
+  const getNextStatusLabel = (status: string) => {
+    if (status === 'pending') return 'Iniciar Preparo';
+    if (status === 'preparing') return 'Marcar Pronto';
+    if (status === 'out_for_delivery') return 'Marcar Entregue';
+    return 'Concluir';
+  };
+
   return (
     <div className="space-y-4">
       {orders.length === 0 ? (
@@ -129,15 +136,23 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
                 )}
 
                 <div className="flex gap-2 pt-2">
-                  {order.status !== 'delivered' && (
+                  {order.status !== 'delivered' && order.status !== 'cancelled' && (
                     <Button
                       onClick={() => onStatusUpdate(order.id, nextStatus[order.status])}
                       className="flex-1"
+                      variant="default"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {order.status === 'pending' && 'Iniciar Preparo'}
-                      {order.status === 'preparing' && 'Marcar Pronto'}
-                      {order.status === 'out_for_delivery' && 'Marcar Entregue'}
+                      {getNextStatusLabel(order.status)}
+                    </Button>
+                  )}
+                  {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                    <Button
+                      onClick={() => onStatusUpdate(order.id, 'cancelled')}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>

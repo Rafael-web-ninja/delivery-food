@@ -334,39 +334,41 @@ const PublicMenu = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-card shadow-sm border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-6 flex-1">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
+            <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 flex-1">
               {business.logo_url && (
-                <img
-                  src={business.logo_url}
-                  alt={`${business.name} logo`}
-                  className="h-16 lg:h-20 w-auto max-w-[200px] object-contain rounded-lg flex-shrink-0"
-                  onError={e => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
+                <div className="flex-shrink-0">
+                  <img
+                    src={business.logo_url}
+                    alt={`${business.name} logo`}
+                    className="h-20 lg:h-24 w-auto max-w-[200px] object-contain rounded-lg"
+                    onError={e => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
               )}
-              <div className="flex-1">
-                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+              <div className="flex-1 text-center lg:text-left">
+                <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">
                   {business.name}
                 </h1>
                 {business.description && (
-                  <p className="text-muted-foreground mt-1 text-sm lg:text-base">
+                  <p className="text-muted-foreground text-base lg:text-lg mb-4 max-w-2xl">
                     {business.description}
                   </p>
                 )}
-                <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 text-sm text-muted-foreground">
                   {business.phone && (
-                    <div className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 flex-shrink-0" />
                       <span>{business.phone}</span>
                     </div>
                   )}
                   {business.address && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{business.address}</span>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-center lg:text-left">{business.address}</span>
                     </div>
                   )}
                   <BusinessStatus businessId={business.id} />

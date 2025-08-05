@@ -19,6 +19,17 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user?.id) return;
 
+    const setupNotifications = async () => {
+
+    // Get user's business ID first
+    const { data: business } = await supabase
+      .from('delivery_businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+
+    if (!business?.id) return;
+
     // Subscribe to new orders
     const channel = supabase
       .channel('orders-notifications')
@@ -28,7 +39,7 @@ export const useNotifications = () => {
           event: 'INSERT',
           schema: 'public',
           table: 'orders',
-          filter: `business_id=eq.${user.id}`,
+          filter: `business_id=eq.${business.id}`,
         },
         (payload) => {
           const newOrder = payload.new as OrderNotification;
@@ -60,7 +71,7 @@ export const useNotifications = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'orders',
-          filter: `business_id=eq.${user.id}`,
+          filter: `business_id=eq.${business.id}`,
         },
         (payload) => {
           const updatedOrder = payload.new as OrderNotification;
@@ -87,6 +98,9 @@ export const useNotifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
+    };
+
+    setupNotifications();
   }, [user?.id, toast]);
 
   const markAsRead = (orderId: string) => {
