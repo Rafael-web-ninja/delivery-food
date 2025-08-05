@@ -205,7 +205,7 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
 
     // Setup do listener de mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log(`🔔 [useAuthWithRole:${mountId}] Auth event:`, event, { hasSession: !!session });
         
         switch (event) {
@@ -218,9 +218,12 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
                 error: null 
               });
               
-              const role = await fetchUserRole(session.user.id);
-              updateAuthState({ role, isLoading: false });
-              controlRef.current.currentUserId = session.user.id;
+              // Usar setTimeout para evitar problemas de callback
+              setTimeout(async () => {
+                const role = await fetchUserRole(session.user.id);
+                updateAuthState({ role, isLoading: false });
+                controlRef.current.currentUserId = session.user.id;
+              }, 0);
             }
             break;
             
@@ -237,13 +240,6 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
             });
             break;
             
-          case 'TOKEN_REFRESHED':
-            console.log(`🔄 [useAuthWithRole:${mountId}] Token refreshed, updating session only`);
-            if (session) {
-              updateAuthState({ session });
-            }
-            break;
-            
           case 'USER_UPDATED':
             console.log(`👤 [useAuthWithRole:${mountId}] User updated`);
             if (session?.user) {
@@ -252,9 +248,11 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
               // Re-fetch role apenas se o ID do usuário mudou
               if (controlRef.current.currentUserId !== session.user.id) {
                 updateAuthState({ isLoading: true });
-                const role = await fetchUserRole(session.user.id);
-                updateAuthState({ role, isLoading: false });
-                controlRef.current.currentUserId = session.user.id;
+                setTimeout(async () => {
+                  const role = await fetchUserRole(session.user.id);
+                  updateAuthState({ role, isLoading: false });
+                  controlRef.current.currentUserId = session.user.id;
+                }, 0);
               }
             }
             break;
@@ -267,7 +265,7 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
     );
 
     // Verificar sessão inicial
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       console.log(`📦 [useAuthWithRole:${mountId}] Initial session check:`, { hasSession: !!session });
       
       if (session?.user) {
@@ -278,9 +276,11 @@ export function useAuthWithRole(options: UseAuthWithRoleOptions = {}): UseAuthWi
           error: null 
         });
         
-        const role = await fetchUserRole(session.user.id);
-        updateAuthState({ role, isLoading: false });
-        controlRef.current.currentUserId = session.user.id;
+        setTimeout(async () => {
+          const role = await fetchUserRole(session.user.id);
+          updateAuthState({ role, isLoading: false });
+          controlRef.current.currentUserId = session.user.id;
+        }, 0);
       } else {
         updateAuthState({ isLoading: false });
       }

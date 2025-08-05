@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuthWithRole } from '@/hooks/useAuthWithRole';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +13,7 @@ interface Order {
   total_amount: number;
   status: string;
   created_at: string;
+  business_id: string;
   delivery_businesses: {
     name: string;
   };
@@ -136,7 +138,14 @@ export default function CustomerOrders() {
                 ))}
               </div>
               
-              <div className="text-right">
+              <div className="flex justify-between items-center">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open(`/menu/${order.business_id}`, '_blank')}
+                >
+                  Ver Cardápio
+                </Button>
                 <p className="font-semibold">
                   Total: R$ {Number(order.total_amount).toFixed(2)}
                 </p>
