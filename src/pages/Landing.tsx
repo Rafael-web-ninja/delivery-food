@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Menu, X, Check, Star } from "lucide-react";
 
 export default function Landing() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const benefits = [
     { title: "Painel Administrativo", desc: "Gerencie pedidos, produtos e clientes em tempo real" },
@@ -69,12 +71,14 @@ export default function Landing() {
                 variant="ghost" 
                 size="sm"
                 className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm whitespace-nowrap"
+                onClick={() => navigate('/auth')}
               >
                 Entrar
               </Button>
               <Button 
                 size="sm"
                 className="bg-blue-500 text-white hover:bg-blue-600 px-4 py-2 text-sm whitespace-nowrap"
+                onClick={() => navigate('/auth')}
               >
                 Começar
               </Button>
@@ -98,8 +102,8 @@ export default function Landing() {
                 <a href="#precos" className="text-gray-600 hover:text-gray-900 py-2 text-sm" onClick={() => setIsMenuOpen(false)}>Preços</a>
                 <a href="#contato" className="text-gray-600 hover:text-gray-900 py-2 text-sm" onClick={() => setIsMenuOpen(false)}>Contato</a>
                 <div className="flex flex-col space-y-2 pt-2">
-                  <Button variant="ghost" size="sm" className="w-full justify-start">Entrar</Button>
-                  <Button size="sm" className="bg-blue-500 text-white hover:bg-blue-600 w-full">Começar</Button>
+                  <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => { navigate('/auth'); setIsMenuOpen(false); }}>Entrar</Button>
+                  <Button size="sm" className="bg-blue-500 text-white hover:bg-blue-600 w-full" onClick={() => { navigate('/auth'); setIsMenuOpen(false); }}>Começar</Button>
                 </div>
               </nav>
             </div>
@@ -133,6 +137,7 @@ export default function Landing() {
               <Button 
                 size="lg" 
                 className="bg-blue-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold hover:bg-blue-600 shadow-md text-sm sm:text-base"
+                onClick={() => navigate('/auth')}
               >
                 Criar Meu Delivery
               </Button>
@@ -140,6 +145,7 @@ export default function Landing() {
                 variant="outline" 
                 size="lg" 
                 className="border border-gray-200 text-gray-700 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold hover:bg-gray-50 text-sm sm:text-base"
+                onClick={() => window.open('/menu/demo', '_blank')}
               >
                 Ver Demo
               </Button>
@@ -287,13 +293,16 @@ export default function Landing() {
                     ))}
                   </ul>
                   
-                  <Button className={`
-                    w-full
-                    ${plan.popular 
-                      ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                      : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }
-                  `}>
+                  <Button 
+                    className={`
+                      w-full
+                      ${plan.popular 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                        : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
+                      }
+                    `}
+                    onClick={() => navigate('/auth')}
+                  >
                     Começar Agora
                   </Button>
                 </CardContent>
@@ -313,10 +322,19 @@ export default function Landing() {
             Junte-se a milhares de deliveries que já cresceram com nossa plataforma
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-white text-white-500 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50">
+            <Button 
+              size="lg" 
+              className="bg-white text-blue-500 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50"
+              onClick={() => navigate('/auth')}
+            >
               Criar Conta Grátis
             </Button>
-            <Button variant="outline" size="lg" className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-blue-500">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-blue-500"
+              onClick={() => window.open('mailto:vendas@deliveryapp.com', '_blank')}
+            >
               Falar com Vendas
             </Button>
           </div>
