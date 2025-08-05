@@ -313,7 +313,7 @@ export default function Landing() {
             Junte-se a milhares de deliveries que já cresceram com nossa plataforma
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-white text-blue-500 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50">
+            <Button size="lg" className="bg-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-gray-50">
               Criar Conta Grátis
             </Button>
             <Button variant="outline" size="lg" className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-blue-500">
