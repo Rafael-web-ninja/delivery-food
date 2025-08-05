@@ -83,7 +83,7 @@ export function useAuthWithRole() {
     // Setup auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN') {
           await updateAuthState(session);
         } else if (event === 'SIGNED_OUT') {
           setAuthState({
@@ -92,6 +92,13 @@ export function useAuthWithRole() {
             role: null,
             loading: false,
           });
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          // Para renovação de token, apenas atualizar a sessão sem buscar role novamente
+          setAuthState(prev => ({
+            ...prev,
+            session,
+            loading: false,
+          }));
         }
       }
     );
