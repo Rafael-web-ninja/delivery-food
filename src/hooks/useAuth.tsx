@@ -24,16 +24,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // STABLE CALLBACKS - NO DEPENDENCIES THAT CHANGE
   const signUp = useCallback(async (email: string, password: string, name?: string, userType: 'customer' | 'delivery_owner' = 'customer') => {
     try {
-      console.log('Auth: Starting signup for:', email, 'as', userType);
+      console.log('Auth: Starting signup for:', email);
       setLoading(true);
       
-      const redirectUrl = `${window.location.origin}/`;
-      
+      // 1. Criar usuário no Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             name: name,
             user_type: userType
@@ -42,41 +41,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) {
-        console.error('Auth: Signup error:', error);
+        console.error('Erro ao criar usuário Auth:', error);
+        alert('Erro ao criar usuário. Verifique email/senha ou se já existe.');
         return { error };
       }
 
-      console.log('Auth: Signup successful, user created:', data.user?.id);
-      
-      // Verificar se o usuário foi criado com sucesso
-      if (!data.user?.id) {
-        console.error('Auth: User not created properly');
+      // 2. Obter o user_id
+      const authUserId = data.user?.id;
+      console.log('Novo usuário criado:', authUserId);
+
+      if (!authUserId) {
+        console.error('Não foi possível obter o ID do usuário criado.');
+        alert('Não foi possível obter o ID do usuário criado.');
         return { error: new Error('Usuário não foi criado corretamente') };
       }
 
-      const authUserId = data.user.id;
-      console.log('Novo usuário criado:', authUserId);
-
-      // Login automático após cadastro para estabelecer sessão
+      // 3. Login automático para estabelecer sessão
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (signInError) {
-        console.error('Auth: Auto-login failed:', signInError);
+        console.error('Erro no login automático:', signInError);
         return { error: signInError };
       }
 
-      console.log('Auth: Auto-login successful');
+      console.log('Login automático realizado com sucesso');
 
-      // Aguardar um momento para garantir que a sessão esteja estabelecida
+      // 4. Aguarda sessão para garantir que RLS aceite o insert
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Criar registro baseado no tipo de usuário
+      // 5. Criar perfil baseado no tipo de usuário
       try {
         if (userType === 'delivery_owner') {
-          // Criar delivery business
           const { data: businessData, error: businessError } = await supabase
             .from('delivery_businesses')
             .insert({
@@ -88,11 +86,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .single();
 
           if (businessError) {
-            console.error('Erro ao criar negócio:', businessError);
+            console.error('Erro ao salvar negócio:', businessError);
+            alert('Erro ao salvar negócio. Detalhes no console.');
             return { error: new Error(`Erro ao criar negócio: ${businessError.message}`) };
           }
           
-          console.log('Negócio criado com sucesso:', businessData);
+          console.log('Negócio criado:', businessData);
         } else {
           // Criar perfil do cliente
           const { data: profileData, error: profileError } = await supabase
@@ -108,19 +107,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (profileError) {
             console.error('Erro ao salvar perfil do cliente:', profileError);
+            alert('Erro ao salvar perfil. Detalhes no console.');
             return { error: new Error(`Erro ao criar perfil: ${profileError.message}`) };
           }
           
-          console.log('Perfil criado com sucesso:', profileData);
+          console.log('Perfil criado:', profileData);
         }
       } catch (dbError) {
-        console.error('Auth: Database error after signup:', dbError);
+        console.error('Erro de banco de dados:', dbError);
+        alert('Erro de banco de dados. Detalhes no console.');
         return { error: new Error(`Erro de banco de dados: ${dbError}`) };
       }
       
+      console.log('Cadastro realizado com sucesso!');
       return { error: null };
     } catch (error) {
-      console.error('Auth: Signup exception:', error);
+      console.error('Erro geral no cadastro:', error);
+      alert('Erro geral no cadastro. Detalhes no console.');
       return { error };
     } finally {
       setLoading(false);
