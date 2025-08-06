@@ -47,6 +47,8 @@ export default function CustomerOrders() {
 
   const loadOrders = async () => {
     try {
+      console.log('🔍 Buscando pedidos para usuário:', user?.id, user?.email);
+      
       // 1. Buscar customer_id do customer_profiles usando auth.uid()
       const { data: customerProfile, error: customerError } = await supabase
         .from('customer_profiles')
@@ -54,13 +56,61 @@ export default function CustomerOrders() {
         .eq('user_id', user?.id)
         .maybeSingle();
 
+      console.log('👤 Customer profile encontrado:', customerProfile);
+
       if (customerError) {
+        console.error('❌ Erro ao buscar customer profile:', customerError);
         throw customerError;
       }
 
       if (!customerProfile) {
-        console.log('Perfil de cliente não encontrado');
-        setOrders([]);
+        console.log('❌ Perfil de cliente não encontrado para user_id:', user?.id);
+        console.log('📝 Criando perfil de cliente automaticamente...');
+        
+        // Criar perfil de cliente automaticamente se não existir
+        const { data: newProfile, error: createError } = await supabase
+          .from('customer_profiles')
+          .insert({
+            user_id: user?.id,
+            name: user?.email?.split('@')[0] || 'Cliente',
+            phone: '',
+            address: ''
+          })
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Erro ao criar perfil:', createError);
+          throw createError;
+        }
+
+        console.log('✅ Perfil criado:', newProfile);
+        
+        // Usar o novo perfil
+        const profileId = newProfile.id;
+        
+        // Buscar pedidos com o novo profile_id
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            delivery_businesses!inner(id, name),
+            order_items(
+              quantity,
+              menu_items(name)
+            )
+          `)
+          .eq('customer_id', profileId)
+          .order('created_at', { ascending: false });
+
+        console.log('📦 Pedidos encontrados para novo perfil:', data);
+
+        if (error) {
+          console.error('❌ Erro ao buscar pedidos:', error);
+          throw error;
+        }
+
+        setOrders((data as any) || []);
         setLoading(false);
         return;
       }

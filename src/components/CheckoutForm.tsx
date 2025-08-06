@@ -220,19 +220,44 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         throw new Error('Você precisa estar logado para fazer um pedido');
       }
 
-      // 1. Buscar customer_id do customer_profiles usando auth.uid()
-      const { data: customerProfile, error: customerError } = await supabase
+      console.log('💾 Salvando pedido para usuário:', user.id, user.email);
+
+      // 1. Buscar ou criar customer_id do customer_profiles usando auth.uid()
+      let { data: customerProfile, error: customerError } = await supabase
         .from('customer_profiles')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (customerError) {
+        console.error('❌ Erro ao buscar customer profile:', customerError);
         throw customerError;
       }
 
       if (!customerProfile) {
-        throw new Error('Erro: sua conta de cliente não está vinculada corretamente. Faça login novamente.');
+        console.log('📝 Customer profile não existe, criando automaticamente...');
+        
+        // Criar perfil automaticamente
+        const { data: newProfile, error: createError } = await supabase
+          .from('customer_profiles')
+          .insert({
+            user_id: user.id,
+            name: customerData.name || user.email?.split('@')[0] || 'Cliente',
+            phone: customerData.phone || '',
+            address: customerData.address || ''
+          })
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Erro ao criar customer profile:', createError);
+          throw new Error('Erro ao criar perfil de cliente. Tente novamente.');
+        }
+
+        customerProfile = newProfile;
+        console.log('✅ Customer profile criado:', customerProfile);
+      } else {
+        console.log('👤 Customer profile encontrado:', customerProfile);
       }
 
       // Buscar a taxa de entrega do negócio
