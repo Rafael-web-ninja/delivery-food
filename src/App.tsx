@@ -39,7 +39,7 @@ const App = () => (
               {/* Customer Routes */}
               <Route path="/meu-perfil" element={
                 <ProtectedRoute requiredUserType="customer">
-                  <CustomerProfile />
+                  <CustomerDashboard />
                 </ProtectedRoute>
               } />
               
