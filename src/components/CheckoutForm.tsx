@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import OrderSuccessModal from './OrderSuccessModal';
 
 interface CartItem {
   id: string;
@@ -38,6 +39,8 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [completedOrderId, setCompletedOrderId] = useState('');
   
   // Formulário de dados do cliente
   const [customerData, setCustomerData] = useState({
@@ -305,26 +308,17 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     setLoading(true);
     try {
       // Salvar pedido no banco
-      await saveOrderToDatabase();
-
-      // Enviar para WhatsApp
-      const phone = business.phone?.replace(/\D/g, '') || '';
-      const message = await generateWhatsAppMessage();
-      const whatsappUrl = `https://wa.me/55${phone}?text=${message}`;
-      
-      window.open(whatsappUrl, '_blank');
+      const order = await saveOrderToDatabase();
       
       toast({
-        title: "Pedido enviado!",
-        description: "Seu pedido foi registrado e enviado via WhatsApp",
+        title: "Pedido confirmado!",
+        description: "Seu pedido foi registrado com sucesso",
       });
       
+      // Mostrar modal de sucesso
+      setCompletedOrderId(order.id);
+      setShowSuccessModal(true);
       onOrderComplete();
-      
-      // Redirecionar para a aba de pedidos
-      setTimeout(() => {
-        navigate(`/public-menu/${business.id}?tab=orders`);
-      }, 1000);
       
     } catch (error: any) {
       console.error('Erro ao finalizar pedido:', error);
@@ -594,6 +588,17 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de sucesso */}
+      <OrderSuccessModal 
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        orderId={completedOrderId}
+        cart={cart}
+        business={business}
+        total={total}
+        customerData={customerData}
+      />
     </div>
   );
 }
