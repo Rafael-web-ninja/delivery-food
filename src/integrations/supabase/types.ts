@@ -328,6 +328,7 @@ export type Database = {
           delivery_id: string | null
           id: string
           notes: string | null
+          order_code: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
@@ -345,6 +346,7 @@ export type Database = {
           delivery_id?: string | null
           id?: string
           notes?: string | null
+          order_code?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           status?: Database["public"]["Enums"]["order_status"]
           total_amount: number
@@ -362,6 +364,7 @@ export type Database = {
           delivery_id?: string | null
           id?: string
           notes?: string | null
+          order_code?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
@@ -454,6 +457,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_order_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_business_id: {
         Args: Record<PropertyKey, never>
         Returns: string
