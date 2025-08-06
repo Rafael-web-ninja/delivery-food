@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CartItem {
   id: string;
@@ -35,6 +36,7 @@ interface CheckoutFormProps {
 export default function CheckoutForm({ cart, business, total, onOrderComplete, onCancel, onRemoveItem }: CheckoutFormProps) {
   const { toast } = useToast();
   const { user, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
   // Formulário de dados do cliente
@@ -226,7 +228,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         }
         
         if (!customerProfile) {
-          throw new Error('Sua conta de cliente está incorreta. Faça logout e login novamente.');
+          throw new Error('Erro: sua conta de cliente não está vinculada corretamente. Faça login novamente.');
         }
         
         customerId = customerProfile.id;
@@ -331,16 +333,23 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       
       toast({
         title: "Pedido enviado!",
-        description: "Seu pedido foi registrado e enviado via WhatsApp. Você pode acompanhá-lo em 'Meu Perfil'.",
+        description: "Seu pedido foi registrado e enviado via WhatsApp. Redirecionando para seu perfil...",
       });
       
+      // Fechar modal primeiro
       onOrderComplete();
+      
+      // Aguardar um pouco e redirecionar para o perfil
+      setTimeout(() => {
+        navigate('/meu-perfil');
+      }, 1500);
+      
     } catch (error: any) {
       console.error('Erro ao finalizar pedido:', error);
       
       let errorMessage = "Tente novamente em alguns instantes";
       if (error.message.includes('conta de cliente')) {
-        errorMessage = error.message;
+        errorMessage = "Erro: sua conta de cliente não está vinculada corretamente. Faça login novamente.";
       } else if (error.message.includes('logado')) {
         errorMessage = error.message;
       }
