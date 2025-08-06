@@ -270,7 +270,12 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const deliveryFee = businessData?.delivery_fee || 0;
       const totalWithDelivery = total + Number(deliveryFee);
 
-      // 2. Criar pedido com customer_id, delivery_id e user_id
+      // 2. Validar IDs obrigatórios
+      if (!customerProfile.id || !business.id || !user.id) {
+        throw new Error('Erro: Não foi possível vincular o pedido ao seu perfil. Faça login novamente.');
+      }
+
+      // 3. Criar pedido com customer_id, delivery_id e user_id
       const orderData = {
         customer_id: customerProfile.id,
         business_id: business.id,

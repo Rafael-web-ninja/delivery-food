@@ -28,7 +28,8 @@ interface Order {
 const statusMap = {
   pending: { label: 'Pendente', color: 'bg-yellow-500' },
   confirmed: { label: 'Confirmado', color: 'bg-blue-500' },
-  preparing: { label: 'Preparando', color: 'bg-orange-500' },
+  preparing: { label: 'Em preparação', color: 'bg-orange-500' },
+  out_for_delivery: { label: 'Saiu para entrega', color: 'bg-purple-500' },
   ready: { label: 'Pronto', color: 'bg-green-500' },
   delivered: { label: 'Entregue', color: 'bg-gray-500' },
   cancelled: { label: 'Cancelado', color: 'bg-red-500' }
@@ -88,7 +89,7 @@ export default function CustomerOrders() {
         console.log('✅ Perfil criado:', customerProfile);
       }
 
-      // 2. Buscar pedidos usando customer_id OU pedidos antigos usando user_id
+      // 2. Buscar pedidos usando customer_id do cliente logado
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -99,7 +100,7 @@ export default function CustomerOrders() {
             menu_items(name)
           )
         `)
-        .or(`customer_id.eq.${customerProfile.id},and(customer_id.is.null,user_id.eq.${user?.id})`)
+        .eq('customer_id', customerProfile.id)
         .order('created_at', { ascending: false });
 
       console.log('📦 Pedidos encontrados:', data);
