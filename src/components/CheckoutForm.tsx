@@ -135,18 +135,8 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
     setLoading(true);
     try {
-      const { error } = await signUp(authData.email, authData.password);
+      const { error } = await signUp(authData.email, authData.password, authData.name, 'customer');
       if (error) throw error;
-
-      // Criar perfil do cliente
-      await supabase
-        .from('customer_profiles')
-        .insert({
-          user_id: user?.id,
-          name: authData.name,
-          phone: customerData.phone,
-          address: customerData.address
-        });
 
       toast({
         title: "Cadastro realizado!",
@@ -160,9 +150,18 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         name: authData.name
       }));
     } catch (error: any) {
+      console.error('Signup error:', error);
+      let errorMessage = 'Erro no cadastro. Tente novamente.';
+      
+      if (error.message === 'User already registered') {
+        errorMessage = 'Este email já está cadastrado. Tente fazer login.';
+      } else if (error.message.includes('Password')) {
+        errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+      }
+      
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -211,6 +210,30 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
   const saveOrderToDatabase = async () => {
     try {
+      // Primeiro, buscar o customer_id correto
+      let customerId = null;
+      
+      if (user?.id) {
+        const { data: customerProfile, error: profileError } = await supabase
+          .from('customer_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error('Error fetching customer profile:', profileError);
+          throw new Error('Sua conta de cliente está incorreta. Faça logout e login novamente.');
+        }
+        
+        if (!customerProfile) {
+          throw new Error('Sua conta de cliente está incorreta. Faça logout e login novamente.');
+        }
+        
+        customerId = customerProfile.id;
+      } else {
+        throw new Error('É necessário estar logado para fazer pedidos.');
+      }
+
       // Buscar a taxa de entrega do negócio
       const { data: businessData } = await supabase
         .from('delivery_businesses')
@@ -221,9 +244,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const deliveryFee = businessData?.delivery_fee || 0;
       const totalWithDelivery = total + Number(deliveryFee);
 
-      // Criar o pedido
+      // Criar o pedido com customer_id correto
       const orderData = {
         business_id: business.id,
+        customer_id: customerId, // Usar o ID correto do customer_profiles
         customer_name: customerData.name,
         customer_phone: customerData.phone,
         customer_address: customerData.address || '',
@@ -232,8 +256,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         payment_method: 'cash' as const,
         notes: customerData.notes || '',
         status: 'pending' as const,
-        user_id: user?.id || null
+        user_id: user?.id || null // Manter para compatibilidade
       };
+
+      console.log('Creating order with data:', orderData);
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -242,7 +268,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         .single();
 
       if (orderError) {
-        console.error('Order error:', orderError);
+        console.error('Order creation error:', orderError);
         throw new Error('Erro ao criar pedido. Verifique os dados e tente novamente.');
       }
 
@@ -260,10 +286,11 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         .insert(orderItems);
 
       if (itemsError) {
-        console.error('Items error:', itemsError);
+        console.error('Items creation error:', itemsError);
         throw new Error('Erro ao adicionar itens do pedido.');
       }
 
+      console.log('Order created successfully:', order);
       return order;
     } catch (error) {
       console.error('Erro ao salvar pedido:', error);
@@ -272,6 +299,15 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
   };
 
   const handleFinishOrder = async () => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "É necessário estar logado para fazer pedidos. Faça login ou cadastre-se.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!customerData.name || !customerData.phone || !customerData.address) {
       toast({
         title: "Dados incompletos",
@@ -284,7 +320,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     setLoading(true);
     try {
       // Salvar pedido no banco
-      await saveOrderToDatabase();
+      const order = await saveOrderToDatabase();
 
       // Enviar para WhatsApp
       const phone = business.phone?.replace(/\D/g, '') || '';
@@ -295,15 +331,23 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       
       toast({
         title: "Pedido enviado!",
-        description: "Seu pedido foi registrado e enviado via WhatsApp",
+        description: "Seu pedido foi registrado e enviado via WhatsApp. Você pode acompanhá-lo em 'Meu Perfil'.",
       });
       
       onOrderComplete();
     } catch (error: any) {
       console.error('Erro ao finalizar pedido:', error);
+      
+      let errorMessage = "Tente novamente em alguns instantes";
+      if (error.message.includes('conta de cliente')) {
+        errorMessage = error.message;
+      } else if (error.message.includes('logado')) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erro ao finalizar pedido",
-        description: error.message || "Tente novamente em alguns instantes",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -349,79 +393,24 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
             {/* Login/Cadastro ou dados do cliente */}
             {!user ? (
-              <Tabs defaultValue="guest">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="guest">Continuar sem conta</TabsTrigger>
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <div className="flex">
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      <strong>Login necessário:</strong> Para fazer pedidos, você precisa estar logado. 
+                      Faça login abaixo ou cadastre-se para continuar.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            
+            {!user ? (
+              <Tabs defaultValue="login">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">Entrar</TabsTrigger>
                   <TabsTrigger value="signup">Cadastrar</TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="guest" className="space-y-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="name" className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Nome completo *
-                      </Label>
-                      <Input
-                        id="name"
-                        value={customerData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        placeholder="Seu nome completo"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="email" className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={customerData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="phone" className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Telefone *
-                      </Label>
-                      <Input
-                        id="phone"
-                        value={customerData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="address" className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Endereço de entrega *
-                      </Label>
-                      <Input
-                        id="address"
-                        value={customerData.address}
-                        onChange={(e) => handleInputChange('address', e.target.value)}
-                        placeholder="Rua, número, bairro, cidade"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="notes">Observações</Label>
-                      <Textarea
-                        id="notes"
-                        value={customerData.notes}
-                        onChange={(e) => handleInputChange('notes', e.target.value)}
-                        placeholder="Observações sobre o pedido (opcional)"
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
                 
                 <TabsContent value="login" className="space-y-4">
                   <div>

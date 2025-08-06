@@ -49,12 +49,13 @@ export default function CustomerOrders() {
       const customerProfile = await getCustomerProfileId();
       
       if (!customerProfile) {
+        console.log('Customer profile not found for user:', user?.id);
         setOrders([]);
         setLoading(false);
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
@@ -67,9 +68,18 @@ export default function CustomerOrders() {
         .eq('customer_id', customerProfile)
         .order('created_at', { ascending: false });
 
+      if (error) {
+        console.error('Erro ao carregar pedidos:', error);
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Orders loaded in CustomerOrders:', data?.length || 0);
       setOrders((data as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -78,13 +88,23 @@ export default function CustomerOrders() {
   const getCustomerProfileId = async () => {
     if (!user?.id) return null;
     
-    const { data } = await supabase
-      .from('customer_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-    
-    return data?.id || null;
+    try {
+      const { data, error } = await supabase
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching customer profile:', error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.error('Exception fetching customer profile:', error);
+      return null;
+    }
   };
 
   if (loading) {
