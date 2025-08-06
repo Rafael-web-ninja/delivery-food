@@ -270,10 +270,12 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const deliveryFee = businessData?.delivery_fee || 0;
       const totalWithDelivery = total + Number(deliveryFee);
 
-      // 2. Criar pedido com customer_id correto
+      // 2. Criar pedido com customer_id, delivery_id e user_id
       const orderData = {
         customer_id: customerProfile.id,
         business_id: business.id,
+        delivery_id: business.id, // delivery_id = business_id
+        user_id: user.id, // Adicionar user_id para compatibilidade
         customer_name: customerData.name,
         customer_phone: customerData.phone,
         customer_address: customerData.address || '',
