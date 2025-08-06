@@ -1,55 +1,53 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
-import Index from "@/pages/Index";
-import Auth from "@/pages/Auth";
-import Landing from "@/pages/Landing";
-import ClientDashboard from "@/pages/ClientDashboard";
-import DeliveryDashboard from "@/pages/DeliveryDashboard";
-import PublicMenu from "@/pages/PublicMenu";
-import NotFound from "@/pages/NotFound";
-import "./App.css";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { AuthErrorBoundary } from "@/components/AuthErrorBoundary";
+import AuthGate from "@/components/AuthGate";
+import DashboardLayout from "@/components/DashboardLayout";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import CustomerDashboard from "./pages/CustomerDashboard";
+import { DashboardRouter } from "./components/DashboardRouter";
+import MenuManagement from "./pages/MenuManagement";
+import OrderManagement from "./pages/OrderManagement";
+import PublicMenu from "./pages/PublicMenu";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/dashboard-old" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/menu/:businessId" element={<PublicMenu />} />
-          
-          {/* Client Dashboard - Only for clients */}
-          <Route 
-            path="/painel-cliente" 
-            element={
-              <RoleBasedRedirect allowedRoles={['cliente']}>
-                <ClientDashboard />
-              </RoleBasedRedirect>
-            } 
-          />
-          
-          {/* Delivery Dashboard - Only for delivery owners */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <RoleBasedRedirect allowedRoles={['dono_delivery']}>
-                <DeliveryDashboard />
-              </RoleBasedRedirect>
-            } 
-          />
-
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </Router>
-    </QueryClientProvider>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthErrorBoundary>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
+              <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
+              <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
+              <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<AuthGate><DashboardRouter /></AuthGate>} />
+                <Route path="/menu" element={<AuthGate><MenuManagement /></AuthGate>} />
+                <Route path="/orders" element={<AuthGate><OrderManagement /></AuthGate>} />
+                <Route path="/analytics" element={<AuthGate><Analytics /></AuthGate>} />
+                <Route path="/settings" element={<AuthGate><Settings /></AuthGate>} />
+              </Route>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<AuthGate requireAuth={false}><NotFound /></AuthGate>} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </AuthErrorBoundary>
+  </QueryClientProvider>
+);
 
 export default App;

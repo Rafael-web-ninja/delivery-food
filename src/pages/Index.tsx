@@ -1,11 +1,11 @@
-import { useAuthWithRole } from '@/hooks/useAuthWithRole';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Index = () => {
   // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
-  const { user } = useAuthWithRole();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // EFFECT ALWAYS RUNS - CONDITIONAL LOGIC INSIDE

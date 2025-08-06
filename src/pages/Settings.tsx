@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useAuthWithRole } from '@/hooks/useAuthWithRole';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BusinessHours from '@/components/BusinessHours';
@@ -38,7 +38,7 @@ interface BusinessData {
 }
 
 const Settings = () => {
-  const { user, loading: authLoading } = useAuthWithRole();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [businessData, setBusinessData] = useState<BusinessData>({

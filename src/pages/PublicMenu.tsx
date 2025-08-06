@@ -26,7 +26,7 @@ import BusinessStatus from '@/components/BusinessStatus';
 import CustomerProfile from '@/components/CustomerProfile';
 import CustomerOrders from '@/components/CustomerOrders';
 import { MenuFilters } from '@/components/MenuFilters';
-import { useAuthWithRole } from '@/hooks/useAuthWithRole';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MenuItem {
   id: string;
@@ -65,7 +65,7 @@ interface CartItem extends MenuItem {
 const PublicMenu = () => {
   const { businessId } = useParams<{ businessId: string }>();
   const { toast } = useToast();
-  const { user, signOut } = useAuthWithRole();
+  const { user, signOut } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [allItems, setAllItems] = useState<MenuItem[]>([]);
@@ -350,7 +350,7 @@ const PublicMenu = () => {
                 </div>
               )}
               <div className="flex-1 text-center lg:text-left">
-                <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
+                <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">
                   {business.name}
                 </h1>
                 {business.description && (
@@ -358,6 +358,21 @@ const PublicMenu = () => {
                     {business.description}
                   </p>
                 )}
+                <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 text-sm text-muted-foreground">
+                  {business.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 flex-shrink-0" />
+                      <span>{business.phone}</span>
+                    </div>
+                  )}
+                  {business.address && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-center lg:text-left">{business.address}</span>
+                    </div>
+                  )}
+                  <BusinessStatus businessId={business.id} />
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-4 flex-shrink-0">
@@ -391,38 +406,12 @@ const PublicMenu = () => {
                 <span>Carrinho</span>
                 {cart.length > 0 && (
                   <Badge 
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0 border-2 border-background"
-                    style={{ minWidth: '24px', minHeight: '24px' }}
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0 min-w-[20px]"
                   >
                     {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
                   </Badge>
                 )}
               </Button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Informações de contato e status - organizadas melhor */}
-        <div className="container mx-auto px-4 pb-4">
-          <div className="bg-muted/30 rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex flex-col sm:flex-row items-center gap-4 text-sm">
-                {business.phone && (
-                  <div className="flex items-center gap-2 bg-background px-3 py-2 rounded-md">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{business.phone}</span>
-                  </div>
-                )}
-                {business.address && (
-                  <div className="flex items-center gap-2 bg-background px-3 py-2 rounded-md">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-center sm:text-left">{business.address}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex-shrink-0">
-                <BusinessStatus businessId={business.id} />
-              </div>
             </div>
           </div>
         </div>
@@ -439,12 +428,10 @@ const PublicMenu = () => {
             </TabsList>
 
             <TabsContent value="menu">
-              <div className="mb-6">
-                <MenuFilters 
-                  businessId={businessId!} 
-                  onFilterChange={setFilters} 
-                />
-              </div>
+              <MenuFilters 
+                businessId={businessId!} 
+                onFilterChange={setFilters} 
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {items.map(item => (
                   <Card

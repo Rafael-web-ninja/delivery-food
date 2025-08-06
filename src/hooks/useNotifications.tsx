@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthWithRole } from '@/hooks/useAuthWithRole';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderNotification {
@@ -12,14 +12,9 @@ interface OrderNotification {
 }
 
 export const useNotifications = () => {
-  const { user } = useAuthWithRole();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<OrderNotification[]>([]);
-
-  console.log('🔔 useNotifications - estado atual:', { 
-    user: user?.email, 
-    notificationsCount: notifications.length 
-  });
 
   useEffect(() => {
     if (!user?.id) return;
@@ -47,15 +42,10 @@ export const useNotifications = () => {
           filter: `business_id=eq.${business.id}`,
         },
         (payload) => {
-          console.log('🔔 Nova notificação de pedido recebida:', payload);
           const newOrder = payload.new as OrderNotification;
           
           // Add to notifications
-          setNotifications(prev => {
-            const updated = [newOrder, ...prev.slice(0, 9)]; // Keep last 10
-            console.log('📝 Notificações atualizadas:', updated);
-            return updated;
-          });
+          setNotifications(prev => [newOrder, ...prev.slice(0, 9)]); // Keep last 10
           
           // Show toast notification
           toast({

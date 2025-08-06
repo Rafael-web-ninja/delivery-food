@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuthWithRole } from '@/hooks/useAuthWithRole';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,7 @@ const paymentMethodTranslations = {
 };
 
 const OrderManagement = () => {
-  const { user } = useAuthWithRole();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
