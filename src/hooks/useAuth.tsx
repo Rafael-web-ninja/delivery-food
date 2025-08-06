@@ -32,37 +32,96 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Auth: Starting signup for:', email);
       setLoading(true);
       
-      // 1. Criar usuário no Supabase Auth
-      const { data: signupData, error: signupError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            name: name,
-            user_type: userType
-          }
-        }
-      });
+      // 1. Tentar criar usuário no Supabase Auth (método padrão)
+      let signupData;
+      let signupError;
       
+      try {
+        const result = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              name: name,
+              user_type: userType
+            }
+          }
+        });
+        
+        signupData = result.data;
+        signupError = result.error;
+      } catch (authError: any) {
+        console.error('Erro no signup padrão:', authError);
+        signupError = authError;
+      }
+      
+      // 2. Tratar erros específicos
       if (signupError) {
         console.error('Erro ao criar usuário Auth:', signupError);
-        if (signupError.message.includes('already registered')) {
-          return { error: new Error('Este email já está cadastrado') };
+        
+        // Verificar tipos específicos de erro
+        if (signupError.message?.includes('already registered') || signupError.message?.includes('already exists')) {
+          return { error: new Error('Email já cadastrado') };
         }
-        return { error: new Error('Erro ao criar usuário. Verifique email e senha.') };
+        
+        if (signupError.message?.includes('Invalid email') || signupError.message?.includes('invalid email')) {
+          return { error: new Error('Email inválido') };
+        }
+        
+        if (signupError.message?.includes('weak password') || signupError.message?.includes('Password')) {
+          return { error: new Error('Senha muito fraca. Use pelo menos 6 caracteres') };
+        }
+        
+        // Se for erro de "Database error creating new user", tentar abordagem alternativa
+        if (signupError.message?.includes('Database error') || signupError.message?.includes('saving new user')) {
+          console.log('Detectado erro de database, tentando novamente...');
+          
+          // Aguardar um pouco e tentar novamente
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          try {
+            const retryResult = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: `${window.location.origin}/`,
+                data: {
+                  name: name,
+                  user_type: userType
+                }
+              }
+            });
+            
+            if (retryResult.error) {
+              console.error('Erro na segunda tentativa:', retryResult.error);
+              return { error: new Error('Erro interno, tente novamente em alguns minutos') };
+            }
+            
+            signupData = retryResult.data;
+            signupError = null;
+          } catch (retryError) {
+            console.error('Erro na segunda tentativa:', retryError);
+            return { error: new Error('Erro interno, tente novamente em alguns minutos') };
+          }
+        } else {
+          return { error: new Error('Erro interno, tente novamente em alguns minutos') };
+        }
       }
 
-      // 2. Verificar se o usuário foi criado
-      const userId = signupData.user?.id;
+      // 3. Verificar se o usuário foi criado
+      const userId = signupData?.user?.id;
       if (!userId) {
         console.error('Não foi possível obter o ID do usuário criado.');
-        return { error: new Error('Usuário não foi criado corretamente') };
+        return { error: new Error('Erro interno, tente novamente em alguns minutos') };
       }
 
       console.log('Novo usuário criado:', userId);
 
-      // 3. Criar perfil baseado no tipo de usuário
+      // 4. Aguardar um momento para garantir que o usuário esteja disponível
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 5. Criar perfil baseado no tipo de usuário
       try {
         if (userType === 'delivery_owner') {
           const { error: businessError } = await supabase
@@ -92,21 +151,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (profileError) {
             console.error('Erro ao salvar perfil do cliente:', profileError);
-            return { error: new Error('Erro ao criar perfil do cliente') };
+            
+            // Se for erro de RLS, tentar fazer login primeiro
+            if (profileError.message?.includes('row-level security') || profileError.message?.includes('RLS')) {
+              try {
+                // Fazer login automático para estabelecer sessão
+                await supabase.auth.signInWithPassword({ email, password });
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Tentar criar perfil novamente
+                const { error: retryProfileError } = await supabase
+                  .from('customer_profiles')
+                  .insert({
+                    user_id: userId,
+                    name: name || 'Novo Cliente',
+                    phone: '',
+                    address: ''
+                  });
+                
+                if (retryProfileError) {
+                  console.error('Erro ao salvar perfil na segunda tentativa:', retryProfileError);
+                  return { error: new Error('Erro ao criar perfil do cliente') };
+                }
+              } catch (loginError) {
+                console.error('Erro no login automático:', loginError);
+                return { error: new Error('Erro ao criar perfil do cliente') };
+              }
+            } else {
+              return { error: new Error('Erro ao criar perfil do cliente') };
+            }
           }
           
           console.log('Perfil do cliente criado com sucesso');
         }
       } catch (dbError) {
         console.error('Erro de banco de dados:', dbError);
-        return { error: new Error('Erro ao criar perfil no banco de dados') };
+        return { error: new Error('Erro interno, tente novamente em alguns minutos') };
       }
       
       console.log('Cadastro realizado com sucesso!');
       return { error: null };
     } catch (error) {
       console.error('Erro geral no cadastro:', error);
-      return { error: new Error('Erro inesperado ao criar usuário') };
+      return { error: new Error('Erro interno, tente novamente em alguns minutos') };
     } finally {
       setLoading(false);
     }
