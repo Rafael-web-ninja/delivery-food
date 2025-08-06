@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Clock, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { formatCurrency, statusTranslations } from '@/lib/formatters';
 import DateRangePicker from '@/components/DateRangePicker';
 
 interface AnalyticsData {
@@ -233,7 +234,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                R$ {analytics?.totalRevenue.toFixed(2) || '0,00'}
+                {formatCurrency(analytics?.totalRevenue || 0)}
               </div>
             </CardContent>
           </Card>
@@ -255,7 +256,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                R$ {analytics?.averageOrderValue.toFixed(2) || '0,00'}
+                {formatCurrency(analytics?.averageOrderValue || 0)}
               </div>
             </CardContent>
           </Card>

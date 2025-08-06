@@ -4,11 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { formatCurrency, statusTranslations } from '@/lib/formatters';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 
 interface Order {
   id: string;
+  order_code?: string;
   customer_name: string;
   total_amount: number;
   status: string;
@@ -140,7 +142,7 @@ export default function CustomerOrders() {
             <div key={order.id} className="border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold">#{order.id.slice(-8)} - {order.delivery_businesses.name}</h3>
+                  <h3 className="font-semibold">#{order.order_code || order.id.slice(-8)} - {order.delivery_businesses.name}</h3>
                   <p className="text-sm text-muted-foreground">
                     {new Date(order.created_at).toLocaleString('pt-BR')}
                   </p>
@@ -159,7 +161,7 @@ export default function CustomerOrders() {
                     {status.label}
                   </Badge>
                   <p className="font-semibold">
-                    R$ {Number(order.total_amount).toFixed(2)}
+                    {formatCurrency(Number(order.total_amount))}
                   </p>
                 </div>
               </div>

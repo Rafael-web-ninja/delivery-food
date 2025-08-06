@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, MessageCircle, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/lib/formatters';
 
 interface CartItem {
   id: string;
@@ -72,16 +73,16 @@ export default function OrderSuccessModal({
     
     message += `*Itens:*\n`;
     cart.forEach(item => {
-      message += `• ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toFixed(2)}\n`;
+      message += `• ${item.quantity}x ${item.name} - ${formatCurrency(item.price * item.quantity)}\n`;
     });
     
-    message += `\n*Subtotal: R$ ${total.toFixed(2)}*\n`;
-    
+    message += `\n*Subtotal: ${formatCurrency(total)}*\n`;
+
     if (deliveryFee > 0) {
-      message += `*Taxa de entrega: R$ ${deliveryFee.toFixed(2)}*\n`;
+      message += `*Taxa de entrega: ${formatCurrency(deliveryFee)}*\n`;
     }
-    
-    message += `*Total: R$ ${totalWithDelivery.toFixed(2)}*\n`;
+
+    message += `*Total: ${formatCurrency(totalWithDelivery)}*\n`;
     
     if (customerData.notes) {
       message += `\n*Observações:* ${customerData.notes}\n`;
@@ -142,23 +143,23 @@ export default function OrderSuccessModal({
             {cart.map(item => (
               <div key={item.id} className="flex justify-between text-sm">
                 <span>{item.quantity}x {item.name}</span>
-                <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                <span>{formatCurrency(item.price * item.quantity)}</span>
               </div>
             ))}
             <div className="border-t pt-2 space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>R$ {total.toFixed(2)}</span>
+                <span>{formatCurrency(total)}</span>
               </div>
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Taxa de entrega</span>
-                  <span>R$ {deliveryFee.toFixed(2)}</span>
+                  <span>{formatCurrency(deliveryFee)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold">
                 <span>Total</span>
-                <span>R$ {totalWithDelivery.toFixed(2)}</span>
+                <span>{formatCurrency(totalWithDelivery)}</span>
               </div>
             </div>
           </div>

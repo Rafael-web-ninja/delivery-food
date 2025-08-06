@@ -3,11 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Clock, Phone, MapPin, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { formatCurrency, statusTranslations } from '@/lib/formatters';
 import { ptBR } from 'date-fns/locale';
 import { ThermalPrint } from './ThermalPrint';
 
 interface Order {
   id: string;
+  order_code?: string;
   customer_name: string;
   customer_phone: string;
   customer_address?: string;
@@ -78,7 +80,7 @@ export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    #{order.id.slice(-8)}
+                    #{order.order_code || order.id.slice(-8)}
                     <Badge className={`${statusColors[order.status]} text-white`}>
                       {statusLabels[order.status]}
                     </Badge>
@@ -105,7 +107,7 @@ export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-primary">
-                    R$ {Number(order.total_amount).toFixed(2)}
+                    {formatCurrency(Number(order.total_amount))}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {order.payment_method}
@@ -124,7 +126,7 @@ export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }
                         <span>
                           {item.quantity}x {item.menu_items.name}
                         </span>
-                        <span>R$ {(item.quantity * Number(item.unit_price)).toFixed(2)}</span>
+                        <span>{formatCurrency(item.quantity * Number(item.unit_price))}</span>
                       </div>
                     ))}
                   </div>

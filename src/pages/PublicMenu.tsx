@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/formatters';
 import {
   ShoppingCart,
   Plus,
@@ -267,9 +268,9 @@ const PublicMenu = () => {
     cart.forEach(ci => {
       message += `• ${ci.quantity}x ${ci.name} - R$ ${(
         ci.price * ci.quantity
-      ).toFixed(2)}\n`;
+      )} \n`;
     });
-    message += `\n*Total: R$ ${getCartTotal().toFixed(2)}*\n\n`;
+    message += `\n*Total: ${formatCurrency(getCartTotal())}*\n\n`;
     message += `Por favor, confirme meu pedido!`;
     return encodeURIComponent(message);
   };
@@ -470,7 +471,7 @@ const PublicMenu = () => {
                       )}
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-primary">
-                          R$ {item.price.toFixed(2)}
+                          {formatCurrency(item.price)}
                         </span>
                         {item.preparation_time > 0 && (
                           <Badge
@@ -569,7 +570,7 @@ const PublicMenu = () => {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-bold text-primary">
-                      R$ {item.price.toFixed(2)}
+                      {formatCurrency(item.price)}
                     </span>
                      {item.preparation_time > 0 && (
                        <Badge

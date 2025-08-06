@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useNotifications } from '@/hooks/useNotifications';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatCurrency } from '@/lib/formatters';
 
 export const NotificationBell = () => {
   const { notifications, markAsRead, clearAll, hasUnread } = useNotifications();
@@ -63,7 +64,7 @@ export const NotificationBell = () => {
                   Novo pedido - {notification.customer_name}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  R$ {Number(notification.total_amount).toFixed(2)} • {' '}
+                  {formatCurrency(Number(notification.total_amount))} • {' '}
                   {new Date(notification.created_at).toLocaleTimeString('pt-BR')}
                 </div>
               </DropdownMenuItem>

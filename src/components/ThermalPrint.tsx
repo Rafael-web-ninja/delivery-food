@@ -3,9 +3,11 @@ import { Printer } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import { formatCurrency } from '@/lib/formatters';
 
 interface Order {
   id: string;
+  order_code?: string;
   customer_name: string;
   customer_phone: string;
   customer_address?: string;
@@ -60,7 +62,7 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       // Informações do pedido
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`PEDIDO #${order.id.slice(-8)}`, leftMargin, yPosition);
+      pdf.text(`PEDIDO #${order.order_code || order.id.slice(-8)}`, leftMargin, yPosition);
       yPosition += lineHeight;
       
       pdf.text(`Data: ${new Date(order.created_at).toLocaleString('pt-BR')}`, leftMargin, yPosition);
@@ -99,7 +101,7 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       pdf.setFont('helvetica', 'normal');
       order.order_items.forEach(item => {
         const itemText = `${item.quantity}x ${item.menu_items.name}`;
-        const priceText = `R$ ${(item.quantity * Number(item.unit_price)).toFixed(2)}`;
+        const priceText = formatCurrency(item.quantity * Number(item.unit_price));
         
         // Item name (pode quebrar linha se muito longo)
         const itemLines = pdf.splitTextToSize(itemText, 50);
@@ -120,7 +122,7 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(12);
-      const totalText = `TOTAL: R$ ${Number(order.total_amount).toFixed(2)}`;
+      const totalText = `TOTAL: ${formatCurrency(Number(order.total_amount))}`;
       pdf.text(totalText, leftMargin, yPosition);
       yPosition += lineHeight;
       
@@ -181,7 +183,7 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
            ${businessName.toUpperCase()}
 ========================================
 
-PEDIDO #${order.id.slice(-8)}
+PEDIDO #${order.order_code || order.id.slice(-8)}
 Data: ${new Date(order.created_at).toLocaleString('pt-BR')}
 
 ----------------------------------------
@@ -193,11 +195,11 @@ ${order.customer_address ? `End: ${order.customer_address}` : ''}
 ----------------------------------------
 ITENS:
 ${order.order_items.map(item => 
-  `${item.quantity}x ${item.menu_items.name.padEnd(20)} R$ ${(item.quantity * Number(item.unit_price)).toFixed(2)}`
+  `${item.quantity}x ${item.menu_items.name.padEnd(20)} ${formatCurrency(item.quantity * Number(item.unit_price))}`
 ).join('\n')}
 
 ----------------------------------------
-TOTAL: R$ ${Number(order.total_amount).toFixed(2)}
+TOTAL: ${formatCurrency(Number(order.total_amount))}
 PAGAMENTO: ${order.payment_method.toUpperCase()}
 
 ${order.notes ? `\nOBSERVAÇÕES:\n${order.notes}` : ''}
@@ -217,7 +219,7 @@ Horário: ${formatDistanceToNow(new Date(order.created_at), {
         printWindow.document.write(`
           <html>
             <head>
-              <title>Pedido #${order.id.slice(-8)}</title>
+              <title>Pedido #${order.order_code || order.id.slice(-8)}</title>
               <style>
                 body {
                   font-family: 'Courier New', monospace;

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/formatters';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
@@ -194,16 +195,16 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     
     message += `*Itens:*\n`;
     cart.forEach(item => {
-      message += `• ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toFixed(2)}\n`;
+      message += `• ${item.quantity}x ${item.name} - ${formatCurrency(item.price * item.quantity)}\n`;
     });
     
-    message += `\n*Subtotal: R$ ${total.toFixed(2)}*\n`;
-    
+    message += `\n*Subtotal: ${formatCurrency(total)}*\n`;
+
     if (deliveryFee > 0) {
-      message += `*Taxa de entrega: R$ ${Number(deliveryFee).toFixed(2)}*\n`;
+      message += `*Taxa de entrega: ${formatCurrency(Number(deliveryFee))}*\n`;
     }
-    
-    message += `*Total: R$ ${totalWithDelivery.toFixed(2)}*\n`;
+
+    message += `*Total: ${formatCurrency(totalWithDelivery)}*\n`;
     
     if (customerData.notes) {
       message += `\n*Observações:* ${customerData.notes}\n`;
@@ -276,7 +277,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       }
 
       // 3. Criar pedido com customer_id, delivery_id e user_id
+      const generatedOrderCode = crypto.randomUUID().slice(0, 8);
+      
       const orderData = {
+        order_code: generatedOrderCode,
         customer_id: customerProfile.id,
         business_id: business.id,
         delivery_id: business.id, // delivery_id = business_id
@@ -382,7 +386,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
                 <div key={item.id} className="flex justify-between items-center text-sm py-1">
                   <span>{item.quantity}x {item.name}</span>
                   <div className="flex items-center gap-2">
-                    <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                    <span>{formatCurrency(item.price * item.quantity)}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -396,7 +400,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
               ))}
               <div className="border-t mt-2 pt-2 font-semibold flex justify-between">
                 <span>Total</span>
-                <span>R$ {total.toFixed(2)}</span>
+                <span>{formatCurrency(total)}</span>
               </div>
             </div>
 

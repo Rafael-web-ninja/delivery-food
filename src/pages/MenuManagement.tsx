@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/formatters';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, Upload } from 'lucide-react';
@@ -396,7 +397,7 @@ const MenuManagement = () => {
               )}
               <div className="flex justify-between items-center">
                 <span className="text-2xl font-bold text-primary">
-                  R$ {item.price.toFixed(2)}
+                  {formatCurrency(item.price)}
                 </span>
                 <Button
                   variant={item.active ? "default" : "secondary"}

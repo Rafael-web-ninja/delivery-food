@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/formatters';
 
 interface OrderNotification {
   id: string;
@@ -50,7 +51,7 @@ export const useNotifications = () => {
           // Show toast notification
           toast({
             title: "🎉 Novo Pedido!",
-            description: `${newOrder.customer_name} fez um pedido de R$ ${Number(newOrder.total_amount).toFixed(2)}`,
+            description: `${newOrder.customer_name} fez um pedido de ${formatCurrency(Number(newOrder.total_amount))}`,
             duration: 5000,
           });
 

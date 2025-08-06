@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Phone, MapPin, Clock, Package, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency, statusTranslations as statusLabels } from '@/lib/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CustomerProfile {
@@ -19,6 +20,7 @@ interface CustomerProfile {
 
 interface CustomerOrder {
   id: string;
+  order_code?: string;
   customer_name: string;
   customer_phone: string;
   customer_address: string;
@@ -284,7 +286,7 @@ const CustomerDashboard = () => {
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="text-lg">
-                            Pedido #{order.id.slice(0, 8)}
+                            Pedido #{order.order_code || order.id.slice(0, 8)}
                           </CardTitle>
                           <CardDescription className="flex items-center gap-4 mt-1">
                             <span className="flex items-center gap-1">
@@ -308,7 +310,7 @@ const CustomerDashboard = () => {
                             {order.order_items.map((item, index) => (
                               <div key={index} className="flex justify-between text-sm">
                                 <span>{item.quantity}x {item.menu_items.name}</span>
-                                <span>R$ {(item.quantity * item.unit_price).toFixed(2)}</span>
+                                <span>{formatCurrency(item.quantity * item.unit_price)}</span>
                               </div>
                             ))}
                           </div>
@@ -318,7 +320,7 @@ const CustomerDashboard = () => {
                         <div className="border-t pt-2">
                           <div className="flex justify-between font-semibold">
                             <span>Total:</span>
-                            <span>R$ {Number(order.total_amount).toFixed(2)}</span>
+                            <span>{formatCurrency(Number(order.total_amount))}</span>
                           </div>
                         </div>
 
