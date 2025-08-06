@@ -50,27 +50,27 @@ export default function CustomerOrders() {
     try {
       console.log('🔍 Buscando pedidos para usuário:', user?.id, user?.email);
       
-      // 1. Buscar o customer_id do cliente logado
-      const { data: customerProfile } = await supabase
+      // Buscar o customer_id do cliente logado
+      const { data: customerProfile, error: customerError } = await supabase
         .from('customer_profiles')
         .select('id')
         .eq('user_id', user?.id)
         .maybeSingle();
 
-      if (!customerProfile) {
-        console.log('Cliente não encontrado');
+      if (customerError || !customerProfile) {
+        console.error('Erro ao buscar customer_id:', customerError);
         setOrders([]);
         return;
       }
 
       console.log('👤 Customer profile encontrado:', customerProfile);
 
-      // 2. Buscar pedidos do cliente
-      const { data: orders, error } = await supabase
+      // Buscar os pedidos do cliente
+      const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select(`
           *,
-          delivery_businesses!inner(id, name),
+          delivery_businesses!orders_delivery_id_fkey(id, name),
           order_items(
             quantity,
             menu_items(name)
@@ -79,12 +79,13 @@ export default function CustomerOrders() {
         .eq('customer_id', customerProfile.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao buscar pedidos:', error);
-        throw error;
+      if (ordersError) {
+        console.error('Erro ao buscar pedidos:', ordersError);
+        throw ordersError;
+      } else {
+        console.log('Pedidos do cliente:', orders);
       }
 
-      console.log('Pedidos do cliente:', orders);
       setOrders((orders as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
