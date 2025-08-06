@@ -48,58 +48,74 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       console.log('Auth: Signup successful, attempting auto-login');
       
+      // Verificar se o usuário foi criado com sucesso
+      if (!data.user) {
+        console.error('Auth: User not created');
+        return { error: new Error('Usuário não foi criado corretamente') };
+      }
+
+      console.log('Auth: User created successfully, ID:', data.user.id);
+
       // Login automático após cadastro
-      if (data.user) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (signInError) {
-          console.error('Auth: Auto-login failed:', signInError);
-          return { error: signInError };
-        }
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (signInError) {
+        console.error('Auth: Auto-login failed:', signInError);
+        return { error: signInError };
+      }
 
-        // Criar registro baseado no tipo de usuário
-        try {
-          if (userType === 'delivery_owner') {
-            // Criar delivery business
-            const { error: businessError } = await supabase
-              .from('delivery_businesses')
-              .insert({
-                owner_id: data.user.id,
-                name: name || 'Meu Delivery',
-                description: 'Descrição do negócio'
-              });
+      console.log('Auth: Auto-login successful, creating profile...');
 
-            if (businessError) {
-              console.error('Auth: Error creating business:', businessError);
-            }
-          } else {
-            // Criar perfil de cliente com melhor tratamento de erro
-            const { data: profileData, error: profileError } = await supabase
-              .from('customer_profiles')
-              .insert({
-                user_id: data.user.id,
-                name: name || '',
-                phone: '',
-                address: ''
-              })
-              .select()
-              .single();
+      // Criar registro baseado no tipo de usuário - APÓS login bem-sucedido
+      try {
+        if (userType === 'delivery_owner') {
+          // Criar delivery business
+          const { error: businessError } = await supabase
+            .from('delivery_businesses')
+            .insert({
+              owner_id: data.user.id,
+              name: name || 'Meu Delivery',
+              description: 'Descrição do negócio'
+            });
 
-            if (profileError) {
-              console.error('Erro ao salvar perfil do cliente:', profileError);
-              // Retornar erro específico para que o usuário saiba o que aconteceu
-              return { error: new Error(`Erro ao criar perfil: ${profileError.message}`) };
-            } else {
-              console.log('Novo cliente cadastrado com sucesso:', profileData);
-            }
+          if (businessError) {
+            console.error('Auth: Error creating business:', businessError);
+            return { error: new Error(`Erro ao criar negócio: ${businessError.message}`) };
           }
-        } catch (dbError) {
-          console.error('Auth: Database error after signup:', dbError);
-          // Não falhar o cadastro por erro de DB
+          
+          console.log('Auth: Delivery business created successfully');
+        } else {
+          // Garantir que temos o user_id correto
+          const authUserId = data.user.id;
+          if (!authUserId) {
+            return { error: new Error('Erro ao obter ID do usuário autenticado') };
+          }
+
+          // Criar perfil do cliente na tabela customer_profiles
+          const { data: profileData, error: profileError } = await supabase
+            .from('customer_profiles')
+            .insert({
+              user_id: authUserId, // ✅ Necessário para RLS
+              name: name || '',
+              phone: '',
+              address: ''
+            })
+            .select()
+            .single();
+
+          if (profileError) {
+            console.error('Erro ao salvar perfil do cliente:', profileError);
+            return { error: new Error(`Erro ao criar perfil: ${profileError.message}`) };
+          }
+          
+          console.log('Novo cliente cadastrado com sucesso:', profileData);
         }
+      } catch (dbError) {
+        console.error('Auth: Database error after signup:', dbError);
+        return { error: new Error(`Erro de banco de dados: ${dbError}`) };
       }
       
       return { error: null };
