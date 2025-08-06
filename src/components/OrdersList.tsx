@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Phone, MapPin, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ThermalPrint } from './ThermalPrint';
 
 interface Order {
   id: string;
@@ -29,6 +30,7 @@ interface Order {
 interface OrdersListProps {
   orders: Order[];
   onStatusUpdate: (orderId: string, status: string) => void;
+  businessName?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -47,7 +49,7 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Cancelado'
 };
 
-export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
+export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }: OrdersListProps) {
   const nextStatus: Record<string, string> = {
     pending: 'preparing',
     preparing: 'out_for_delivery',
@@ -155,6 +157,7 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
+                  <ThermalPrint order={order} businessName={businessName} />
                 </div>
               </div>
             </CardContent>

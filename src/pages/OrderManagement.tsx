@@ -69,12 +69,28 @@ const OrderManagement = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [businessName, setBusinessName] = useState<string>('Delivery');
 
   useEffect(() => {
     if (user) {
       fetchOrders();
+      fetchBusinessName();
     }
   }, [user]);
+
+  const fetchBusinessName = async () => {
+    try {
+      const { data } = await supabase
+        .from('delivery_businesses')
+        .select('name')
+        .eq('owner_id', user?.id)
+        .single();
+      
+      if (data) setBusinessName(data.name);
+    } catch (error) {
+      console.error('Erro ao buscar nome do negócio:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -185,7 +201,7 @@ const OrderManagement = () => {
         </TabsList>
         
         <TabsContent value="all">
-          <OrdersList orders={orders} onStatusUpdate={updateOrderStatus} />
+          <OrdersList orders={orders} onStatusUpdate={updateOrderStatus} businessName={businessName} />
         </TabsContent>
         
         <TabsContent value="today">
@@ -196,19 +212,20 @@ const OrderManagement = () => {
               return today === orderDate;
             })} 
             onStatusUpdate={updateOrderStatus} 
+            businessName={businessName}
           />
         </TabsContent>
         
         <TabsContent value="pending">
-          <OrdersList orders={orders.filter(o => o.status === 'pending')} onStatusUpdate={updateOrderStatus} />
+          <OrdersList orders={orders.filter(o => o.status === 'pending')} onStatusUpdate={updateOrderStatus} businessName={businessName} />
         </TabsContent>
         
         <TabsContent value="preparing">
-          <OrdersList orders={orders.filter(o => o.status === 'preparing')} onStatusUpdate={updateOrderStatus} />
+          <OrdersList orders={orders.filter(o => o.status === 'preparing')} onStatusUpdate={updateOrderStatus} businessName={businessName} />
         </TabsContent>
         
         <TabsContent value="out_for_delivery">
-          <OrdersList orders={orders.filter(o => o.status === 'out_for_delivery')} onStatusUpdate={updateOrderStatus} />
+          <OrdersList orders={orders.filter(o => o.status === 'out_for_delivery')} onStatusUpdate={updateOrderStatus} businessName={businessName} />
         </TabsContent>
         
         <TabsContent value="week">
@@ -219,11 +236,12 @@ const OrderManagement = () => {
               return new Date(o.created_at) >= oneWeekAgo;
             })} 
             onStatusUpdate={updateOrderStatus} 
+            businessName={businessName}
           />
         </TabsContent>
         
         <TabsContent value="delivered">
-          <OrdersList orders={orders.filter(o => o.status === 'delivered')} onStatusUpdate={updateOrderStatus} />
+          <OrdersList orders={orders.filter(o => o.status === 'delivered')} onStatusUpdate={updateOrderStatus} businessName={businessName} />
         </TabsContent>
       </Tabs>
     </div>

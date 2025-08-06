@@ -207,20 +207,37 @@ const PublicMenu = () => {
     }
   };
 
-  // Gerenciamento de carrinho
+  // Estados para controle de quantidade antes de adicionar
+  const [selectedQuantities, setSelectedQuantities] = useState<{ [key: string]: number }>({});
+
+  // Gerenciamento de seleção de quantidade
+  const updateSelectedQuantity = (itemId: string, change: number) => {
+    setSelectedQuantities(prev => {
+      const current = prev[itemId] || 0;
+      const newQuantity = Math.max(0, current + change);
+      return { ...prev, [itemId]: newQuantity };
+    });
+  };
+
+  // Adicionar ao carrinho com quantidade selecionada
   const addToCart = (item: MenuItem) => {
+    const quantity = selectedQuantities[item.id] || 1;
     setCart(prev => {
       const existing = prev.find(ci => ci.id === item.id);
       if (existing) {
         return prev.map(ci =>
-          ci.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
+          ci.id === item.id ? { ...ci, quantity: ci.quantity + quantity } : ci
         );
       }
-      return [...prev, { ...item, quantity: 1 }];
+      return [...prev, { ...item, quantity }];
     });
+    
+    // Reset quantidade selecionada
+    setSelectedQuantities(prev => ({ ...prev, [item.id]: 0 }));
+    
     toast({
       title: 'Item adicionado!',
-      description: `${item.name} foi adicionado ao carrinho`
+      description: `${quantity}x ${item.name} adicionado ao carrinho`
     });
   };
 
@@ -234,12 +251,6 @@ const PublicMenu = () => {
       }
       return prev.filter(ci => ci.id !== itemId);
     });
-  };
-
-  const updateCartItem = (itemId: string, change: number) => {
-    const existing = items.find(i => i.id === itemId);
-    if (!existing) return;
-    change > 0 ? addToCart(existing) : removeFromCart(itemId);
   };
 
   const getCartItemQuantity = (itemId: string) =>
@@ -481,18 +492,18 @@ const PublicMenu = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updateCartItem(item.id, -1)}
-                            disabled={getCartItemQuantity(item.id) === 0}
+                            onClick={() => updateSelectedQuantity(item.id, -1)}
+                            disabled={(selectedQuantities[item.id] || 0) === 0}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
                           <span className="w-8 text-center font-semibold">
-                            {getCartItemQuantity(item.id)}
+                            {selectedQuantities[item.id] || 0}
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updateCartItem(item.id, 1)}
+                            onClick={() => updateSelectedQuantity(item.id, 1)}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -501,6 +512,7 @@ const PublicMenu = () => {
                         <Button
                           onClick={() => addToCart(item)}
                           className="flex items-center gap-2 border-0"
+                          disabled={(selectedQuantities[item.id] || 0) === 0}
                           style={{
                             backgroundColor: business.button_color || '#16A34A',
                             color: business.button_text_color || '#FFFFFF'
@@ -573,40 +585,41 @@ const PublicMenu = () => {
                   </div>
                 </CardHeader>
 
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                 <CardContent>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-2">
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => updateSelectedQuantity(item.id, -1)}
+                         disabled={(selectedQuantities[item.id] || 0) === 0}
+                       >
+                         <Minus className="h-4 w-4" />
+                       </Button>
+                       <span className="w-8 text-center font-semibold">
+                         {selectedQuantities[item.id] || 0}
+                       </span>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => updateSelectedQuantity(item.id, 1)}
+                       >
+                         <Plus className="h-4 w-4" />
+                       </Button>
+                     </div>
+
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateCartItem(item.id, -1)}
-                        disabled={getCartItemQuantity(item.id) === 0}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center font-semibold">
-                        {getCartItemQuantity(item.id)}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateCartItem(item.id, 1)}
+                        onClick={() => addToCart(item)}
+                        className="flex items-center gap-2 border-0"
+                        disabled={(selectedQuantities[item.id] || 0) === 0}
+                        style={{
+                          backgroundColor: business.button_color || '#16A34A',
+                          color: business.button_text_color || '#FFFFFF'
+                        }}
                       >
                         <Plus className="h-4 w-4" />
+                        Adicionar
                       </Button>
-                    </div>
-
-                     <Button
-                       onClick={() => addToCart(item)}
-                       className="flex items-center gap-2 border-0"
-                       style={{
-                         backgroundColor: business.button_color || '#16A34A',
-                         color: business.button_text_color || '#FFFFFF'
-                       }}
-                     >
-                       <Plus className="h-4 w-4" />
-                       Adicionar
-                     </Button>
                   </div>
                 </CardContent>
               </Card>
