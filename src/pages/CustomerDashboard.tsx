@@ -113,12 +113,12 @@ const CustomerDashboard = () => {
         return;
       }
 
-      // 2. Buscar pedidos usando customer_id
+      // 2. Buscar pedidos do cliente, igual à aba de catálogo > pedidos
       const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
-          delivery_businesses (name),
+          delivery_businesses!orders_delivery_id_fkey(id, name),
           order_items (
             quantity,
             unit_price,

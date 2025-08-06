@@ -76,16 +76,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.error('Auth: Error creating business:', businessError);
             }
           } else {
-            // Criar perfil de cliente  
-            const { error: profileError } = await supabase
+            // Criar perfil de cliente
+            const { data: profileData, error: profileError } = await supabase
               .from('customer_profiles')
               .insert({
                 user_id: data.user.id,
-                name: name || ''
+                name: name || '',
+                phone: '',
+                address: ''
               });
 
             if (profileError) {
-              console.error('Auth: Error creating customer profile:', profileError);
+              console.error('Erro ao salvar perfil do cliente:', profileError);
+            } else {
+              console.log('Novo cliente cadastrado com sucesso:', profileData);
             }
           }
         } catch (dbError) {
