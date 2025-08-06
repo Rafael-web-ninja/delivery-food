@@ -50,47 +50,23 @@ export default function CustomerOrders() {
     try {
       console.log('🔍 Buscando pedidos para usuário:', user?.id, user?.email);
       
-      // 1. Buscar ou criar customer_id do customer_profiles usando auth.uid()
-      let { data: customerProfile, error: customerError } = await supabase
+      // 1. Buscar o customer_id do cliente logado
+      const { data: customerProfile } = await supabase
         .from('customer_profiles')
         .select('id')
         .eq('user_id', user?.id)
         .maybeSingle();
 
+      if (!customerProfile) {
+        console.log('Cliente não encontrado');
+        setOrders([]);
+        return;
+      }
+
       console.log('👤 Customer profile encontrado:', customerProfile);
 
-      if (customerError) {
-        console.error('❌ Erro ao buscar customer profile:', customerError);
-        throw customerError;
-      }
-
-      if (!customerProfile) {
-        console.log('❌ Perfil de cliente não encontrado para user_id:', user?.id);
-        console.log('📝 Criando perfil de cliente automaticamente...');
-        
-        // Criar perfil de cliente automaticamente se não existir
-        const { data: newProfile, error: createError } = await supabase
-          .from('customer_profiles')
-          .insert({
-            user_id: user?.id,
-            name: user?.email?.split('@')[0] || 'Cliente',
-            phone: '',
-            address: ''
-          })
-          .select('id')
-          .single();
-
-        if (createError) {
-          console.error('❌ Erro ao criar perfil:', createError);
-          throw createError;
-        }
-
-        customerProfile = newProfile;
-        console.log('✅ Perfil criado:', customerProfile);
-      }
-
-      // 2. Buscar pedidos usando customer_id do cliente logado
-      const { data, error } = await supabase
+      // 2. Buscar pedidos do cliente
+      const { data: orders, error } = await supabase
         .from('orders')
         .select(`
           *,
@@ -103,14 +79,13 @@ export default function CustomerOrders() {
         .eq('customer_id', customerProfile.id)
         .order('created_at', { ascending: false });
 
-      console.log('📦 Pedidos encontrados:', data);
-
       if (error) {
-        console.error('❌ Erro ao buscar pedidos:', error);
+        console.error('Erro ao buscar pedidos:', error);
         throw error;
       }
 
-      setOrders((data as any) || []);
+      console.log('Pedidos do cliente:', orders);
+      setOrders((orders as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
