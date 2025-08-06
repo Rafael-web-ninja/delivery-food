@@ -107,16 +107,21 @@ const Auth = () => {
     if (error) {
       toast({
         title: "Erro no cadastro",
-        description: error.message === 'User already registered' 
-          ? 'Este email já está cadastrado' 
-          : error.message,
+        description: error.message,
         variant: "destructive"
       });
     } else {
       toast({
         title: "Cadastro realizado!",
-        description: "Login realizado com sucesso!",
+        description: "Redirecionando...",
       });
+      
+      // Redirecionar para /meu-perfil após cadastro de cliente bem-sucedido
+      if (type === 'customer') {
+        setTimeout(() => {
+          navigate('/meu-perfil', { replace: true });
+        }, 1000);
+      }
     }
     setLoading(false);
   };

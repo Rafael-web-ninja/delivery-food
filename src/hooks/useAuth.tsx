@@ -24,11 +24,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // STABLE CALLBACKS - NO DEPENDENCIES THAT CHANGE
   const signUp = useCallback(async (email: string, password: string, name?: string, userType: 'customer' | 'delivery_owner' = 'customer') => {
     try {
+      // Validação de senha
+      if (password.length < 6) {
+        return { error: new Error('A senha deve ter pelo menos 6 caracteres') };
+      }
+
       console.log('Auth: Starting signup for:', email);
       setLoading(true);
       
       // 1. Criar usuário no Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
+      const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -40,91 +45,68 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
       
-      if (error) {
-        console.error('Erro ao criar usuário Auth:', error);
-        alert('Erro ao criar usuário. Verifique email/senha ou se já existe.');
-        return { error };
+      if (signupError) {
+        console.error('Erro ao criar usuário Auth:', signupError);
+        if (signupError.message.includes('already registered')) {
+          return { error: new Error('Este email já está cadastrado') };
+        }
+        return { error: new Error('Erro ao criar usuário. Verifique email e senha.') };
       }
 
-      // 2. Obter o user_id
-      const authUserId = data.user?.id;
-      console.log('Novo usuário criado:', authUserId);
-
-      if (!authUserId) {
+      // 2. Verificar se o usuário foi criado
+      const userId = signupData.user?.id;
+      if (!userId) {
         console.error('Não foi possível obter o ID do usuário criado.');
-        alert('Não foi possível obter o ID do usuário criado.');
         return { error: new Error('Usuário não foi criado corretamente') };
       }
 
-      // 3. Login automático para estabelecer sessão
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (signInError) {
-        console.error('Erro no login automático:', signInError);
-        return { error: signInError };
-      }
+      console.log('Novo usuário criado:', userId);
 
-      console.log('Login automático realizado com sucesso');
-
-      // 4. Aguarda sessão para garantir que RLS aceite o insert
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 5. Criar perfil baseado no tipo de usuário
+      // 3. Criar perfil baseado no tipo de usuário
       try {
         if (userType === 'delivery_owner') {
-          const { data: businessData, error: businessError } = await supabase
+          const { error: businessError } = await supabase
             .from('delivery_businesses')
             .insert({
-              owner_id: authUserId,
+              owner_id: userId,
               name: name || 'Meu Delivery',
               description: 'Descrição do negócio'
-            })
-            .select()
-            .single();
+            });
 
           if (businessError) {
             console.error('Erro ao salvar negócio:', businessError);
-            alert('Erro ao salvar negócio. Detalhes no console.');
-            return { error: new Error(`Erro ao criar negócio: ${businessError.message}`) };
+            return { error: new Error('Erro ao criar perfil do negócio') };
           }
           
-          console.log('Negócio criado:', businessData);
+          console.log('Negócio criado com sucesso');
         } else {
           // Criar perfil do cliente
-          const { data: profileData, error: profileError } = await supabase
+          const { error: profileError } = await supabase
             .from('customer_profiles')
             .insert({
-              user_id: authUserId,
+              user_id: userId,
               name: name || 'Novo Cliente',
               phone: '',
               address: ''
-            })
-            .select()
-            .single();
+            });
 
           if (profileError) {
             console.error('Erro ao salvar perfil do cliente:', profileError);
-            alert('Erro ao salvar perfil. Detalhes no console.');
-            return { error: new Error(`Erro ao criar perfil: ${profileError.message}`) };
+            return { error: new Error('Erro ao criar perfil do cliente') };
           }
           
-          console.log('Perfil criado:', profileData);
+          console.log('Perfil do cliente criado com sucesso');
         }
       } catch (dbError) {
         console.error('Erro de banco de dados:', dbError);
-        alert('Erro de banco de dados. Detalhes no console.');
-        return { error: new Error(`Erro de banco de dados: ${dbError}`) };
+        return { error: new Error('Erro ao criar perfil no banco de dados') };
       }
       
       console.log('Cadastro realizado com sucesso!');
       return { error: null };
     } catch (error) {
       console.error('Erro geral no cadastro:', error);
-      alert('Erro geral no cadastro. Detalhes no console.');
-      return { error };
+      return { error: new Error('Erro inesperado ao criar usuário') };
     } finally {
       setLoading(false);
     }
