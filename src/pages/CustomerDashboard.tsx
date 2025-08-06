@@ -27,7 +27,9 @@ interface CustomerOrder {
   status: string;
   total_amount: number;
   created_at: string;
+  delivery_id: string;
   delivery_businesses: {
+    id: string;
     name: string;
   };
   order_items: Array<{
@@ -296,9 +298,19 @@ const CustomerDashboard = () => {
                             <span>{order.delivery_businesses.name}</span>
                           </CardDescription>
                         </div>
-                        <Badge variant={statusColors[order.status as keyof typeof statusColors]}>
-                          {statusTranslations[order.status as keyof typeof statusTranslations]}
-                        </Badge>
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge variant={statusColors[order.status as keyof typeof statusColors]}>
+                            {statusTranslations[order.status as keyof typeof statusTranslations]}
+                          </Badge>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(`/menu/${order.delivery_id}`, '_blank')}
+                            className="text-xs ml-2"
+                          >
+                            Ver Cardápio
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
