@@ -321,11 +321,9 @@ export type Database = {
           business_id: string
           created_at: string
           customer_address: string | null
-          customer_id: string | null
           customer_name: string
           customer_phone: string
           delivery_fee: number | null
-          delivery_id: string | null
           id: string
           notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -338,11 +336,9 @@ export type Database = {
           business_id: string
           created_at?: string
           customer_address?: string | null
-          customer_id?: string | null
           customer_name: string
           customer_phone: string
           delivery_fee?: number | null
-          delivery_id?: string | null
           id?: string
           notes?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -355,11 +351,9 @@ export type Database = {
           business_id?: string
           created_at?: string
           customer_address?: string | null
-          customer_id?: string | null
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number | null
-          delivery_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -372,13 +366,6 @@ export type Database = {
           {
             foreignKeyName: "orders_business_id_fkey"
             columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "delivery_businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_delivery_id_fkey"
-            columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "delivery_businesses"
             referencedColumns: ["id"]
@@ -418,30 +405,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["user_role"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["user_role"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["user_role"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -450,17 +413,6 @@ export type Database = {
       get_user_business_id: {
         Args: Record<PropertyKey, never>
         Returns: string
-      }
-      get_user_role: {
-        Args: { user_uuid: string }
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
-      has_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["user_role"]
-        }
-        Returns: boolean
       }
     }
     Enums: {
@@ -476,7 +428,6 @@ export type Database = {
         | "debit_card"
         | "pix"
         | "food_voucher"
-      user_role: "cliente" | "dono_delivery"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -618,7 +569,6 @@ export const Constants = {
         "pix",
         "food_voucher",
       ],
-      user_role: ["cliente", "dono_delivery"],
     },
   },
 } as const

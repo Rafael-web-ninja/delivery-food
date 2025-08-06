@@ -10,7 +10,6 @@ import { ArrowLeft, Clock, User, Phone, MapPin, DollarSign } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrdersList } from '@/components/OrdersList';
-import { PrintOrder } from '@/components/PrintOrder';
 
 type OrderStatus = 'pending' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
