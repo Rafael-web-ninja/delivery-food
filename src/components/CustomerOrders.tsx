@@ -26,7 +26,7 @@ interface Order {
 const statusMap = {
   pending: { label: 'Pendente', color: 'bg-yellow-500' },
   confirmed: { label: 'Confirmado', color: 'bg-blue-500' },
-  preparing: { label: 'Preparando', color: 'bg-orange-500' },
+  preparing: { label: 'Em preparação', color: 'bg-orange-500' },
   ready: { label: 'Pronto', color: 'bg-green-500' },
   delivered: { label: 'Entregue', color: 'bg-gray-500' },
   cancelled: { label: 'Cancelado', color: 'bg-red-500' }
@@ -45,6 +45,15 @@ export default function CustomerOrders() {
 
   const loadOrders = async () => {
     try {
+      // Buscar orders usando o relacionamento correto com customer_profiles
+      const customerProfile = await getCustomerProfileId();
+      
+      if (!customerProfile) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
       const { data } = await supabase
         .from('orders')
         .select(`
@@ -55,7 +64,7 @@ export default function CustomerOrders() {
             menu_items(name)
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('customer_id', customerProfile)
         .order('created_at', { ascending: false });
 
       setOrders((data as any) || []);
@@ -64,6 +73,18 @@ export default function CustomerOrders() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCustomerProfileId = async () => {
+    if (!user?.id) return null;
+    
+    const { data } = await supabase
+      .from('customer_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+    
+    return data?.id || null;
   };
 
   if (loading) {
@@ -90,8 +111,14 @@ export default function CustomerOrders() {
           <CardDescription>Você ainda não fez nenhum pedido</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Quando você fizer pedidos, eles aparecerão aqui.</p>
+          <div className="text-center py-8 animate-fade-in">
+            <div className="w-16 h-16 mx-auto text-muted-foreground mb-4 animate-pulse">
+              🛒
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Nenhum pedido ainda</h3>
+            <p className="text-muted-foreground">
+              Você ainda não fez nenhum pedido. Comece escolhendo seu cardápio favorito!
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -109,10 +136,21 @@ export default function CustomerOrders() {
           const status = statusMap[order.status as keyof typeof statusMap] || statusMap.pending;
           
           return (
-            <div key={order.id} className="border rounded-lg p-4 space-y-3">
+            <div key={order.id} className="border rounded-lg p-4 space-y-3 animate-fade-in hover:shadow-md transition-all duration-200">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold">{order.delivery_businesses.name}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold">{order.delivery_businesses.name}</h3>
+                    <Badge 
+                      variant="secondary" 
+                      className={`${status.color} text-white`}
+                    >
+                      {status.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Pedido #{order.id.slice(-8)}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {formatDistanceToNow(new Date(order.created_at), { 
                       addSuffix: true,
@@ -120,12 +158,6 @@ export default function CustomerOrders() {
                     })}
                   </p>
                 </div>
-                <Badge 
-                  variant="secondary" 
-                  className={`${status.color} text-white`}
-                >
-                  {status.label}
-                </Badge>
               </div>
               
               <div className="space-y-1">

@@ -58,7 +58,7 @@ const CustomerProfile = () => {
   const statusMap = {
     pending: { label: 'Pendente', color: 'bg-warning text-warning-foreground' },
     confirmed: { label: 'Confirmado', color: 'bg-secondary text-secondary-foreground' },
-    preparing: { label: 'Preparando', color: 'bg-blue-500 text-white' },
+    preparing: { label: 'Em preparação', color: 'bg-blue-500 text-white' },
     ready: { label: 'Pronto', color: 'bg-success text-success-foreground' },
     delivered: { label: 'Entregue', color: 'bg-green-600 text-white' },
     cancelled: { label: 'Cancelado', color: 'bg-destructive text-destructive-foreground' }
@@ -103,6 +103,7 @@ const CustomerProfile = () => {
 
     setLoadingOrders(true);
     try {
+      // Buscar orders usando o relacionamento correto com customer_profiles
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -113,7 +114,7 @@ const CustomerProfile = () => {
             menu_items (name)
           )
         `)
-        .or(`customer_id.eq.${user.id},user_id.eq.${user.id}`)
+        .eq('customer_id', await getCustomerProfileId())
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -127,6 +128,15 @@ const CustomerProfile = () => {
     } finally {
       setLoadingOrders(false);
     }
+  };
+
+  const getCustomerProfileId = async () => {
+    const { data } = await supabase
+      .from('customer_profiles')
+      .select('id')
+      .eq('user_id', user?.id)
+      .single();
+    return data?.id;
   };
 
   const handleSave = async () => {
@@ -267,25 +277,35 @@ const CustomerProfile = () => {
             {loadingOrders ? (
               <LoadingSpinner />
             ) : orders.length === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Você ainda não fez nenhum pedido</p>
+              <div className="text-center py-8 animate-fade-in">
+                <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground mb-4 animate-pulse" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum pedido ainda</h3>
+                <p className="text-muted-foreground">
+                  Você ainda não fez nenhum pedido. Comece escolhendo seu cardápio favorito!
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {orders.map((order) => (
                   <div
                     key={order.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 animate-fade-in"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold">{order.delivery_businesses?.name}</h4>
-                        <Badge 
-                          className={statusMap[order.status as keyof typeof statusMap]?.color || 'bg-gray-500 text-white'}
-                        >
-                          {statusMap[order.status as keyof typeof statusMap]?.label || order.status}
-                        </Badge>
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{order.delivery_businesses?.name}</h4>
+                            <Badge 
+                              className={statusMap[order.status as keyof typeof statusMap]?.color || 'bg-gray-500 text-white'}
+                            >
+                              {statusMap[order.status as keyof typeof statusMap]?.label || order.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Pedido #{order.id.slice(-8)}
+                          </p>
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
