@@ -136,12 +136,26 @@ const Auth = () => {
     const { error } = await signIn(email, password);
     
     if (error) {
+      console.error('Login error:', error);
+      let errorMessage = 'Email ou senha incorretos. Tente novamente.';
+      
+      if (error.message === 'Invalid login credentials') {
+        errorMessage = 'Email ou senha incorretos. Tente novamente.';
+      } else if (error.message === 'Email not confirmed') {
+        errorMessage = 'Por favor, confirme seu email antes de fazer login.';
+      } else if (error.message.includes('too many requests')) {
+        errorMessage = 'Muitas tentativas de login. Tente novamente em alguns minutos.';
+      }
+      
       toast({
         title: "Erro no login",
-        description: error.message === 'Invalid login credentials' 
-          ? 'Email ou senha incorretos' 
-          : error.message,
+        description: errorMessage,
         variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Login realizado!",
+        description: "Bem-vindo de volta!",
       });
     }
     setLoading(false);

@@ -103,6 +103,16 @@ const CustomerProfile = () => {
 
     setLoadingOrders(true);
     try {
+      // Primeiro, buscar o customer_profile_id
+      const customerProfileId = await getCustomerProfileId();
+      
+      if (!customerProfileId) {
+        console.log('Customer profile not found for user:', user.id);
+        setOrders([]);
+        setLoadingOrders(false);
+        return;
+      }
+
       // Buscar orders usando o relacionamento correto com customer_profiles
       const { data, error } = await supabase
         .from('orders')
@@ -114,7 +124,7 @@ const CustomerProfile = () => {
             menu_items (name)
           )
         `)
-        .eq('customer_id', await getCustomerProfileId())
+        .eq('customer_id', customerProfileId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -122,6 +132,7 @@ const CustomerProfile = () => {
         return;
       }
 
+      console.log('Orders loaded:', data?.length || 0);
       setOrders((data as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
@@ -131,12 +142,25 @@ const CustomerProfile = () => {
   };
 
   const getCustomerProfileId = async () => {
-    const { data } = await supabase
-      .from('customer_profiles')
-      .select('id')
-      .eq('user_id', user?.id)
-      .single();
-    return data?.id;
+    if (!user?.id) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching customer profile:', error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.error('Exception fetching customer profile:', error);
+      return null;
+    }
   };
 
   const handleSave = async () => {
@@ -295,7 +319,7 @@ const CustomerProfile = () => {
                       <div className="flex items-center gap-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold">{order.delivery_businesses?.name}</h4>
+                            <h4 className="font-semibold">{order.delivery_businesses?.name || 'Delivery'}</h4>
                             <Badge 
                               className={statusMap[order.status as keyof typeof statusMap]?.color || 'bg-gray-500 text-white'}
                             >
@@ -320,20 +344,24 @@ const CustomerProfile = () => {
                     
                     <div className="space-y-2 mb-3">
                       <p className="text-sm font-medium">Itens:</p>
-                      {order.order_items?.map((item) => (
-                        <div key={item.id} className="flex justify-between text-sm">
-                          <span>
-                            {item.quantity}x {item.menu_items?.name || 'Item'}
-                            {item.notes && <span className="text-muted-foreground"> - {item.notes}</span>}
-                          </span>
-                          <span>R$ {item.total_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )) || <p className="text-sm text-muted-foreground">Nenhum item encontrado</p>}
+                      {order.order_items && order.order_items.length > 0 ? (
+                        order.order_items.map((item) => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span>
+                              {item.quantity}x {item.menu_items?.name || 'Item'}
+                              {item.notes && <span className="text-muted-foreground"> - {item.notes}</span>}
+                            </span>
+                            <span>R$ {Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Nenhum item encontrado</p>
+                      )}
                     </div>
                     
                     <div className="flex items-center justify-between pt-3 border-t">
                       <div className="font-semibold">
-                        Total: R$ {order.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        Total: R$ {Number(order.total_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
                       <Button 
                         variant="outline" 
