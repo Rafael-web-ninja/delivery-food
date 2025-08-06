@@ -58,7 +58,7 @@ export default function CustomerOrders() {
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
-      setOrders(data || []);
+      setOrders((data as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {

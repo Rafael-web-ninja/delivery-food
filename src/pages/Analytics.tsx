@@ -233,7 +233,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                R$ {analytics?.totalRevenue.toFixed(2) || '0,00'}
+                R$ {analytics?.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
               </div>
             </CardContent>
           </Card>
@@ -255,7 +255,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                R$ {analytics?.averageOrderValue.toFixed(2) || '0,00'}
+                R$ {analytics?.averageOrderValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
               </div>
             </CardContent>
           </Card>
@@ -290,7 +290,14 @@ const Analytics = () => {
                   <XAxis dataKey="date" />
                   <YAxis yAxisId="left" />
                   <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
+                  <Tooltip 
+                    formatter={(value, name) => {
+                      if (name === 'Receita (R$)') {
+                        return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                      }
+                      return value;
+                    }}
+                  />
                   <Line
                     yAxisId="left"
                     type="monotone"
@@ -324,7 +331,9 @@ const Analytics = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip 
+                    formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  />
                   <Bar dataKey="value" fill="hsl(var(--primary))" />
                 </BarChart>
               </ResponsiveContainer>

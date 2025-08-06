@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Phone, MapPin, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PrintOrder } from '@/components/PrintOrder';
 
 interface Order {
   id: string;
@@ -63,6 +64,18 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
     return 'Concluir';
   };
 
+  const getPaymentMethodName = (method: string) => {
+    const methodMap: { [key: string]: string } = {
+      'cash': 'Dinheiro',
+      'card': 'Cartão',
+      'debit': 'Cartão de Débito',
+      'credit': 'Cartão de Crédito',
+      'pix': 'PIX',
+      'bank_transfer': 'Transferência Bancária'
+    };
+    return methodMap[method] || method;
+  };
+
   return (
     <div className="space-y-4">
       {orders.length === 0 ? (
@@ -106,7 +119,7 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
                     R$ {Number(order.total_amount).toFixed(2)}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {order.payment_method}
+                    {getPaymentMethodName(order.payment_method)}
                   </div>
                 </div>
               </div>
@@ -136,6 +149,7 @@ export function OrdersList({ orders, onStatusUpdate }: OrdersListProps) {
                 )}
 
                 <div className="flex gap-2 pt-2">
+                  <PrintOrder order={order as any} />
                   {order.status !== 'delivered' && order.status !== 'cancelled' && (
                     <Button
                       onClick={() => onStatusUpdate(order.id, nextStatus[order.status])}

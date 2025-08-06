@@ -110,7 +110,7 @@ const CustomerDashboard = () => {
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
-      if (data) setOrders(data);
+      if (data) setOrders(data as any);
       if (error) console.error('Erro ao buscar pedidos:', error);
     } catch (error) {
       console.error('Erro ao buscar pedidos:', error);

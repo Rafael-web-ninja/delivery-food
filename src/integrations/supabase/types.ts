@@ -321,9 +321,11 @@ export type Database = {
           business_id: string
           created_at: string
           customer_address: string | null
+          customer_id: string | null
           customer_name: string
           customer_phone: string
           delivery_fee: number | null
+          delivery_id: string | null
           id: string
           notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -336,9 +338,11 @@ export type Database = {
           business_id: string
           created_at?: string
           customer_address?: string | null
+          customer_id?: string | null
           customer_name: string
           customer_phone: string
           delivery_fee?: number | null
+          delivery_id?: string | null
           id?: string
           notes?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -351,9 +355,11 @@ export type Database = {
           business_id?: string
           created_at?: string
           customer_address?: string | null
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number | null
+          delivery_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -366,6 +372,13 @@ export type Database = {
           {
             foreignKeyName: "orders_business_id_fkey"
             columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_id_fkey"
+            columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "delivery_businesses"
             referencedColumns: ["id"]

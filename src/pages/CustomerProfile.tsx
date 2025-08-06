@@ -7,12 +7,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { LogOut, User, MapPin, Phone } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { LogOut, User, MapPin, Phone, ShoppingBag, Calendar, Eye } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface CustomerProfile {
   name: string;
   phone: string;
   address: string;
+}
+
+interface Order {
+  id: string;
+  customer_name: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+  business_id: string;
+  delivery_businesses?: {
+    name: string;
+  } | null;
+  order_items?: {
+    id: string;
+    menu_item_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    notes?: string;
+    menu_items?: {
+      name: string;
+    } | null;
+  }[];
 }
 
 const CustomerProfile = () => {
@@ -23,8 +49,20 @@ const CustomerProfile = () => {
     phone: '',
     address: ''
   });
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Status mapping com traduções em português
+  const statusMap = {
+    pending: { label: 'Pendente', color: 'bg-warning text-warning-foreground' },
+    confirmed: { label: 'Confirmado', color: 'bg-secondary text-secondary-foreground' },
+    preparing: { label: 'Preparando', color: 'bg-blue-500 text-white' },
+    ready: { label: 'Pronto', color: 'bg-success text-success-foreground' },
+    delivered: { label: 'Entregue', color: 'bg-green-600 text-white' },
+    cancelled: { label: 'Cancelado', color: 'bg-destructive text-destructive-foreground' }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -57,7 +95,39 @@ const CustomerProfile = () => {
     };
 
     loadProfile();
+    loadOrders();
   }, [user]);
+
+  const loadOrders = async () => {
+    if (!user) return;
+
+    setLoadingOrders(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          delivery_businesses (name),
+          order_items (
+            *,
+            menu_items (name)
+          )
+        `)
+        .or(`customer_id.eq.${user.id},user_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar pedidos:', error);
+        return;
+      }
+
+      setOrders((data as any) || []);
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -95,6 +165,10 @@ const CustomerProfile = () => {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleViewMenu = (businessId: string) => {
+    window.open(`/menu/${businessId}`, '_blank');
   };
 
   if (loading) {
@@ -175,6 +249,85 @@ const CustomerProfile = () => {
             >
               {saving ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Orders History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" />
+              Histórico de Pedidos
+            </CardTitle>
+            <CardDescription>
+              Acompanhe seus pedidos realizados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingOrders ? (
+              <LoadingSpinner />
+            ) : orders.length === 0 ? (
+              <div className="text-center py-8">
+                <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Você ainda não fez nenhum pedido</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold">{order.delivery_businesses?.name}</h4>
+                        <Badge 
+                          className={statusMap[order.status as keyof typeof statusMap]?.color || 'bg-gray-500 text-white'}
+                        >
+                          {statusMap[order.status as keyof typeof statusMap]?.label || order.status}
+                        </Badge>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          {formatDistanceToNow(new Date(order.created_at), { 
+                            addSuffix: true, 
+                            locale: ptBR 
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 mb-3">
+                      <p className="text-sm font-medium">Itens:</p>
+                      {order.order_items?.map((item) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span>
+                            {item.quantity}x {item.menu_items?.name || 'Item'}
+                            {item.notes && <span className="text-muted-foreground"> - {item.notes}</span>}
+                          </span>
+                          <span>R$ {item.total_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      )) || <p className="text-sm text-muted-foreground">Nenhum item encontrado</p>}
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <div className="font-semibold">
+                        Total: R$ {order.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewMenu(order.business_id)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver Cardápio
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
