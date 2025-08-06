@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CartItem {
   id: string;
@@ -35,6 +36,7 @@ interface CheckoutFormProps {
 export default function CheckoutForm({ cart, business, total, onOrderComplete, onCancel, onRemoveItem }: CheckoutFormProps) {
   const { toast } = useToast();
   const { user, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
   // Formulário de dados do cliente
@@ -211,6 +213,25 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
   const saveOrderToDatabase = async () => {
     try {
+      if (!user) {
+        throw new Error('Você precisa estar logado para fazer um pedido');
+      }
+
+      // 1. Buscar customer_id do customer_profiles usando auth.uid()
+      const { data: customerProfile, error: customerError } = await supabase
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (customerError) {
+        throw customerError;
+      }
+
+      if (!customerProfile) {
+        throw new Error('Erro: sua conta de cliente não está vinculada corretamente. Faça login novamente.');
+      }
+
       // Buscar a taxa de entrega do negócio
       const { data: businessData } = await supabase
         .from('delivery_businesses')
@@ -221,8 +242,9 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const deliveryFee = businessData?.delivery_fee || 0;
       const totalWithDelivery = total + Number(deliveryFee);
 
-      // Criar o pedido
+      // 2. Criar pedido com customer_id correto
       const orderData = {
+        customer_id: customerProfile.id,
         business_id: business.id,
         customer_name: customerData.name,
         customer_phone: customerData.phone,
@@ -231,8 +253,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         delivery_fee: deliveryFee,
         payment_method: 'cash' as const,
         notes: customerData.notes || '',
-        status: 'pending' as const,
-        user_id: user?.id || null
+        status: 'pending' as const
       };
 
       const { data: order, error: orderError } = await supabase
@@ -246,7 +267,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         throw new Error('Erro ao criar pedido. Verifique os dados e tente novamente.');
       }
 
-      // Criar os itens do pedido
+      // 3. Criar os itens do pedido
       const orderItems = cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.id,
@@ -299,6 +320,12 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       });
       
       onOrderComplete();
+      
+      // Redirecionar para a aba de pedidos
+      setTimeout(() => {
+        navigate(`/public-menu/${business.id}?tab=orders`);
+      }, 1000);
+      
     } catch (error: any) {
       console.error('Erro ao finalizar pedido:', error);
       toast({

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -64,6 +64,7 @@ interface CartItem extends MenuItem {
 
 const PublicMenu = () => {
   const { businessId } = useParams<{ businessId: string }>();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -74,6 +75,7 @@ const PublicMenu = () => {
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [filters, setFilters] = useState({ search: '', categoryId: null as string | null });
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
 
   // 1️⃣ Carregar dados ao montar / businessId mudar
   useEffect(() => {
@@ -431,7 +433,7 @@ const PublicMenu = () => {
       {/* Conteúdo Principal */}
       <div className="container mx-auto px-4 py-8">
         {user ? (
-          <Tabs defaultValue="menu" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="menu">Cardápio</TabsTrigger>
               <TabsTrigger value="profile">Meu Perfil</TabsTrigger>

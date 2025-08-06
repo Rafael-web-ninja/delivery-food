@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
 
 interface Order {
   id: string;
@@ -13,6 +14,7 @@ interface Order {
   status: string;
   created_at: string;
   delivery_businesses: {
+    id: string;
     name: string;
   };
   order_items: Array<{
@@ -45,20 +47,43 @@ export default function CustomerOrders() {
 
   const loadOrders = async () => {
     try {
-      const { data } = await supabase
+      // 1. Buscar customer_id do customer_profiles usando auth.uid()
+      const { data: customerProfile, error: customerError } = await supabase
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (customerError) {
+        throw customerError;
+      }
+
+      if (!customerProfile) {
+        console.log('Perfil de cliente não encontrado');
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Buscar pedidos usando customer_id
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
-          delivery_businesses!inner(name),
+          delivery_businesses!inner(id, name),
           order_items(
             quantity,
             menu_items(name)
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('customer_id', customerProfile.id)
         .order('created_at', { ascending: false });
 
-      setOrders(data || []);
+      if (error) {
+        throw error;
+      }
+
+      setOrders((data as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
@@ -91,7 +116,7 @@ export default function CustomerOrders() {
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Quando você fizer pedidos, eles aparecerão aqui.</p>
+            <p className="text-muted-foreground">Você ainda não fez nenhum pedido. Comece escolhendo seu cardápio favorito!</p>
           </div>
         </CardContent>
       </Card>
@@ -112,7 +137,10 @@ export default function CustomerOrders() {
             <div key={order.id} className="border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold">{order.delivery_businesses.name}</h3>
+                  <h3 className="font-semibold">#{order.id.slice(-8)} - {order.delivery_businesses.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(order.created_at).toLocaleString('pt-BR')}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {formatDistanceToNow(new Date(order.created_at), { 
                       addSuffix: true,
@@ -120,15 +148,21 @@ export default function CustomerOrders() {
                     })}
                   </p>
                 </div>
-                <Badge 
-                  variant="secondary" 
-                  className={`${status.color} text-white`}
-                >
-                  {status.label}
-                </Badge>
+                <div className="text-right">
+                  <Badge 
+                    variant="secondary" 
+                    className={`${status.color} text-white mb-2`}
+                  >
+                    {status.label}
+                  </Badge>
+                  <p className="font-semibold">
+                    R$ {Number(order.total_amount).toFixed(2)}
+                  </p>
+                </div>
               </div>
               
               <div className="space-y-1">
+                <h4 className="font-medium text-sm">Itens do pedido:</h4>
                 {order.order_items.map((item, index) => (
                   <p key={index} className="text-sm">
                     {item.quantity}x {item.menu_items.name}
@@ -136,10 +170,14 @@ export default function CustomerOrders() {
                 ))}
               </div>
               
-              <div className="text-right">
-                <p className="font-semibold">
-                  Total: R$ {Number(order.total_amount).toFixed(2)}
-                </p>
+              <div className="pt-2 border-t">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open(`/public-menu/${order.delivery_businesses.id}`, '_blank')}
+                >
+                  Ver Cardápio
+                </Button>
               </div>
             </div>
           );

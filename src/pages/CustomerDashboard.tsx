@@ -96,6 +96,24 @@ const CustomerDashboard = () => {
 
   const fetchOrders = async () => {
     try {
+      // 1. Buscar customer_id do customer_profiles usando auth.uid()
+      const { data: customerProfile, error: customerError } = await supabase
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (customerError) {
+        throw customerError;
+      }
+
+      if (!customerProfile) {
+        console.log('Perfil de cliente não encontrado');
+        setOrders([]);
+        return;
+      }
+
+      // 2. Buscar pedidos usando customer_id
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -107,10 +125,10 @@ const CustomerDashboard = () => {
             menu_items (name)
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('customer_id', customerProfile.id)
         .order('created_at', { ascending: false });
 
-      if (data) setOrders(data);
+      if (data) setOrders(data as any);
       if (error) console.error('Erro ao buscar pedidos:', error);
     } catch (error) {
       console.error('Erro ao buscar pedidos:', error);
