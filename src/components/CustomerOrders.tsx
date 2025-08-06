@@ -49,8 +49,8 @@ export default function CustomerOrders() {
     try {
       console.log('🔍 Buscando pedidos para usuário:', user?.id, user?.email);
       
-      // 1. Buscar customer_id do customer_profiles usando auth.uid()
-      const { data: customerProfile, error: customerError } = await supabase
+      // 1. Buscar ou criar customer_id do customer_profiles usando auth.uid()
+      let { data: customerProfile, error: customerError } = await supabase
         .from('customer_profiles')
         .select('id')
         .eq('user_id', user?.id)
@@ -84,38 +84,11 @@ export default function CustomerOrders() {
           throw createError;
         }
 
-        console.log('✅ Perfil criado:', newProfile);
-        
-        // Usar o novo perfil
-        const profileId = newProfile.id;
-        
-        // Buscar pedidos com o novo profile_id
-        const { data, error } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            delivery_businesses!inner(id, name),
-            order_items(
-              quantity,
-              menu_items(name)
-            )
-          `)
-          .eq('customer_id', profileId)
-          .order('created_at', { ascending: false });
-
-        console.log('📦 Pedidos encontrados para novo perfil:', data);
-
-        if (error) {
-          console.error('❌ Erro ao buscar pedidos:', error);
-          throw error;
-        }
-
-        setOrders((data as any) || []);
-        setLoading(false);
-        return;
+        customerProfile = newProfile;
+        console.log('✅ Perfil criado:', customerProfile);
       }
 
-      // 2. Buscar pedidos usando customer_id
+      // 2. Buscar pedidos usando customer_id OU pedidos antigos usando user_id
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -126,10 +99,13 @@ export default function CustomerOrders() {
             menu_items(name)
           )
         `)
-        .eq('customer_id', customerProfile.id)
+        .or(`customer_id.eq.${customerProfile.id},and(customer_id.is.null,user_id.eq.${user?.id})`)
         .order('created_at', { ascending: false });
 
+      console.log('📦 Pedidos encontrados:', data);
+
       if (error) {
+        console.error('❌ Erro ao buscar pedidos:', error);
         throw error;
       }
 
