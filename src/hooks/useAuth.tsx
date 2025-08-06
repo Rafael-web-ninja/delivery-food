@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, businessName?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name?: string, userType?: 'customer' | 'delivery_owner') => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
@@ -22,9 +22,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [initialized, setInitialized] = useState(false);
 
   // STABLE CALLBACKS - NO DEPENDENCIES THAT CHANGE
-  const signUp = useCallback(async (email: string, password: string, businessName?: string) => {
+  const signUp = useCallback(async (email: string, password: string, name?: string, userType: 'customer' | 'delivery_owner' = 'customer') => {
     try {
-      console.log('Auth: Starting signup for:', email);
+      console.log('Auth: Starting signup for:', email, 'as', userType);
       setLoading(true);
       
       const redirectUrl = `${window.location.origin}/`;
@@ -35,7 +35,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            business_name: businessName
+            name: name,
+            user_type: userType
           }
         }
       });
@@ -57,6 +58,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (signInError) {
           console.error('Auth: Auto-login failed:', signInError);
           return { error: signInError };
+        }
+
+        // Criar registro baseado no tipo de usuário
+        try {
+          if (userType === 'delivery_owner') {
+            // Criar delivery business
+            const { error: businessError } = await supabase
+              .from('delivery_businesses')
+              .insert({
+                owner_id: data.user.id,
+                name: name || 'Meu Delivery',
+                description: 'Descrição do negócio'
+              });
+
+            if (businessError) {
+              console.error('Auth: Error creating business:', businessError);
+            }
+          } else {
+            // Criar perfil de cliente  
+            const { error: profileError } = await supabase
+              .from('customer_profiles')
+              .insert({
+                user_id: data.user.id,
+                name: name || ''
+              });
+
+            if (profileError) {
+              console.error('Auth: Error creating customer profile:', profileError);
+            }
+          }
+        } catch (dbError) {
+          console.error('Auth: Database error after signup:', dbError);
+          // Não falhar o cadastro por erro de DB
         }
       }
       
