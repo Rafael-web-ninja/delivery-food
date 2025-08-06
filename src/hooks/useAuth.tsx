@@ -46,17 +46,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error };
       }
 
-      console.log('Auth: Signup successful, attempting auto-login');
+      console.log('Auth: Signup successful, user created:', data.user?.id);
       
       // Verificar se o usuário foi criado com sucesso
-      if (!data.user) {
-        console.error('Auth: User not created');
+      if (!data.user?.id) {
+        console.error('Auth: User not created properly');
         return { error: new Error('Usuário não foi criado corretamente') };
       }
 
-      console.log('Auth: User created successfully, ID:', data.user.id);
+      const authUserId = data.user.id;
+      console.log('Novo usuário criado:', authUserId);
 
-      // Login automático após cadastro
+      // Login automático após cadastro para estabelecer sessão
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -67,39 +68,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: signInError };
       }
 
-      console.log('Auth: Auto-login successful, creating profile...');
+      console.log('Auth: Auto-login successful');
 
-      // Criar registro baseado no tipo de usuário - APÓS login bem-sucedido
+      // Aguardar um momento para garantir que a sessão esteja estabelecida
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Criar registro baseado no tipo de usuário
       try {
         if (userType === 'delivery_owner') {
           // Criar delivery business
-          const { error: businessError } = await supabase
+          const { data: businessData, error: businessError } = await supabase
             .from('delivery_businesses')
             .insert({
-              owner_id: data.user.id,
+              owner_id: authUserId,
               name: name || 'Meu Delivery',
               description: 'Descrição do negócio'
-            });
+            })
+            .select()
+            .single();
 
           if (businessError) {
-            console.error('Auth: Error creating business:', businessError);
+            console.error('Erro ao criar negócio:', businessError);
             return { error: new Error(`Erro ao criar negócio: ${businessError.message}`) };
           }
           
-          console.log('Auth: Delivery business created successfully');
+          console.log('Negócio criado com sucesso:', businessData);
         } else {
-          // Garantir que temos o user_id correto
-          const authUserId = data.user.id;
-          if (!authUserId) {
-            return { error: new Error('Erro ao obter ID do usuário autenticado') };
-          }
-
-          // Criar perfil do cliente na tabela customer_profiles
+          // Criar perfil do cliente
           const { data: profileData, error: profileError } = await supabase
             .from('customer_profiles')
             .insert({
-              user_id: authUserId, // ✅ Necessário para RLS
-              name: name || '',
+              user_id: authUserId,
+              name: name || 'Novo Cliente',
               phone: '',
               address: ''
             })
@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return { error: new Error(`Erro ao criar perfil: ${profileError.message}`) };
           }
           
-          console.log('Novo cliente cadastrado com sucesso:', profileData);
+          console.log('Perfil criado com sucesso:', profileData);
         }
       } catch (dbError) {
         console.error('Auth: Database error after signup:', dbError);
