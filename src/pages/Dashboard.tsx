@@ -50,12 +50,13 @@ const Dashboard = () => {
       const { data, error } = await supabase
         .from('delivery_businesses')
         .select('*')
-        .single();
+        .eq('owner_id', user?.id)
+        .maybeSingle();
 
       if (data) {
         setBusiness(data);
         setMenuLink(`${window.location.origin}/menu/${data.id}`);
-      } else if (error) {
+      } else {
         // Criar business se não existir
         const { data: newBusiness } = await supabase
           .from('delivery_businesses')
@@ -82,10 +83,21 @@ const Dashboard = () => {
   const fetchStats = useCallback(async () => {
     setLoadingStats(true);
     try {
+      const { data: business, error: bizError } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .single();
+
+      if (bizError || !business) {
+        setStats({ totalItems: 0, totalOrders: 0, pendingOrders: 0 });
+        return;
+      }
+
       const [itemsResult, ordersResult, pendingResult] = await Promise.all([
-        supabase.from('menu_items').select('id', { count: 'exact' }),
-        supabase.from('orders').select('id', { count: 'exact' }),
-        supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pending')
+        supabase.from('menu_items').select('id', { count: 'exact' }).eq('business_id', business.id),
+        supabase.from('orders').select('id', { count: 'exact' }).eq('business_id', business.id),
+        supabase.from('orders').select('id', { count: 'exact' }).eq('business_id', business.id).eq('status', 'pending')
       ]);
 
       setStats({
@@ -98,7 +110,7 @@ const Dashboard = () => {
     } finally {
       setLoadingStats(false);
     }
-  }, []);
+  }, [user]);
 
   const copyMenuLink = useCallback(async () => {
     await executeCopyLink(async () => {

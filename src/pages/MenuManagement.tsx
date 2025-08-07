@@ -58,25 +58,49 @@ const MenuManagement = () => {
   }, [user]);
 
   const fetchItems = async () => {
-    const { data, error } = await supabase
-      .from('menu_items')
-      .select('*')
-      .order('name');
+    try {
+      const { data: business, error: bizError } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .single();
 
-    if (data) setItems(data);
-    if (error) console.error('Erro ao buscar itens:', error);
+      if (bizError) throw bizError;
+      if (!business) throw new Error('Negócio não encontrado');
+
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('business_id', business.id)
+        .order('name');
+
+      if (error) throw error;
+      if (data) setItems(data);
+    } catch (error) {
+      console.error('Erro ao buscar itens:', error);
+    }
   };
 
   const fetchCategories = async () => {
     try {
+      const { data: business, error: bizError } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .single();
+
+      if (bizError) throw bizError;
+      if (!business) throw new Error('Negócio não encontrado');
+
       const { data, error } = await supabase
         .from('menu_categories')
         .select('*')
+        .eq('business_id', business.id)
         .eq('active', true)
         .order('name');
 
+      if (error) throw error;
       if (data) setCategories(data);
-      if (error) console.error('Erro ao buscar categorias:', error);
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
     }
@@ -136,9 +160,10 @@ const MenuManagement = () => {
         const { data: businessData } = await supabase
           .from('delivery_businesses')
           .select('id')
+          .eq('owner_id', user?.id)
           .single();
         
-        if (!businessData) throw new Error('Business not found');
+        if (!businessData) throw new Error('Negócio não encontrado');
         
         result = await supabase
           .from('menu_items')

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,7 @@ interface Category {
 }
 
 export default function CategoryManagement() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,9 +37,19 @@ export default function CategoryManagement() {
 
   const fetchCategories = async () => {
     try {
+      const { data: business, error: bizError } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .single();
+
+      if (bizError) throw bizError;
+      if (!business) throw new Error('Negócio não encontrado');
+
       const { data, error } = await supabase
         .from('menu_categories')
         .select('*')
+        .eq('business_id', business.id)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -65,6 +77,7 @@ export default function CategoryManagement() {
       const { data: businessData, error: businessError } = await supabase
         .from('delivery_businesses')
         .select('id')
+        .eq('owner_id', user?.id)
         .single();
 
       if (businessError) throw businessError;
