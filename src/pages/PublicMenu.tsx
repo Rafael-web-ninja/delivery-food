@@ -416,6 +416,7 @@ const PublicMenu = () => {
                 </Link>
               )}
               <Button
+                variant="secondary"
                 onClick={() => setShowCheckout(true)}
                 className="relative flex items-center gap-2 border-0"
                 disabled={cart.length === 0}
@@ -521,6 +522,7 @@ const PublicMenu = () => {
                         </div>
 
                         <Button
+                          variant="secondary"
                           onClick={() => addToCart(item)}
                           className="flex items-center gap-2 border-0"
                           disabled={(selectedQuantities[item.id] || 0) === 0}
@@ -619,15 +621,16 @@ const PublicMenu = () => {
                        </Button>
                      </div>
 
-                      <Button
-                        onClick={() => addToCart(item)}
-                        className="flex items-center gap-2 border-0"
-                        disabled={(selectedQuantities[item.id] || 0) === 0}
-                        style={{
-                          backgroundColor: business.button_color || '#16A34A',
-                          color: business.button_text_color || '#FFFFFF'
-                        }}
-                      >
+                       <Button
+                         variant="secondary"
+                         onClick={() => addToCart(item)}
+                         className="flex items-center gap-2 border-0"
+                         disabled={(selectedQuantities[item.id] || 0) === 0}
+                         style={{
+                           backgroundColor: business.button_color || '#16A34A',
+                           color: business.button_text_color || '#FFFFFF'
+                         }}
+                       >
                         <Plus className="h-4 w-4" />
                         Adicionar
                       </Button>
