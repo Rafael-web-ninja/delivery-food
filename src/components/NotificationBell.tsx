@@ -60,7 +60,7 @@ export const NotificationBell = () => {
                 className="flex flex-col items-start p-3 cursor-pointer"
                 onClick={() => {
                   markAsRead(notification.id);
-                  window.location.href = `/dashboard/orders?orderId=${notification.id}`;
+                  window.location.href = '/orders';
                 }}
               >
                 <div className="font-medium text-sm">
