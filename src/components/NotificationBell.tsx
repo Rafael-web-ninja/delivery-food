@@ -58,7 +58,10 @@ export const NotificationBell = () => {
               <DropdownMenuItem
                 key={notification.id}
                 className="flex flex-col items-start p-3 cursor-pointer"
-                onClick={() => markAsRead(notification.id)}
+                onClick={() => {
+                  markAsRead(notification.id);
+                  window.location.href = `/dashboard/orders?orderId=${notification.id}`;
+                }}
               >
                 <div className="font-medium text-sm">
                   Novo pedido - {notification.customer_name}

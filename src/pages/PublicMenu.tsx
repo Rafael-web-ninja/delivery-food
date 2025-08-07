@@ -116,8 +116,12 @@ const PublicMenu = () => {
   // 2️⃣ Aplicar cores personalizadas SEMPRE antes dos retornos
   useEffect(() => {
     if (!business) return;
+    
     const root = document.documentElement;
+    
     const hexToHsl = (hex: string) => {
+      if (!hex || hex === '#ffffff' || hex === '#000000') return null;
+      
       const r = parseInt(hex.slice(1, 3), 16) / 255;
       const g = parseInt(hex.slice(3, 5), 16) / 255;
       const b = parseInt(hex.slice(5, 7), 16) / 255;
@@ -146,26 +150,30 @@ const PublicMenu = () => {
         l * 100
       )}%`;
     };
-    root.style.setProperty(
-      '--primary',
-      hexToHsl(business.primary_color || '#2563eb')
-    );
-    root.style.setProperty(
-      '--secondary',
-      hexToHsl(business.secondary_color || '#64748b')
-    );
-    root.style.setProperty(
-      '--accent',
-      hexToHsl(business.accent_color || '#059669')
-    );
-    root.style.setProperty(
-      '--background',
-      hexToHsl(business.background_color || '#ffffff')
-    );
-    root.style.setProperty(
-      '--foreground',
-      hexToHsl(business.text_color || '#1e293b')
-    );
+
+    // Aplicar cores se elas não forem as padrões
+    const primaryHsl = hexToHsl(business.primary_color);
+    const secondaryHsl = hexToHsl(business.secondary_color);
+    const accentHsl = hexToHsl(business.accent_color);
+    const backgroundHsl = hexToHsl(business.background_color);
+    const foregroundHsl = hexToHsl(business.text_color);
+
+    if (primaryHsl) {
+      root.style.setProperty('--primary', primaryHsl);
+    }
+    if (secondaryHsl) {
+      root.style.setProperty('--secondary', secondaryHsl);
+    }
+    if (accentHsl) {
+      root.style.setProperty('--accent', accentHsl);
+    }
+    if (backgroundHsl) {
+      root.style.setProperty('--background', backgroundHsl);
+    }
+    if (foregroundHsl) {
+      root.style.setProperty('--foreground', foregroundHsl);
+    }
+
     return () => {
       root.style.removeProperty('--primary');
       root.style.removeProperty('--secondary');

@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import OrderSuccessModal from './OrderSuccessModal';
+import { DeliveryFeeDisplay, TotalWithDelivery } from './DeliveryFeeDisplay';
 
 interface CartItem {
   id: string;
@@ -398,9 +399,16 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
                   </div>
                 </div>
               ))}
-              <div className="border-t mt-2 pt-2 font-semibold flex justify-between">
-                <span>Total</span>
-                <span>{formatCurrency(total)}</span>
+              <div className="border-t mt-2 pt-2">
+                <div className="flex justify-between text-sm py-1">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+                <DeliveryFeeDisplay businessId={business.id} />
+                <div className="border-t mt-2 pt-2 font-semibold flex justify-between">
+                  <span>Total</span>
+                  <TotalWithDelivery businessId={business.id} subtotal={total} />
+                </div>
               </div>
             </div>
 
