@@ -457,6 +457,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      force_create_user: {
+        Args: { email: string; password?: string }
+        Returns: string
+      }
       generate_order_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -475,6 +479,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["user_role"]
         }
         Returns: boolean
+      }
+      insert_user: {
+        Args: { email: string }
+        Returns: string
       }
     }
     Enums: {

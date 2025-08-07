@@ -112,50 +112,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           console.log('Negócio criado com sucesso');
         } else {
-          // Criar perfil do cliente
-          const { error: profileError } = await supabase
+          // Criar perfil do cliente (idempotente)
+          // Verifica se já existe para evitar erros de duplicidade quando triggers já criaram o perfil
+          const { data: existingProfile, error: existingCheckError } = await supabase
             .from('customer_profiles')
-            .insert({
-              user_id: userId,
-              name: name || 'Novo Cliente',
-              phone: '',
-              address: ''
-            });
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
 
-          if (profileError) {
-            console.error('Erro ao salvar perfil do cliente:', profileError);
-            
-            // Se for erro de RLS, tentar fazer login primeiro
-            if (profileError.message?.includes('row-level security') || profileError.message?.includes('RLS')) {
-              try {
-                // Fazer login automático para estabelecer sessão
-                await supabase.auth.signInWithPassword({ email, password });
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Tentar criar perfil novamente
-                const { error: retryProfileError } = await supabase
-                  .from('customer_profiles')
-                  .insert({
-                    user_id: userId,
-                    name: name || 'Novo Cliente',
-                    phone: '',
-                    address: ''
-                  });
-                
-                if (retryProfileError) {
-                  console.error('Erro ao salvar perfil na segunda tentativa:', retryProfileError);
+          if (!existingCheckError && existingProfile) {
+            console.log('Perfil do cliente já existe, pulando criação');
+          } else {
+            const attemptCreateProfile = async () => {
+              const { error: profileError } = await supabase
+                .from('customer_profiles')
+                .insert({
+                  user_id: userId,
+                  name: name || 'Novo Cliente',
+                  phone: '',
+                  address: ''
+                });
+              return profileError;
+            };
+
+            let profileError = await attemptCreateProfile();
+            if (profileError) {
+              // Ignora duplicidade se o perfil foi criado por trigger
+              const msg = String(profileError.message || '');
+              if (msg.includes('duplicate key value')) {
+                console.warn('Perfil já existia (duplicado), seguindo em frente');
+              } else if (msg.includes('row-level security') || msg.includes('RLS')) {
+                try {
+                  await supabase.auth.signInWithPassword({ email, password });
+                  await new Promise((resolve) => setTimeout(resolve, 500));
+                  profileError = await attemptCreateProfile();
+                  if (profileError && !String(profileError.message || '').includes('duplicate key value')) {
+                    console.error('Erro ao salvar perfil na segunda tentativa:', profileError);
+                    return { error: new Error('Erro ao criar perfil do cliente') };
+                  }
+                } catch (loginError) {
+                  console.error('Erro no login automático:', loginError);
                   return { error: new Error('Erro ao criar perfil do cliente') };
                 }
-              } catch (loginError) {
-                console.error('Erro no login automático:', loginError);
+              } else {
                 return { error: new Error('Erro ao criar perfil do cliente') };
               }
-            } else {
-              return { error: new Error('Erro ao criar perfil do cliente') };
             }
+            console.log('Perfil do cliente criado com sucesso');
           }
-          
-          console.log('Perfil do cliente criado com sucesso');
         }
       } catch (dbError) {
         console.error('Erro de banco de dados:', dbError);
