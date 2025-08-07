@@ -145,19 +145,9 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
       const { error } = await signUp(authData.email, authData.password);
       if (error) throw error;
 
-      // Criar perfil do cliente
-      await supabase
-        .from('customer_profiles')
-        .insert({
-          user_id: user?.id,
-          name: authData.name,
-          phone: customerData.phone,
-          address: customerData.address
-        });
-
       toast({
         title: "Cadastro realizado!",
-        description: "Login automático realizado. Você já pode finalizar seu pedido!",
+        description: "Você já pode finalizar seu pedido!",
       });
       
       // Preencher automaticamente os dados do cliente

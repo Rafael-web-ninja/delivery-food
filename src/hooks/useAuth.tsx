@@ -33,8 +33,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       
       // 1. Tentar criar usuário no Supabase Auth (método padrão)
-      let signupData;
-      let signupError;
+      let signupData: { user: User | null } | undefined;
+      let signupError: any;
+      let createdUserId: string | null = null;
       
       try {
         const result = await supabase.auth.signUp({
@@ -42,15 +43,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              name: name,
-              user_type: userType
-            }
+            data: { name: name, user_type: userType }
           }
         });
-        
-        signupData = result.data;
+        signupData = { user: result.data.user } as any;
         signupError = result.error;
+        if (!signupError) {
+          createdUserId = result.data.user?.id ?? null;
+        }
       } catch (authError: any) {
         console.error('Erro no signup padrão:', authError);
         signupError = authError;
@@ -60,66 +60,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (signupError) {
         console.error('Erro ao criar usuário Auth:', signupError);
         
-        // Verificar tipos específicos de erro
-        if (signupError.message?.includes('already registered') || signupError.message?.includes('already exists')) {
+        const msg = String(signupError.message || signupError.error_description || signupError.error || '');
+        if (msg.includes('already registered') || msg.includes('already exists')) {
           return { error: new Error('Email já cadastrado') };
         }
-        
-        if (signupError.message?.includes('Invalid email') || signupError.message?.includes('invalid email')) {
+        if (msg.includes('Invalid email') || msg.toLowerCase().includes('invalid email')) {
           return { error: new Error('Email inválido') };
         }
-        
-        if (signupError.message?.includes('weak password') || signupError.message?.includes('Password')) {
+        if (msg.toLowerCase().includes('weak password') || msg.toLowerCase().includes('password')) {
           return { error: new Error('Senha muito fraca. Use pelo menos 6 caracteres') };
         }
         
-        // Se for erro de "Database error creating new user", tentar abordagem alternativa
-        if (signupError.message?.includes('Database error') || signupError.message?.includes('saving new user')) {
-          console.log('Detectado erro de database, tentando novamente...');
-          
-          // Aguardar um pouco e tentar novamente
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          try {
-            const retryResult = await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                emailRedirectTo: `${window.location.origin}/`,
-                data: {
-                  name: name,
-                  user_type: userType
-                }
-              }
-            });
-            
-            if (retryResult.error) {
-              console.error('Erro na segunda tentativa:', retryResult.error);
-              return { error: new Error('Erro interno, tente novamente em alguns minutos') };
-            }
-            
-            signupData = retryResult.data;
-            signupError = null;
-          } catch (retryError) {
-            console.error('Erro na segunda tentativa:', retryError);
+        // Fallback: alguns projetos falham com "Database error saving new user"
+        if (msg.includes('Database error')) {
+          console.warn('Detectado erro de database no signup. Tentando login e prosseguir...');
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) {
+            console.error('Falha no fallback de login:', signInError);
             return { error: new Error('Erro interno, tente novamente em alguns minutos') };
           }
+          createdUserId = signInData.user?.id ?? null;
         } else {
           return { error: new Error('Erro interno, tente novamente em alguns minutos') };
         }
       }
 
       // 3. Verificar se o usuário foi criado
-      const userId = signupData?.user?.id;
+      const userId = createdUserId ?? signupData?.user?.id ?? null;
       if (!userId) {
         console.error('Não foi possível obter o ID do usuário criado.');
         return { error: new Error('Erro interno, tente novamente em alguns minutos') };
       }
 
-      console.log('Novo usuário criado:', userId);
-
-      // 4. Aguardar um momento para garantir que o usuário esteja disponível
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Novo usuário (ou sessão) obtido:', userId);
 
       // 5. Criar perfil baseado no tipo de usuário
       try {
