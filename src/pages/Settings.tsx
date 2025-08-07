@@ -88,11 +88,12 @@ const Settings = () => {
       const { data, error } = await supabase
         .from('delivery_businesses')
         .select('*')
-        .single();
+        .eq('owner_id', user?.id)
+        .maybeSingle();
 
       if (data) {
         setBusinessData(data);
-      } else if (error) {
+      } else {
         toast({
           title: "Erro",
           description: "Não foi possível carregar os dados do seu delivery",
@@ -108,6 +109,25 @@ const Settings = () => {
 
   const handleSave = async () => {
     await saveSettings(async () => {
+      // Garante que existe um negócio para este usuário
+      let currentBusinessId = businessData.id;
+      if (!currentBusinessId) {
+        const { data: created, error: createError } = await supabase
+          .from('delivery_businesses')
+          .insert({
+            owner_id: user?.id,
+            name: businessData.name || (user?.user_metadata?.business_name ?? 'Meu Delivery'),
+            description: businessData.description || 'Descrição do delivery'
+          })
+          .select()
+          .single();
+        if (createError) throw createError;
+        if (created?.id) {
+          currentBusinessId = created.id;
+          setBusinessData(prev => ({ ...prev, id: created.id }));
+        }
+      }
+
       const { error } = await supabase
         .from('delivery_businesses')
         .update({
@@ -129,7 +149,7 @@ const Settings = () => {
           delivery_time_bg_color: businessData.delivery_time_bg_color,
           delivery_time_text_color: businessData.delivery_time_text_color
         })
-        .eq('id', businessData.id);
+        .eq('id', currentBusinessId);
 
       if (error) throw error;
     });

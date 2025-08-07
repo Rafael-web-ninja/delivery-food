@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,7 @@ const PAYMENT_ICONS = {
 };
 
 export default function PaymentMethodManagement() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +73,7 @@ export default function PaymentMethodManagement() {
       const { data: businessData, error: businessError } = await supabase
         .from('delivery_businesses')
         .select('id')
+        .eq('owner_id', user?.id)
         .single();
 
       if (businessError) throw businessError;
