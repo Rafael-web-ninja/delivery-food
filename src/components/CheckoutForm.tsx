@@ -41,9 +41,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
   const { toast } = useToast();
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [completedOrderId, setCompletedOrderId] = useState('');
+const [loading, setLoading] = useState(false);
+const [showSuccessModal, setShowSuccessModal] = useState(false);
+const [completedOrderId, setCompletedOrderId] = useState('');
+const [minOrderValue, setMinOrderValue] = useState(0);
   
   // Formulário de dados do cliente
   const [customerData, setCustomerData] = useState({
@@ -62,81 +63,98 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     name: ''
   });
 
-  // Métodos de pagamento
-  type PaymentOption = 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'card'; // 'card' legado
-  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; type: PaymentOption; name: string }>>([]);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentOption>('cash');
-  const handleInputChange = (field: string, value: string) => {
-    setCustomerData(prev => ({ ...prev, [field]: value }));
-  };
+// Métodos de pagamento
+type PaymentOption = 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'card'; // 'card' legado
+const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; type: PaymentOption; name: string }>>([]);
+const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentOption>('cash');
+const handleInputChange = (field: string, value: string) => {
+  setCustomerData(prev => ({ ...prev, [field]: value }));
+};
 
-  const handleAuthChange = (field: string, value: string) => {
-    setAuthData(prev => ({ ...prev, [field]: value }));
-  };
+const handleAuthChange = (field: string, value: string) => {
+  setAuthData(prev => ({ ...prev, [field]: value }));
+};
 
-  // Carregar dados do perfil do usuário logado
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      if (user?.id) {
-        try {
-          const { data: profile } = await supabase
-            .from('customer_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (profile) {
-            setCustomerData(prev => ({
-              ...prev,
-              name: profile.name || '',
-              phone: profile.phone || '',
-              address: profile.address || '',
-              email: user.email || ''
-            }));
-          } else {
-            // Se não tem perfil, usar apenas o email do usuário
-            setCustomerData(prev => ({
-              ...prev,
-              email: user.email || ''
-            }));
-          }
-        } catch (error) {
-          console.log('Erro ao carregar perfil:', error);
-          // Em caso de erro, apenas usar o email
+// Carregar dados do perfil do usuário logado
+useEffect(() => {
+  const loadUserProfile = async () => {
+    if (user?.id) {
+      try {
+        const { data: profile } = await supabase
+          .from('customer_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile) {
+          setCustomerData(prev => ({
+            ...prev,
+            name: profile.name || '',
+            phone: profile.phone || '',
+            address: profile.address || '',
+            email: user.email || ''
+          }));
+        } else {
+          // Se não tem perfil, usar apenas o email do usuário
           setCustomerData(prev => ({
             ...prev,
             email: user.email || ''
           }));
         }
+      } catch (error) {
+        console.log('Erro ao carregar perfil:', error);
+        // Em caso de erro, apenas usar o email
+        setCustomerData(prev => ({
+          ...prev,
+          email: user.email || ''
+        }));
       }
-    };
+    }
+  };
 
-    loadUserProfile();
-  }, [user]);
+  loadUserProfile();
+}, [user]);
 
-  // Carrega métodos de pagamento ativos do delivery
-  useEffect(() => {
-    const loadPaymentMethods = async () => {
-      try {
-        const { data } = await supabase
-          .from('payment_methods')
-          .select('id,type,name')
-          .eq('business_id', business.id)
-          .eq('is_active', true)
-          .order('name');
-        if (data && data.length > 0) {
-          setPaymentMethods(data as any);
-          setSelectedPaymentMethod((data[0].type as PaymentOption) ?? 'cash');
-        } else {
-          setPaymentMethods([]);
-          setSelectedPaymentMethod('cash');
-        }
-      } catch (e) {
+// Carregar valor mínimo do pedido
+useEffect(() => {
+  const loadMinOrder = async () => {
+    try {
+      const { data } = await supabase
+        .from('delivery_businesses')
+        .select('min_order_value')
+        .eq('id', business.id)
+        .single();
+      setMinOrderValue(Number(data?.min_order_value || 0));
+    } catch (e) {
+      setMinOrderValue(0);
+    }
+  };
+  if (business?.id) loadMinOrder();
+}, [business?.id]);
+
+// Carrega métodos de pagamento ativos do delivery
+useEffect(() => {
+  const loadPaymentMethods = async () => {
+    try {
+      const { data } = await supabase
+        .from('payment_methods')
+        .select('id,type,name')
+        .eq('business_id', business.id)
+        .eq('is_active', true)
+        .order('name');
+      if (data && data.length > 0) {
+        setPaymentMethods(data as any);
+        setSelectedPaymentMethod((data[0].type as PaymentOption) ?? 'cash');
+      } else {
         setPaymentMethods([]);
+        setSelectedPaymentMethod('cash');
       }
-    };
-    if (business?.id) loadPaymentMethods();
-  }, [business?.id]);
+    } catch (e) {
+      setPaymentMethods([]);
+    }
+  };
+  if (business?.id) loadPaymentMethods();
+}, [business?.id]);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -351,18 +369,27 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     }
   };
 
-  const handleFinishOrder = async () => {
-    if (!customerData.name || !customerData.phone || !customerData.address) {
-      toast({
-        title: "Dados incompletos",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
+const handleFinishOrder = async () => {
+  if (!customerData.name || !customerData.phone || !customerData.address) {
+    toast({
+      title: "Dados incompletos",
+      description: "Preencha todos os campos obrigatórios",
+      variant: "destructive"
+    });
+    return;
+  }
 
-    setLoading(true);
-    try {
+  if (total < minOrderValue) {
+    toast({
+      title: "Pedido mínimo não atingido",
+      description: `Faltam ${formatCurrency(minOrderValue - total)} para atingir o pedido mínimo`,
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setLoading(true);
+  try {
       // Salvar pedido no banco
       const order = await saveOrderToDatabase();
       
@@ -428,7 +455,13 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
                   <span>Total</span>
                   <TotalWithDelivery businessId={business.id} subtotal={total} />
                 </div>
-              </div>
+</div>
+
+{minOrderValue > total && (
+  <div className="mt-3 p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200 text-sm">
+    Pedido mínimo de {formatCurrency(minOrderValue)}. Faltam {formatCurrency(minOrderValue - total)} para finalizar.
+  </div>
+)}
 
               <div className="mt-4">
                 <h3 className="font-semibold mb-2">Forma de Pagamento</h3>
@@ -660,13 +693,13 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
               <Button variant="outline" onClick={onCancel} className="flex-1">
                 Cancelar
               </Button>
-              <Button 
-                onClick={handleFinishOrder} 
-                disabled={loading}
-                className="flex-1"
-              >
-                {loading ? 'Processando...' : 'Finalizar Pedido'}
-              </Button>
+<Button 
+  onClick={handleFinishOrder} 
+  disabled={loading || total < minOrderValue}
+  className="flex-1"
+>
+  {loading ? 'Processando...' : 'Finalizar Pedido'}
+</Button>
             </div>
           </CardContent>
         </Card>

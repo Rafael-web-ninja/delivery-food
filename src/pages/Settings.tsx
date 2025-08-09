@@ -24,6 +24,8 @@ interface BusinessData {
   address: string;
   logo_url: string;
   delivery_fee: number;
+  min_order_value: number;
+  delivery_time_minutes: number;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -41,26 +43,28 @@ const Settings = () => {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [businessData, setBusinessData] = useState<BusinessData>({
-    id: '',
-    name: '',
-    description: '',
-    phone: '',
-    address: '',
-    logo_url: '',
-    delivery_fee: 0,
-    primary_color: '#2563eb',
-    secondary_color: '#64748b',
-    accent_color: '#059669',
-    background_color: '#ffffff',
-    text_color: '#1e293b',
-    button_color: '#16A34A',
-    button_text_color: '#FFFFFF',
-    cart_button_color: '#16A34A',
-    cart_button_text_color: '#FFFFFF',
-    delivery_time_bg_color: '#000000',
-    delivery_time_text_color: '#FFFFFF'
-  });
+const [businessData, setBusinessData] = useState<BusinessData>({
+  id: '',
+  name: '',
+  description: '',
+  phone: '',
+  address: '',
+  logo_url: '',
+  delivery_fee: 0,
+  min_order_value: 0,
+  delivery_time_minutes: 30,
+  primary_color: '#2563eb',
+  secondary_color: '#64748b',
+  accent_color: '#059669',
+  background_color: '#ffffff',
+  text_color: '#1e293b',
+  button_color: '#16A34A',
+  button_text_color: '#FFFFFF',
+  cart_button_color: '#16A34A',
+  cart_button_text_color: '#FFFFFF',
+  delivery_time_bg_color: '#000000',
+  delivery_time_text_color: '#FFFFFF'
+});
   const [loading, setLoading] = useState(true);
 
   const { execute: saveSettings, loading: saving } = useAsyncOperation({
@@ -128,28 +132,30 @@ const Settings = () => {
         }
       }
 
-      const { error } = await supabase
-        .from('delivery_businesses')
-        .update({
-          name: businessData.name,
-          description: businessData.description,
-          phone: businessData.phone,
-          address: businessData.address,
-          logo_url: businessData.logo_url,
-          delivery_fee: businessData.delivery_fee,
-          primary_color: businessData.primary_color,
-          secondary_color: businessData.secondary_color,
-          accent_color: businessData.accent_color,
-          background_color: businessData.background_color,
-          text_color: businessData.text_color,
-          button_color: businessData.button_color,
-          button_text_color: businessData.button_text_color,
-          cart_button_color: businessData.cart_button_color,
-          cart_button_text_color: businessData.cart_button_text_color,
-          delivery_time_bg_color: businessData.delivery_time_bg_color,
-          delivery_time_text_color: businessData.delivery_time_text_color
-        })
-        .eq('id', currentBusinessId);
+const { error } = await supabase
+  .from('delivery_businesses')
+  .update({
+    name: businessData.name,
+    description: businessData.description,
+    phone: businessData.phone,
+    address: businessData.address,
+    logo_url: businessData.logo_url,
+    delivery_fee: businessData.delivery_fee,
+    min_order_value: businessData.min_order_value,
+    delivery_time_minutes: businessData.delivery_time_minutes,
+    primary_color: businessData.primary_color,
+    secondary_color: businessData.secondary_color,
+    accent_color: businessData.accent_color,
+    background_color: businessData.background_color,
+    text_color: businessData.text_color,
+    button_color: businessData.button_color,
+    button_text_color: businessData.button_text_color,
+    cart_button_color: businessData.cart_button_color,
+    cart_button_text_color: businessData.cart_button_text_color,
+    delivery_time_bg_color: businessData.delivery_time_bg_color,
+    delivery_time_text_color: businessData.delivery_time_text_color
+  })
+  .eq('id', currentBusinessId);
 
       if (error) throw error;
     });
@@ -240,18 +246,43 @@ const Settings = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="delivery_fee">Taxa de entrega (R$)</Label>
-                  <Input
-                    id="delivery_fee"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={businessData.delivery_fee}
-                    onChange={(e) => setBusinessData(prev => ({ ...prev, delivery_fee: Number(e.target.value) }))}
-                    placeholder="0.00"
-                  />
-                </div>
+<div className="space-y-2">
+  <Label htmlFor="delivery_fee">Taxa de entrega (R$)</Label>
+  <Input
+    id="delivery_fee"
+    type="number"
+    step="0.01"
+    min="0"
+    value={businessData.delivery_fee}
+    onChange={(e) => setBusinessData(prev => ({ ...prev, delivery_fee: Number(e.target.value) }))}
+    placeholder="0.00"
+  />
+</div>
+
+<div className="space-y-2">
+  <Label htmlFor="min_order_value">Pedido mínimo (R$)</Label>
+  <Input
+    id="min_order_value"
+    type="number"
+    step="0.01"
+    min="0"
+    value={businessData.min_order_value}
+    onChange={(e) => setBusinessData(prev => ({ ...prev, min_order_value: Number(e.target.value) }))}
+    placeholder="0.00"
+  />
+</div>
+
+<div className="space-y-2">
+  <Label htmlFor="delivery_time_minutes">Tempo de entrega (min)</Label>
+  <Input
+    id="delivery_time_minutes"
+    type="number"
+    min="0"
+    value={businessData.delivery_time_minutes}
+    onChange={(e) => setBusinessData(prev => ({ ...prev, delivery_time_minutes: Number(e.target.value) }))}
+    placeholder="30"
+  />
+</div>
 
                 <div className="flex gap-2 pt-4">
                   <LoadingButton

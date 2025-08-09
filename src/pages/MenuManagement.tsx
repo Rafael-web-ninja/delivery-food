@@ -326,16 +326,6 @@ const MenuManagement = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="preparation_time">Tempo (min)</Label>
-                  <Input
-                    id="preparation_time"
-                    type="number"
-                    value={formData.preparation_time}
-                    onChange={(e) => setFormData({...formData, preparation_time: e.target.value})}
-                    placeholder="30"
-                  />
-                </div>
               </div>
 
               {categories.length > 0 && (
@@ -432,11 +422,6 @@ const MenuManagement = () => {
                   {item.active ? 'Ativo' : 'Inativo'}
                 </Button>
               </div>
-              {item.preparation_time > 0 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Tempo de preparo: {item.preparation_time} min
-                </p>
-              )}
             </CardContent>
           </Card>
         ))}

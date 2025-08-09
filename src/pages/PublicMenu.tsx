@@ -58,6 +58,8 @@ interface Business {
   cart_button_text_color: string;
   delivery_time_bg_color: string;
   delivery_time_text_color: string;
+  delivery_time_minutes: number;
+  min_order_value: number;
 }
 
 interface CartItem extends MenuItem {
@@ -268,8 +270,8 @@ const PublicMenu = () => {
   const getCartItemQuantity = (itemId: string) =>
     cart.find(ci => ci.id === itemId)?.quantity || 0;
 
-  const getCartTotal = () =>
-    cart.reduce((sum, ci) => sum + ci.price * ci.quantity, 0);
+const getCartTotal = () =>
+  cart.reduce((sum, ci) => sum + ci.price * ci.quantity, 0);
 
   const generateWhatsAppMessage = () => {
     if (!business || cart.length === 0) return '';
@@ -416,26 +418,26 @@ const PublicMenu = () => {
                   </Button>
                 </Link>
               )}
-              <Button
-                variant="secondary"
-                onClick={() => setShowCheckout(true)}
-                className="relative flex items-center gap-2 border-0"
-                disabled={cart.length === 0}
-                style={{
-                  backgroundColor: business.cart_button_color || '#16A34A',
-                  color: business.cart_button_text_color || '#FFFFFF'
-                }}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span>Carrinho</span>
-                {cart.length > 0 && (
-                  <Badge 
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0 min-w-[20px]"
-                  >
-                    {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
-                  </Badge>
-                )}
-              </Button>
+<Button
+  variant="secondary"
+  onClick={() => setShowCheckout(true)}
+  className="relative flex items-center gap-2 border-0"
+  disabled={cart.length === 0}
+  style={{
+    backgroundColor: business.cart_button_color || '#16A34A',
+    color: business.cart_button_text_color || '#FFFFFF'
+  }}
+>
+  <ShoppingCart className="h-5 w-5" />
+  <span>Carrinho</span>
+  {cart.length > 0 && (
+    <Badge 
+      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0 min-w-[20px]"
+    >
+      {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
+    </Badge>
+  )}
+</Button>
             </div>
           </div>
         </div>
@@ -480,22 +482,22 @@ const PublicMenu = () => {
                         <CardDescription>{item.description}</CardDescription>
                       )}
                       <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold text-primary">
-                          {formatCurrency(item.price)}
-                        </span>
-                        {item.preparation_time > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                            style={{
-                              backgroundColor: business.delivery_time_bg_color || '#000000',
-                              color: business.delivery_time_text_color || '#FFFFFF'
-                            }}
-                          >
-                            <Clock className="h-3 w-3" />
-                            {item.preparation_time}min
-                          </Badge>
-                        )}
+<span className="text-2xl font-bold text-primary">
+  {formatCurrency(item.price)}
+</span>
+{business.delivery_time_minutes > 0 && (
+  <Badge
+    variant="secondary"
+    className="flex items-center gap-1"
+    style={{
+      backgroundColor: business.delivery_time_bg_color || '#000000',
+      color: business.delivery_time_text_color || '#FFFFFF'
+    }}
+  >
+    <Clock className="h-3 w-3" />
+    {business.delivery_time_minutes}min
+  </Badge>
+)}
                       </div>
                     </CardHeader>
 
@@ -580,22 +582,22 @@ const PublicMenu = () => {
                     <CardDescription>{item.description}</CardDescription>
                   )}
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-primary">
-                      {formatCurrency(item.price)}
-                    </span>
-                     {item.preparation_time > 0 && (
-                       <Badge
-                         variant="secondary"
-                         className="flex items-center gap-1"
-                         style={{
-                           backgroundColor: business.delivery_time_bg_color || '#000000',
-                           color: business.delivery_time_text_color || '#FFFFFF'
-                         }}
-                       >
-                         <Clock className="h-3 w-3" />
-                         {item.preparation_time}min
-                       </Badge>
-                     )}
+<span className="text-2xl font-bold text-primary">
+  {formatCurrency(item.price)}
+</span>
+ {business.delivery_time_minutes > 0 && (
+   <Badge
+     variant="secondary"
+     className="flex items-center gap-1"
+     style={{
+       backgroundColor: business.delivery_time_bg_color || '#000000',
+       color: business.delivery_time_text_color || '#FFFFFF'
+     }}
+   >
+     <Clock className="h-3 w-3" />
+     {business.delivery_time_minutes}min
+   </Badge>
+ )}
                   </div>
                 </CardHeader>
 

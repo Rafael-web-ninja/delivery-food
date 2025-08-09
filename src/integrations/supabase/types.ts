@@ -104,11 +104,13 @@ export type Database = {
           created_at: string
           delivery_fee: number | null
           delivery_time_bg_color: string | null
+          delivery_time_minutes: number
           delivery_time_text_color: string | null
           description: string | null
           id: string
           is_active: boolean | null
           logo_url: string | null
+          min_order_value: number
           name: string
           owner_id: string
           phone: string | null
@@ -128,11 +130,13 @@ export type Database = {
           created_at?: string
           delivery_fee?: number | null
           delivery_time_bg_color?: string | null
+          delivery_time_minutes?: number
           delivery_time_text_color?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
+          min_order_value?: number
           name: string
           owner_id: string
           phone?: string | null
@@ -152,11 +156,13 @@ export type Database = {
           created_at?: string
           delivery_fee?: number | null
           delivery_time_bg_color?: string | null
+          delivery_time_minutes?: number
           delivery_time_text_color?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
+          min_order_value?: number
           name?: string
           owner_id?: string
           phone?: string | null
