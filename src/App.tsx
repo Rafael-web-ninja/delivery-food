@@ -20,6 +20,7 @@ import PublicMenu from "./pages/PublicMenu";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import PDV from "./pages/PDV";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,11 @@ const App = () => (
                 <Route path="/orders" element={
                   <ProtectedRoute requiredUserType="delivery_owner">
                     <OrderManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/pdv" element={
+                  <ProtectedRoute requiredUserType="delivery_owner">
+                    <PDV />
                   </ProtectedRoute>
                 } />
                 <Route path="/analytics" element={

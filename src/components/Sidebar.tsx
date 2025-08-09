@@ -8,7 +8,8 @@ import {
   BarChart3, 
   Menu, 
   X,
-  Store
+  Store,
+  Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Painel', href: '/dashboard', icon: Home },
   { name: 'Cardápio', href: '/menu', icon: Package },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
+  { name: 'PDV', href: '/pdv', icon: Receipt },
   { name: 'Relatórios', href: '/analytics', icon: BarChart3 },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ];
