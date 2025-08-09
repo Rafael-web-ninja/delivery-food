@@ -21,6 +21,7 @@ interface Order {
     quantity: number;
     unit_price: number;
     menu_item_id: string;
+    notes?: string | null;
     menu_items: {
       name: string;
     };
@@ -113,6 +114,18 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
           }
           yPosition += lineHeight;
         });
+
+        // Sabores/observações do item (meio a meio, etc.)
+        if ((item as any).notes) {
+          const notesText = (item as any).notes as string;
+          const notesLines = pdf.splitTextToSize(notesText, 70);
+          pdf.setFontSize(9);
+          notesLines.forEach((line: string) => {
+            pdf.text(`- ${line}`, leftMargin + 2, yPosition);
+            yPosition += lineHeight;
+          });
+          pdf.setFontSize(10);
+        }
       });
       
       // Total
@@ -195,9 +208,11 @@ ${order.customer_address ? `End: ${order.customer_address}` : ''}
 
 ----------------------------------------
 ITENS:
-${order.order_items.map(item => 
-  `${item.quantity}x ${item.menu_items.name.padEnd(20)} ${formatCurrency(item.quantity * Number(item.unit_price))}`
-).join('\n')}
+${order.order_items.map(item => {
+  const line = `${item.quantity}x ${item.menu_items.name.padEnd(20)} ${formatCurrency(item.quantity * Number(item.unit_price))}`;
+  const notes = (item as any).notes ? `\n   - ${(item as any).notes}` : '';
+  return line + notes;
+}).join('\n')}
 
 ----------------------------------------
 TOTAL: ${formatCurrency(Number(order.total_amount))}
@@ -251,7 +266,7 @@ Horário: ${formatDistanceToNow(new Date(order.created_at), {
       className="flex items-center gap-2"
     >
       <Printer className="h-4 w-4" />
-      Imprimir PDF
+      Imprimir Pedido
     </Button>
   );
 }
