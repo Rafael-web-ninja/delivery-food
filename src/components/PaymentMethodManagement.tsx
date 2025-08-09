@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2, CreditCard, Banknote, Smartphone } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { paymentTranslations } from '@/lib/formatters';
 
 interface PaymentMethod {
   id: string;
@@ -32,9 +33,8 @@ export default function PaymentMethodManagement() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'cash' as const,
+  const [formData, setFormData] = useState<{ type: 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'food_voucher'; instructions: string }>({
+    type: 'cash',
     instructions: ''
   });
 
@@ -69,14 +69,6 @@ const fetchPaymentMethods = async () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) {
-      toast({
-        title: "Erro",
-        description: "Nome do método de pagamento é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
 
     setLoading(true);
 
@@ -92,7 +84,7 @@ const fetchPaymentMethods = async () => {
       if (!businessData) throw new Error('Negócio não encontrado');
 
       const methodData = {
-        name: formData.name,
+        name: paymentTranslations[formData.type as keyof typeof paymentTranslations],
         type: formData.type,
         instructions: formData.instructions,
         business_id: businessData.id,
@@ -111,7 +103,7 @@ const fetchPaymentMethods = async () => {
       });
 
       setDialogOpen(false);
-      setFormData({ name: '', type: 'cash', instructions: '' });
+      setFormData({ type: 'cash', instructions: '' });
       fetchPaymentMethods();
 
     } catch (error: any) {
@@ -195,19 +187,9 @@ const fetchPaymentMethods = async () => {
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Método *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Ex: Dinheiro, PIX, Cartão de Crédito"
-                    required
-                  />
-                </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
+                  <Label htmlFor="type">Método de pagamento</Label>
                   <select
                     id="type"
                     value={formData.type}
