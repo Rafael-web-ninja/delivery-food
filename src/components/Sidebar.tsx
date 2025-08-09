@@ -19,10 +19,10 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'Painel', href: '/dashboard', icon: Home },
   { name: 'Cardápio', href: '/menu', icon: Package },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Relatórios', href: '/analytics', icon: BarChart3 },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ];
 

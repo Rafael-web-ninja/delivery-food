@@ -135,7 +135,7 @@ const Dashboard = () => {
     <div className="px-4 py-8">
       <div className="grid gap-6">
         <div>
-          <h2 className="text-3xl font-bold mb-2">Dashboard</h2>
+          <h2 className="text-3xl font-bold mb-2">Painel</h2>
           <p className="text-muted-foreground">
             Gerencie seu delivery e acompanhe suas vendas
           </p>
@@ -259,7 +259,7 @@ const Dashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-primary" />
-                  Analytics
+                  Relatórios
                 </CardTitle>
                 <CardDescription>
                   Visualize relatórios de vendas e performance

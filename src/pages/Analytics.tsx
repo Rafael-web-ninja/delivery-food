@@ -156,7 +156,7 @@ const Analytics = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-xl text-muted-foreground">Carregando analytics...</p>
+          <p className="text-xl text-muted-foreground">Carregando relatórios...</p>
         </div>
       </div>
     );
@@ -170,7 +170,7 @@ const Analytics = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold">Analytics</h1>
+            <h1 className="text-2xl font-bold">Relatórios</h1>
           </div>
           
           <div className="flex items-center gap-2">
