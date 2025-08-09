@@ -326,7 +326,7 @@ const Analytics = () => {
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" />
+                  <Bar dataKey="value" name="Receita (R$)" fill="hsl(var(--primary))" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -356,7 +356,7 @@ const Analytics = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip labelFormatter={(label: string) => statusTranslations[label as keyof typeof statusTranslations] || label} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>

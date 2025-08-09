@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Clock, Phone, MapPin, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { formatCurrency, statusTranslations } from '@/lib/formatters';
+import { formatCurrency, statusTranslations, paymentTranslations } from '@/lib/formatters';
 import { ptBR } from 'date-fns/locale';
 import { ThermalPrint } from './ThermalPrint';
 
@@ -110,7 +110,7 @@ export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }
                     {formatCurrency(Number(order.total_amount))}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {order.payment_method}
+                    {paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method}
                   </div>
                 </div>
               </div>
