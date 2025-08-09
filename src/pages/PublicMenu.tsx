@@ -569,7 +569,6 @@ const getCartTotal = () =>
                             <Button
                               variant="outline"
                               onClick={() => openFractional(item)}
-                              disabled={(selectedQuantities[item.id] || 0) === 0}
                             >
                               Meio a meio
                             </Button>
@@ -680,7 +679,6 @@ const getCartTotal = () =>
                            <Button
                              variant="outline"
                              onClick={() => openFractional(item)}
-                             disabled={(selectedQuantities[item.id] || 0) === 0}
                            >
                              Meio a meio
                            </Button>
