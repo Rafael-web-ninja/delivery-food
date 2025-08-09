@@ -196,25 +196,41 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
   // Função de fetch
   const fetchBusinessAndMenu = async () => {
     try {
-      const [businessResult, itemsResult] = await Promise.all([
-        supabase
+      let biz: any = null;
+
+      // Tenta por ID primeiro
+      const byId = await supabase
+        .from('delivery_businesses')
+        .select('*')
+        .eq('id', businessId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (byId.data) {
+        biz = byId.data;
+      } else {
+        // Fallback: tenta por slug
+        const bySlug = await supabase
           .from('delivery_businesses')
           .select('*')
-          .eq('id', businessId)
+          .eq('slug', businessId!)
           .eq('is_active', true)
-          .maybeSingle(),
-        supabase
+          .maybeSingle();
+        if (bySlug.data) biz = bySlug.data;
+      }
+
+      if (biz) {
+        setBusiness(biz);
+        const itemsResult = await supabase
           .from('menu_items')
           .select('*')
-          .eq('business_id', businessId)
+          .eq('business_id', biz.id)
           .eq('active', true)
-          .order('name')
-      ]);
-
-      if (businessResult.data) setBusiness(businessResult.data);
-      if (itemsResult.data) {
-        setAllItems(itemsResult.data);
-        setItems(itemsResult.data);
+          .order('name');
+        if (itemsResult.data) {
+          setAllItems(itemsResult.data);
+          setItems(itemsResult.data);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar cardápio:', error);
@@ -495,7 +511,7 @@ const getCartTotal = () =>
 
             <TabsContent value="menu">
               <MenuFilters 
-                businessId={businessId!} 
+                businessId={business!.id} 
                 onFilterChange={setFilters} 
               />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -608,7 +624,7 @@ const getCartTotal = () =>
         ) : (
           <>
             <MenuFilters 
-              businessId={businessId!} 
+              businessId={business!.id} 
               onFilterChange={setFilters} 
             />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

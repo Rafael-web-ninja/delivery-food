@@ -36,6 +36,7 @@ const App = () => (
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
+              <Route path=":businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               
               {/* Customer Routes */}
               <Route path="/meu-perfil" element={

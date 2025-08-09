@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import { Plus, Minus, Search } from "lucide-react";
 import FractionalPizzaDialog from "@/components/FractionalPizzaDialog";
+import { Switch } from "@/components/ui/switch";
 
 interface MenuItem {
   id: string;
@@ -52,6 +53,7 @@ export default function PDV() {
   const [fractionalOpen, setFractionalOpen] = useState(false);
   const [fractionalBaseItem, setFractionalBaseItem] = useState<MenuItem | null>(null);
   const [fractionalQuantity, setFractionalQuantity] = useState<number>(1);
+  const [isPickup, setIsPickup] = useState(false);
 
   // Buscar business do dono logado
   useEffect(() => {
@@ -141,7 +143,8 @@ export default function PDV() {
   const remove = (id: string) => setCart(prev => prev.filter(ci => ci.id !== id));
 
   const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.quantity, 0), [cart]);
-  const total = subtotal + Number(deliveryFee || 0);
+  const appliedDeliveryFee = useMemo(() => (isPickup ? 0 : Number(deliveryFee || 0)), [isPickup, deliveryFee]);
+  const total = subtotal + appliedDeliveryFee;
 
   const finalize = async () => {
     if (!businessId) return;
@@ -156,6 +159,7 @@ export default function PDV() {
 
     try {
       const order_code = crypto.randomUUID().slice(0, 8);
+      const finalNotes = [customer.notes || "", isPickup ? "Retirada no balcão" : ""].filter(Boolean).join(" — ");
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
@@ -168,9 +172,9 @@ export default function PDV() {
           customer_phone: customer.phone,
           customer_address: customer.address || "",
           total_amount: total,
-          delivery_fee: deliveryFee,
+          delivery_fee: appliedDeliveryFee,
           payment_method: selectedPayment as any,
-          notes: customer.notes || "",
+          notes: finalNotes,
           status: "pending"
         })
         .select()
@@ -274,6 +278,18 @@ export default function PDV() {
 
               <Separator />
 
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Tipo de pedido</div>
+                  <div className="text-xs text-muted-foreground">{isPickup ? 'Retirada no balcão' : 'Entrega'}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs ${isPickup ? 'text-muted-foreground' : ''}`}>Entrega</span>
+                  <Switch checked={isPickup} onCheckedChange={setIsPickup} aria-label="Alternar para retirada" />
+                  <span className={`text-xs ${isPickup ? '' : 'text-muted-foreground'}`}>Retirada</span>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>Subtotal</span>
@@ -281,7 +297,7 @@ export default function PDV() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span>Taxa de entrega</span>
-                  <span>{formatCurrency(Number(deliveryFee || 0))}</span>
+                  <span>{formatCurrency(appliedDeliveryFee)}</span>
                 </div>
                 <div className="flex items-center justify-between font-semibold">
                   <span>Total</span>

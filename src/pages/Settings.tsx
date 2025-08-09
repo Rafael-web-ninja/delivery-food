@@ -23,6 +23,7 @@ interface BusinessData {
   phone: string;
   address: string;
   logo_url: string;
+  slug?: string;
   delivery_fee: number;
   min_order_value: number;
   delivery_time_minutes: number;
@@ -50,6 +51,7 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   phone: '',
   address: '',
   logo_url: '',
+  slug: '',
   delivery_fee: 0,
   min_order_value: 0,
   delivery_time_minutes: 30,
@@ -132,6 +134,17 @@ const [businessData, setBusinessData] = useState<BusinessData>({
         }
       }
 
+const normalizedSlug = (businessData.slug || '').toLowerCase().trim();
+if (normalizedSlug) {
+  const { data: existing } = await supabase
+    .from('delivery_businesses')
+    .select('id')
+    .eq('slug', normalizedSlug)
+    .neq('id', currentBusinessId)
+    .maybeSingle();
+  if (existing) throw new Error('Este link já está em uso. Escolha outro.');
+}
+
 const { error } = await supabase
   .from('delivery_businesses')
   .update({
@@ -140,6 +153,7 @@ const { error } = await supabase
     phone: businessData.phone,
     address: businessData.address,
     logo_url: businessData.logo_url,
+    slug: normalizedSlug || null,
     delivery_fee: businessData.delivery_fee,
     min_order_value: businessData.min_order_value,
     delivery_time_minutes: businessData.delivery_time_minutes,
@@ -213,6 +227,31 @@ const { error } = await supabase
                       placeholder="(11) 99999-9999"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Link do Cardápio</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-[auto,1fr] items-center gap-2">
+                    <div className="text-sm text-muted-foreground">{window.location.origin}/menu/</div>
+                    <Input
+                      id="slug"
+                      value={businessData.slug || ''}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const normalized = raw
+                          .toLowerCase()
+                          .trim()
+                          .replace(/\s+/g, '-')
+                          .replace(/[^a-z0-9-]/g, '')
+                          .replace(/-+/g, '-');
+                        setBusinessData(prev => ({ ...prev, slug: normalized }));
+                      }}
+                      placeholder="pizzariapedro"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Também acessível por: {window.location.origin}/{businessData.slug || 'seu-slug'}
+                  </p>
                 </div>
 
                 <div className="space-y-2">

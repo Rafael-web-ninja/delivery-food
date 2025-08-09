@@ -116,6 +116,7 @@ export type Database = {
           phone: string | null
           primary_color: string | null
           secondary_color: string | null
+          slug: string | null
           text_color: string | null
           updated_at: string
         }
@@ -142,6 +143,7 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           secondary_color?: string | null
+          slug?: string | null
           text_color?: string | null
           updated_at?: string
         }
@@ -168,6 +170,7 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           secondary_color?: string | null
+          slug?: string | null
           text_color?: string | null
           updated_at?: string
         }
