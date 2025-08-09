@@ -15,7 +15,7 @@ export default function FloatingCart({ count, total, onClick, bgColor = '#16A34A
       type="button"
       aria-label={`Abrir carrinho com ${count} itens`}
       onClick={onClick}
-      className="fixed bottom-4 md:bottom-24 right-4 z-50 shadow-lg rounded-full px-4 py-3 flex items-center gap-3 hover-scale animate-fade-in focus:outline-none focus:ring-2 focus:ring-primary/40"
+      className="fixed bottom-4 right-4 z-50 shadow-lg rounded-full px-4 py-3 flex items-center gap-3 hover-scale animate-fade-in focus:outline-none focus:ring-2 focus:ring-primary/40"
       style={{ backgroundColor: bgColor, color: textColor }}
     >
       <div className="relative">
