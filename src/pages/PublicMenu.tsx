@@ -523,7 +523,7 @@ const getCartTotal = () =>
                       )}
                       <div className="flex items-center justify-between">
 <span className="text-2xl font-bold text-primary">
-  {formatCurrency(item.price)}
+  {item.supports_fractional ? `A partir de ${formatCurrency(item.price)}` : formatCurrency(item.price)}
 </span>
 {business.delivery_time_minutes > 0 && (
   <Badge
@@ -569,23 +569,26 @@ const getCartTotal = () =>
                             <Button
                               variant="outline"
                               onClick={() => openFractional(item)}
+                              disabled={(selectedQuantities[item.id] || 0) === 0}
                             >
                               Meio a meio
                             </Button>
                           )}
-                          <Button
-                            variant="secondary"
-                            onClick={() => addToCart(item)}
-                            className="flex items-center gap-2 border-0"
-                            disabled={(selectedQuantities[item.id] || 0) === 0}
-                            style={{
-                              backgroundColor: business.button_color || '#16A34A',
-                              color: business.button_text_color || '#FFFFFF'
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Adicionar
-                          </Button>
+{!item.supports_fractional && (
+  <Button
+    variant="secondary"
+    onClick={() => addToCart(item)}
+    className="flex items-center gap-2 border-0"
+    disabled={(selectedQuantities[item.id] || 0) === 0}
+    style={{
+      backgroundColor: business.button_color || '#16A34A',
+      color: business.button_text_color || '#FFFFFF'
+    }}
+  >
+    <Plus className="h-4 w-4" />
+    Adicionar
+  </Button>
+)}
                         </div>
                       </div>
                     </CardContent>
@@ -633,7 +636,7 @@ const getCartTotal = () =>
                   )}
                   <div className="flex items-center justify-between">
 <span className="text-2xl font-bold text-primary">
-  {formatCurrency(item.price)}
+  {item.supports_fractional ? `A partir de ${formatCurrency(item.price)}` : formatCurrency(item.price)}
 </span>
  {business.delivery_time_minutes > 0 && (
    <Badge
@@ -679,23 +682,26 @@ const getCartTotal = () =>
                            <Button
                              variant="outline"
                              onClick={() => openFractional(item)}
+                             disabled={(selectedQuantities[item.id] || 0) === 0}
                            >
                              Meio a meio
                            </Button>
                          )}
-                         <Button
-                           variant="secondary"
-                           onClick={() => addToCart(item)}
-                           className="flex items-center gap-2 border-0"
-                           disabled={(selectedQuantities[item.id] || 0) === 0}
-                           style={{
-                             backgroundColor: business.button_color || '#16A34A',
-                             color: business.button_text_color || '#FFFFFF'
-                           }}
-                         >
-                          <Plus className="h-4 w-4" />
-                          Adicionar
-                        </Button>
+{!item.supports_fractional && (
+  <Button
+    variant="secondary"
+    onClick={() => addToCart(item)}
+    className="flex items-center gap-2 border-0"
+    disabled={(selectedQuantities[item.id] || 0) === 0}
+    style={{
+      backgroundColor: business.button_color || '#16A34A',
+      color: business.button_text_color || '#FFFFFF'
+    }}
+  >
+    <Plus className="h-4 w-4" />
+    Adicionar
+  </Button>
+)}
                       </div>
                   </div>
                 </CardContent>

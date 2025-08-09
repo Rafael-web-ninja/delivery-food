@@ -386,16 +386,23 @@ const itemData = {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Preço (R$) *</Label>
+                  <Label htmlFor="price">
+                    {formData.supports_fractional ? 'Preço (R$) – A partir de *' : 'Preço (R$) *'}
+                  </Label>
                   <Input
                     id="price"
                     type="number"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     placeholder="25.90"
                     required
                   />
+                  {formData.supports_fractional && (
+                    <p className="text-xs text-muted-foreground">
+                      Este é o preço base exibido como "A partir de". O valor final será calculado conforme os sabores selecionados.
+                    </p>
+                  )}
                 </div>
 
               </div>
@@ -427,6 +434,24 @@ const itemData = {
                   <p className="text-xs text-muted-foreground -mt-2 mb-2">Cadastre e ative os sabores na aba “Sabores”.</p>
                   <div className="space-y-2">
                     <Label>Sabores permitidos</Label>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedFlavorIds(flavors.map(f => f.id))}
+                      >
+                        Selecionar todos
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedFlavorIds([])}
+                      >
+                        Limpar
+                      </Button>
+                    </div>
                     <div className="max-h-48 overflow-auto rounded border p-2 space-y-2">
                       {flavors.length === 0 ? (
                         <p className="text-sm text-muted-foreground">Nenhum sabor ativo. Cadastre na aba “Sabores”.</p>

@@ -346,13 +346,21 @@ useEffect(() => {
       }
 
       // 3. Criar os itens do pedido
-      const orderItems = cart.map(item => ({
-        order_id: order.id,
-        menu_item_id: item.menu_item_id ?? item.id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity
-      }));
+      const orderItems = cart.map(item => {
+        const isFractional = !!item.menu_item_id && (item as any).details;
+        const details = (item as any).details as any;
+        const notes = details?.flavor1?.name && details?.flavor2?.name
+          ? `Meio a meio — ${details.size === 'grande' ? 'Grande' : 'Broto'} — 1/2 ${details.flavor1.name} + 1/2 ${details.flavor2.name}`
+          : null;
+        return {
+          order_id: order.id,
+          menu_item_id: item.menu_item_id ?? item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+          ...(notes ? { notes } : {})
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')

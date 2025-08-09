@@ -23,6 +23,7 @@ interface Order {
     quantity: number;
     unit_price: number;
     menu_item_id: string;
+    notes?: string | null;
     menu_items: {
       name: string;
     };
@@ -123,9 +124,14 @@ export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }
                   <div className="space-y-1">
                     {order.order_items.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm">
-                        <span>
-                          {item.quantity}x {item.menu_items.name}
-                        </span>
+                        <div>
+                          <div>{item.quantity}x {item.menu_items.name}</div>
+                          {item.notes && (
+                            <div className="text-xs text-muted-foreground">
+                              {item.notes}
+                            </div>
+                          )}
+                        </div>
                         <span>{formatCurrency(item.quantity * Number(item.unit_price))}</span>
                       </div>
                     ))}
