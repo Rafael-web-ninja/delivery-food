@@ -63,7 +63,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
   });
 
   // Métodos de pagamento
-  type PaymentOption = 'cash' | 'pix' | 'card';
+  type PaymentOption = 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'card'; // 'card' legado
   const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; type: PaymentOption; name: string }>>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentOption>('cash');
   const handleInputChange = (field: string, value: string) => {

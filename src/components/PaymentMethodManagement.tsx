@@ -22,7 +22,9 @@ interface PaymentMethod {
 const PAYMENT_ICONS = {
   cash: Banknote,
   pix: Smartphone,
-  card: CreditCard,
+  credit_card: CreditCard,
+  debit_card: CreditCard,
+  card: CreditCard, // legado
 } as const;
 
 export default function PaymentMethodManagement() {
@@ -31,7 +33,7 @@ export default function PaymentMethodManagement() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<{ type: 'cash' | 'pix' | 'card'; instructions: string }>({
+  const [formData, setFormData] = useState<{ type: 'cash' | 'pix' | 'credit_card' | 'debit_card'; instructions: string }>({
     type: 'cash',
     instructions: ''
   });
@@ -196,7 +198,8 @@ const fetchPaymentMethods = async () => {
                   >
 <option value="cash">Dinheiro</option>
 <option value="pix">PIX</option>
-<option value="card">Cartão</option>
+<option value="credit_card">Cartão de Crédito</option>
+<option value="debit_card">Cartão de Débito</option>
                   </select>
                 </div>
 
