@@ -20,6 +20,7 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  menu_item_id?: string;
 }
 
 interface Business {
@@ -347,7 +348,7 @@ useEffect(() => {
       // 3. Criar os itens do pedido
       const orderItems = cart.map(item => ({
         order_id: order.id,
-        menu_item_id: item.id,
+        menu_item_id: item.menu_item_id ?? item.id,
         quantity: item.quantity,
         unit_price: item.price,
         total_price: item.price * item.quantity

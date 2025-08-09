@@ -66,6 +66,8 @@ interface Business {
 
 interface CartItem extends MenuItem {
   quantity: number;
+  menu_item_id?: string;
+  details?: any;
 }
 
 const PublicMenu = () => {
@@ -81,7 +83,10 @@ const PublicMenu = () => {
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [filters, setFilters] = useState({ search: '', categoryId: null as string | null });
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
+const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
+  const [fractionalOpen, setFractionalOpen] = useState(false);
+  const [fractionalBaseItem, setFractionalBaseItem] = useState<MenuItem | null>(null);
+  const [fractionalQuantity, setFractionalQuantity] = useState(1);
 
   // 1️⃣ Carregar dados ao montar / businessId mudar
   useEffect(() => {
@@ -235,7 +240,7 @@ const PublicMenu = () => {
     });
   };
 
-  // Adicionar ao carrinho com quantidade selecionada
+// Adicionar ao carrinho com quantidade selecionada
   const addToCart = (item: MenuItem) => {
     const quantity = selectedQuantities[item.id] || 1;
     setCart(prev => {
@@ -245,7 +250,7 @@ const PublicMenu = () => {
           ci.id === item.id ? { ...ci, quantity: ci.quantity + quantity } : ci
         );
       }
-      return [...prev, { ...item, quantity }];
+      return [...prev, { ...item, quantity } as CartItem];
     });
     
     // Reset quantidade selecionada
@@ -255,6 +260,39 @@ const PublicMenu = () => {
       title: 'Item adicionado!',
       description: `${quantity}x ${item.name} adicionado ao carrinho`
     });
+  };
+
+  const openFractional = (item: MenuItem) => {
+    const qty = selectedQuantities[item.id] || 1;
+    setFractionalQuantity(qty);
+    setFractionalBaseItem(item);
+    setFractionalOpen(true);
+  };
+
+  const handleConfirmFractional = (fi: { id: string; menu_item_id: string; name: string; price: number; quantity: number; details?: any }) => {
+    const base = allItems.find(i => i.id === fi.menu_item_id);
+    const newItem: CartItem = {
+      id: fi.id,
+      name: fi.name,
+      description: base?.description || '',
+      price: fi.price,
+      image_url: base?.image_url || '',
+      preparation_time: base?.preparation_time || 0,
+      category_id: base?.category_id || null,
+      supports_fractional: true,
+      quantity: fi.quantity,
+      menu_item_id: fi.menu_item_id,
+      details: fi.details
+    };
+    setCart(prev => {
+      const existing = prev.find(ci => ci.id === newItem.id);
+      if (existing) {
+        return prev.map(ci => ci.id === newItem.id ? { ...ci, quantity: ci.quantity + newItem.quantity } : ci);
+      }
+      return [...prev, newItem];
+    });
+    setSelectedQuantities(prev => ({ ...prev, [fi.menu_item_id]: 0 }));
+    toast({ title: 'Pizza adicionada!', description: `${fi.quantity}x ${fi.name} adicionada ao carrinho` });
   };
 
   const removeFromCart = (itemId: string) => {
@@ -526,19 +564,30 @@ const getCartTotal = () =>
                           </Button>
                         </div>
 
-                        <Button
-                          variant="secondary"
-                          onClick={() => addToCart(item)}
-                          className="flex items-center gap-2 border-0"
-                          disabled={(selectedQuantities[item.id] || 0) === 0}
-                          style={{
-                            backgroundColor: business.button_color || '#16A34A',
-                            color: business.button_text_color || '#FFFFFF'
-                          }}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Adicionar
-                        </Button>
+<div className="flex items-center gap-2">
+                          {item.supports_fractional && (
+                            <Button
+                              variant="outline"
+                              onClick={() => openFractional(item)}
+                              disabled={(selectedQuantities[item.id] || 0) === 0}
+                            >
+                              Meio a meio
+                            </Button>
+                          )}
+                          <Button
+                            variant="secondary"
+                            onClick={() => addToCart(item)}
+                            className="flex items-center gap-2 border-0"
+                            disabled={(selectedQuantities[item.id] || 0) === 0}
+                            style={{
+                              backgroundColor: business.button_color || '#16A34A',
+                              color: business.button_text_color || '#FFFFFF'
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Adicionar
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -626,19 +675,30 @@ const getCartTotal = () =>
                        </Button>
                      </div>
 
-                       <Button
-                         variant="secondary"
-                         onClick={() => addToCart(item)}
-                         className="flex items-center gap-2 border-0"
-                         disabled={(selectedQuantities[item.id] || 0) === 0}
-                         style={{
-                           backgroundColor: business.button_color || '#16A34A',
-                           color: business.button_text_color || '#FFFFFF'
-                         }}
-                       >
-                        <Plus className="h-4 w-4" />
-                        Adicionar
-                      </Button>
+<div className="flex items-center gap-2">
+                         {item.supports_fractional && (
+                           <Button
+                             variant="outline"
+                             onClick={() => openFractional(item)}
+                             disabled={(selectedQuantities[item.id] || 0) === 0}
+                           >
+                             Meio a meio
+                           </Button>
+                         )}
+                         <Button
+                           variant="secondary"
+                           onClick={() => addToCart(item)}
+                           className="flex items-center gap-2 border-0"
+                           disabled={(selectedQuantities[item.id] || 0) === 0}
+                           style={{
+                             backgroundColor: business.button_color || '#16A34A',
+                             color: business.button_text_color || '#FFFFFF'
+                           }}
+                         >
+                          <Plus className="h-4 w-4" />
+                          Adicionar
+                        </Button>
+                      </div>
                   </div>
                 </CardContent>
               </Card>
@@ -657,6 +717,15 @@ const getCartTotal = () =>
           textColor={business.cart_button_text_color || '#FFFFFF'}
         />
       )}
+
+      <FractionalPizzaDialog
+        open={fractionalOpen}
+        onOpenChange={setFractionalOpen}
+        businessId={business.id}
+        baseItem={fractionalBaseItem ? { id: fractionalBaseItem.id, name: fractionalBaseItem.name } : null}
+        quantity={fractionalQuantity}
+        onConfirm={handleConfirmFractional}
+      />
 
       {/* Checkout Modal */}
       {showCheckout && (
