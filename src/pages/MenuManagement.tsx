@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +44,9 @@ const MenuManagement = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+const [flavors, setFlavors] = useState<Array<{ id: string; name: string }>>([]);
+const [selectedFlavorIds, setSelectedFlavorIds] = useState<string[]>([]);
 const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -58,6 +61,7 @@ const [formData, setFormData] = useState({
     if (user) {
       fetchItems();
       fetchCategories();
+      fetchFlavors();
     }
   }, [user]);
 
@@ -110,6 +114,32 @@ const [formData, setFormData] = useState({
     }
   };
 
+  const fetchFlavors = async () => {
+    try {
+      const { data: business, error: bizError } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .single();
+
+      if (bizError) throw bizError;
+      if (!business) throw new Error('Negócio não encontrado');
+
+      const { data, error } = await supabase
+        .from('flavor_options')
+        .select('id,name')
+        .eq('business_id', business.id)
+        .eq('active', true)
+        .order('name');
+
+      if (error) throw error;
+      setFlavors((data || []) as any);
+    } catch (error) {
+      console.error('Erro ao buscar sabores:', error);
+      setFlavors([]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.price) {
@@ -154,12 +184,14 @@ const itemData = {
         ...(image_url && { image_url })
       };
 
-      let result;
+      let itemId: string | null = null;
       if (editingItem) {
-        result = await supabase
+        const { error } = await supabase
           .from('menu_items')
           .update(itemData)
           .eq('id', editingItem.id);
+        if (error) throw error;
+        itemId = editingItem.id;
       } else {
         // Get business_id first
         const { data: businessData } = await supabase
@@ -170,12 +202,31 @@ const itemData = {
         
         if (!businessData) throw new Error('Negócio não encontrado');
         
-        result = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from('menu_items')
-          .insert([{ ...itemData, business_id: businessData.id }]);
+          .insert([{ ...itemData, business_id: businessData.id }])
+          .select('id')
+          .single();
+        if (insertError) throw insertError;
+        itemId = inserted.id;
       }
 
-      if (result.error) throw result.error;
+      // Atualizar vínculo de sabores permitidos
+      if (itemId) {
+        // Limpa vínculos anteriores
+        await supabase
+          .from('menu_item_flavors')
+          .delete()
+          .eq('menu_item_id', itemId);
+
+        if (formData.supports_fractional && selectedFlavorIds.length > 0) {
+          const rows = selectedFlavorIds.map(fid => ({ menu_item_id: itemId!, flavor_id: fid }));
+          const { error: linkError } = await supabase
+            .from('menu_item_flavors')
+            .insert(rows);
+          if (linkError) throw linkError;
+        }
+      }
 
       toast({
         title: "Sucesso!",
@@ -184,7 +235,7 @@ const itemData = {
 
       setDialogOpen(false);
       setEditingItem(null);
-setFormData({
+      setFormData({
         name: '',
         description: '',
         price: '',
@@ -193,6 +244,7 @@ setFormData({
         supports_fractional: false,
         image: null
       });
+      setSelectedFlavorIds([]);
       fetchItems();
 
     } catch (error: any) {
@@ -206,9 +258,9 @@ setFormData({
     }
   };
 
-  const handleEdit = (item: MenuItem) => {
+  const handleEdit = async (item: MenuItem) => {
     setEditingItem(item);
-setFormData({
+    setFormData({
       name: item.name,
       description: item.description || '',
       price: item.price.toString(),
@@ -217,6 +269,18 @@ setFormData({
       supports_fractional: !!item.supports_fractional,
       image: null
     });
+
+    try {
+      // Carregar sabores vinculados ao item
+      const { data } = await supabase
+        .from('menu_item_flavors')
+        .select('flavor_id')
+        .eq('menu_item_id', item.id);
+      setSelectedFlavorIds((data || []).map(r => r.flavor_id));
+    } catch (e) {
+      setSelectedFlavorIds([]);
+    }
+
     setDialogOpen(true);
   };
 
@@ -359,7 +423,30 @@ setFormData({
                 <Switch id="supports_fractional" checked={formData.supports_fractional} onCheckedChange={(v) => setFormData({ ...formData, supports_fractional: v })} />
               </div>
               {formData.supports_fractional && (
-                <p className="text-xs text-muted-foreground -mt-2 mb-2">Cadastre e ative os sabores na aba “Sabores”.</p>
+                <>
+                  <p className="text-xs text-muted-foreground -mt-2 mb-2">Cadastre e ative os sabores na aba “Sabores”.</p>
+                  <div className="space-y-2">
+                    <Label>Sabores permitidos</Label>
+                    <div className="max-h-48 overflow-auto rounded border p-2 space-y-2">
+                      {flavors.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhum sabor ativo. Cadastre na aba “Sabores”.</p>
+                      ) : (
+                        flavors.map(f => (
+                          <label key={f.id} className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedFlavorIds.includes(f.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedFlavorIds(prev => checked ? [...prev, f.id] : prev.filter(id => id !== f.id));
+                              }}
+                            />
+                            <span>{f.name}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Se não selecionar, todos os sabores ativos ficarão disponíveis.</p>
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">

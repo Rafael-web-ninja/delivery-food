@@ -282,6 +282,42 @@ export type Database = {
           },
         ]
       }
+      menu_item_flavors: {
+        Row: {
+          created_at: string
+          flavor_id: string
+          id: string
+          menu_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          flavor_id: string
+          id?: string
+          menu_item_id: string
+        }
+        Update: {
+          created_at?: string
+          flavor_id?: string
+          id?: string
+          menu_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_flavors_flavor_id_fkey"
+            columns: ["flavor_id"]
+            isOneToOne: false
+            referencedRelation: "flavor_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_flavors_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           active: boolean | null

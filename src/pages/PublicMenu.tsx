@@ -721,6 +721,7 @@ const getCartTotal = () =>
         onOpenChange={setFractionalOpen}
         businessId={business.id}
         baseItem={fractionalBaseItem ? { id: fractionalBaseItem.id, name: fractionalBaseItem.name } : null}
+        menuItemId={fractionalBaseItem?.id}
         quantity={fractionalQuantity}
         onConfirm={handleConfirmFractional}
       />

@@ -20,11 +20,12 @@ interface FractionalPizzaDialogProps {
   onOpenChange: (open: boolean) => void;
   businessId: string;
   baseItem: { id: string; name: string } | null;
+  menuItemId?: string;
   quantity: number;
   onConfirm: (item: { id: string; menu_item_id: string; name: string; price: number; quantity: number; details?: any }) => void;
 }
 
-export default function FractionalPizzaDialog({ open, onOpenChange, businessId, baseItem, quantity, onConfirm }: FractionalPizzaDialogProps) {
+export default function FractionalPizzaDialog({ open, onOpenChange, businessId, baseItem, menuItemId, quantity, onConfirm }: FractionalPizzaDialogProps) {
   const [loading, setLoading] = useState(false);
   const [flavors, setFlavors] = useState<FlavorOption[]>([]);
   const [prices, setPrices] = useState<Record<string, { broto?: number; grande?: number }>>({});
@@ -44,8 +45,25 @@ export default function FractionalPizzaDialog({ open, onOpenChange, businessId, 
           .eq('business_id', businessId)
           .eq('active', true)
           .order('name');
-        setFlavors((opts || []) as any);
-        const ids = (opts || []).map((o: any) => o.id);
+
+        let available = (opts || []) as any[];
+
+        // Se o item tiver restrição de sabores, aplica o filtro
+        if (menuItemId) {
+          const { data: allowedRows } = await supabase
+            .from('menu_item_flavors')
+            .select('flavor_id')
+            .eq('menu_item_id', menuItemId);
+
+          const allowedIds = (allowedRows || []).map(r => r.flavor_id);
+          if (allowedIds.length > 0) {
+            available = available.filter(o => allowedIds.includes(o.id));
+          }
+        }
+
+        setFlavors(available as any);
+
+        const ids = available.map((o: any) => o.id);
         if (ids.length > 0) {
           const { data: p } = await supabase
             .from('flavor_prices')
@@ -65,7 +83,7 @@ export default function FractionalPizzaDialog({ open, onOpenChange, businessId, 
       }
     };
     load();
-  }, [open, businessId]);
+  }, [open, businessId, menuItemId]);
 
   useEffect(() => {
     if (!open) {
