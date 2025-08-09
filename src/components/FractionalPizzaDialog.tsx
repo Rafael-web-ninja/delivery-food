@@ -112,6 +112,11 @@ export default function FractionalPizzaDialog({ open, onOpenChange, businessId, 
         </DialogHeader>
 
         <div className="space-y-4">
+          {!loading && flavors.length === 0 && (
+            <div className="rounded-md border p-3 text-sm text-muted-foreground">
+              Nenhum sabor disponível no momento.
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Tamanho</Label>
             <RadioGroup value={size} onValueChange={(v) => setSize(v as any)} className="grid grid-cols-2 gap-2">

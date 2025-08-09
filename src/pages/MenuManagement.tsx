@@ -358,6 +358,9 @@ setFormData({
                 <Label htmlFor="supports_fractional">Permitir meio a meio</Label>
                 <Switch id="supports_fractional" checked={formData.supports_fractional} onCheckedChange={(v) => setFormData({ ...formData, supports_fractional: v })} />
               </div>
+              {formData.supports_fractional && (
+                <p className="text-xs text-muted-foreground -mt-2 mb-2">Cadastre e ative os sabores na aba “Sabores”.</p>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="image">Imagem</Label>
