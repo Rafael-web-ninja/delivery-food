@@ -63,7 +63,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
   });
 
   // Métodos de pagamento
-  type PaymentOption = 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'food_voucher';
+  type PaymentOption = 'cash' | 'pix' | 'card';
   const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; type: PaymentOption; name: string }>>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentOption>('cash');
   const handleInputChange = (field: string, value: string) => {
