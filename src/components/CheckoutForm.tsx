@@ -13,6 +13,7 @@ import { User, MapPin, Phone, Mail, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import OrderSuccessModal from './OrderSuccessModal';
 import { DeliveryFeeDisplay, TotalWithDelivery } from './DeliveryFeeDisplay';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface CartItem {
   id: string;

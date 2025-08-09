@@ -21,9 +21,10 @@ interface PaymentMethod {
 const PAYMENT_ICONS = {
   cash: Banknote,
   pix: Smartphone,
-  card: CreditCard,
-  other: CreditCard
-};
+  credit_card: CreditCard,
+  debit_card: CreditCard,
+  food_voucher: CreditCard,
+} as const;
 
 export default function PaymentMethodManagement() {
   const { user } = useAuth();
@@ -41,19 +42,30 @@ export default function PaymentMethodManagement() {
     fetchPaymentMethods();
   }, []);
 
-  const fetchPaymentMethods = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .order('name');
+const fetchPaymentMethods = async () => {
+  try {
+    // Buscar o negócio do dono para filtrar corretamente
+    const { data: businessData, error: businessError } = await supabase
+      .from('delivery_businesses')
+      .select('id')
+      .eq('owner_id', user?.id)
+      .single();
 
-      if (error) throw error;
-      if (data) setPaymentMethods(data);
-    } catch (error) {
-      console.error('Erro ao buscar métodos de pagamento:', error);
-    }
-  };
+    if (businessError) throw businessError;
+    if (!businessData) return;
+
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('business_id', businessData.id)
+      .order('name');
+
+    if (error) throw error;
+    if (data) setPaymentMethods(data);
+  } catch (error) {
+    console.error('Erro ao buscar métodos de pagamento:', error);
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,10 +214,10 @@ export default function PaymentMethodManagement() {
                     onChange={(e) => setFormData({...formData, type: e.target.value as any})}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:border-primary focus:outline-none"
                   >
-                    <option value="cash">Dinheiro</option>
-                    <option value="pix">PIX</option>
-                    <option value="card">Cartão</option>
-                    <option value="other">Outro</option>
+<option value="cash">Dinheiro</option>
+<option value="pix">PIX</option>
+<option value="credit_card">Cartão de Crédito</option>
+<option value="debit_card">Cartão de Débito</option>
                   </select>
                 </div>
 
@@ -239,7 +251,7 @@ export default function PaymentMethodManagement() {
       <CardContent>
         <div className="space-y-4">
           {paymentMethods.map((method) => {
-            const IconComponent = PAYMENT_ICONS[method.type];
+            const IconComponent = (PAYMENT_ICONS as any)[method.type] || CreditCard;
             return (
               <Card key={method.id} className={!method.is_active ? 'opacity-60' : ''}>
                 <CardContent className="p-4">
