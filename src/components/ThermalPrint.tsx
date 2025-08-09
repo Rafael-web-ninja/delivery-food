@@ -3,7 +3,7 @@ import { Printer } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, paymentTranslations } from '@/lib/formatters';
 
 interface Order {
   id: string;
@@ -128,7 +128,8 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      const paymentText = `PAGAMENTO: ${order.payment_method.toUpperCase()}`;
+      const paymentLabel = paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method;
+      const paymentText = `PAGAMENTO: ${paymentLabel}`;
       pdf.text(paymentText, leftMargin, yPosition);
       yPosition += lineHeight * 1.5;
       
@@ -200,7 +201,7 @@ ${order.order_items.map(item =>
 
 ----------------------------------------
 TOTAL: ${formatCurrency(Number(order.total_amount))}
-PAGAMENTO: ${order.payment_method.toUpperCase()}
+PAGAMENTO: ${paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method}
 
 ${order.notes ? `\nOBSERVAÇÕES:\n${order.notes}` : ''}
 

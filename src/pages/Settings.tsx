@@ -175,6 +175,7 @@ const Settings = () => {
           <TabsList>
             <TabsTrigger value="business">Dados do Negócio</TabsTrigger>
             <TabsTrigger value="hours">Horários</TabsTrigger>
+            <TabsTrigger value="payments">Pagamentos</TabsTrigger>
             <TabsTrigger value="colors">Personalização</TabsTrigger>
           </TabsList>
 
@@ -272,6 +273,10 @@ const Settings = () => {
 
           <TabsContent value="hours">
             <BusinessHours />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <PaymentMethodManagement />
           </TabsContent>
 
           <TabsContent value="colors">

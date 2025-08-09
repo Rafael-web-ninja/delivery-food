@@ -62,6 +62,10 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
     name: ''
   });
 
+  // Métodos de pagamento
+  type PaymentOption = 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'food_voucher';
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; type: PaymentOption; name: string }>>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentOption>('cash');
   const handleInputChange = (field: string, value: string) => {
     setCustomerData(prev => ({ ...prev, [field]: value }));
   };
@@ -109,6 +113,30 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
 
     loadUserProfile();
   }, [user]);
+
+  // Carrega métodos de pagamento ativos do delivery
+  useEffect(() => {
+    const loadPaymentMethods = async () => {
+      try {
+        const { data } = await supabase
+          .from('payment_methods')
+          .select('id,type,name')
+          .eq('business_id', business.id)
+          .eq('is_active', true)
+          .order('name');
+        if (data && data.length > 0) {
+          setPaymentMethods(data as any);
+          setSelectedPaymentMethod((data[0].type as PaymentOption) ?? 'cash');
+        } else {
+          setPaymentMethods([]);
+          setSelectedPaymentMethod('cash');
+        }
+      } catch (e) {
+        setPaymentMethods([]);
+      }
+    };
+    if (business?.id) loadPaymentMethods();
+  }, [business?.id]);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -282,7 +310,7 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
         customer_address: customerData.address || '',
         total_amount: totalWithDelivery,
         delivery_fee: deliveryFee,
-        payment_method: 'cash' as const,
+        payment_method: selectedPaymentMethod as any,
         notes: customerData.notes || '',
         status: 'pending' as const
       };
@@ -401,8 +429,28 @@ export default function CheckoutForm({ cart, business, total, onOrderComplete, o
                   <TotalWithDelivery businessId={business.id} subtotal={total} />
                 </div>
               </div>
-            </div>
 
+              <div className="mt-4">
+                <h3 className="font-semibold mb-2">Forma de Pagamento</h3>
+                {paymentMethods.length > 0 ? (
+                  <RadioGroup
+                    value={selectedPaymentMethod}
+                    onValueChange={(v) => setSelectedPaymentMethod(v as PaymentOption)}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                  >
+                    {paymentMethods.map((m) => (
+                      <label key={m.id} htmlFor={`pm-${m.id}`} className="flex items-center gap-3 p-3 border rounded-md cursor-pointer">
+                        <RadioGroupItem id={`pm-${m.id}`} value={m.type} />
+                        <span>{paymentTranslations[m.type as keyof typeof paymentTranslations] ?? m.name}</span>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Dinheiro</p>
+                )}
+              </div>
+            </div>
+          
             {/* Login/Cadastro ou dados do cliente */}
             {!user ? (
               <Tabs defaultValue="guest">
