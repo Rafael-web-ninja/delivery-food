@@ -289,9 +289,9 @@ const Analytics = () => {
                 <LineChart data={analytics?.salesTrend || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="left" tickFormatter={(value: number) => formatCurrency(value)} />
                   <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
+                  <Tooltip formatter={(value: number, name: string, item: any) => item?.dataKey === 'revenue' ? formatCurrency(value) : value} />
                   <Line
                     yAxisId="left"
                     type="monotone"
@@ -324,8 +324,8 @@ const Analytics = () => {
                 <BarChart data={analytics?.categoryPerformance || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
+                  <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Bar dataKey="value" fill="hsl(var(--primary))" />
                 </BarChart>
               </ResponsiveContainer>
