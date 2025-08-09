@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CategoryManagement from '@/components/CategoryManagement';
+import FlavorManagement from '@/components/FlavorManagement';
 
 interface MenuItem {
   id: string;
@@ -24,6 +26,7 @@ interface MenuItem {
   active: boolean;
   category_id: string;
   preparation_time: number;
+  supports_fractional?: boolean;
 }
 
 interface Category {
@@ -41,12 +44,13 @@ const MenuManagement = () => {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
-  const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
     category_id: '',
     preparation_time: '',
+    supports_fractional: false,
     image: null as File | null
   });
 
@@ -140,12 +144,13 @@ const MenuManagement = () => {
         image_url = urlData.publicUrl;
       }
 
-      const itemData = {
+const itemData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
         category_id: formData.category_id || null,
         preparation_time: parseInt(formData.preparation_time) || 0,
+        supports_fractional: !!formData.supports_fractional,
         ...(image_url && { image_url })
       };
 
@@ -179,12 +184,13 @@ const MenuManagement = () => {
 
       setDialogOpen(false);
       setEditingItem(null);
-      setFormData({
+setFormData({
         name: '',
         description: '',
         price: '',
         category_id: '',
         preparation_time: '',
+        supports_fractional: false,
         image: null
       });
       fetchItems();
@@ -202,12 +208,13 @@ const MenuManagement = () => {
 
   const handleEdit = (item: MenuItem) => {
     setEditingItem(item);
-    setFormData({
+setFormData({
       name: item.name,
       description: item.description || '',
       price: item.price.toString(),
       category_id: item.category_id || '',
       preparation_time: item.preparation_time?.toString() || '',
+      supports_fractional: !!item.supports_fractional,
       image: null
     });
     setDialogOpen(true);
@@ -263,9 +270,10 @@ const MenuManagement = () => {
       </div>
 
       <Tabs defaultValue="items" className="space-y-6">
-        <TabsList>
+<TabsList>
           <TabsTrigger value="items">Itens do Menu</TabsTrigger>
           <TabsTrigger value="categories">Categorias</TabsTrigger>
+          <TabsTrigger value="flavors">Sabores</TabsTrigger>
         </TabsList>
         
         <TabsContent value="items">
@@ -328,7 +336,7 @@ const MenuManagement = () => {
 
               </div>
 
-              {categories.length > 0 && (
+{categories.length > 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria</Label>
                   <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
@@ -345,6 +353,11 @@ const MenuManagement = () => {
                   </Select>
                 </div>
               )}
+
+              <div className="flex items-center justify-between py-2">
+                <Label htmlFor="supports_fractional">Permitir meio a meio</Label>
+                <Switch id="supports_fractional" checked={formData.supports_fractional} onCheckedChange={(v) => setFormData({ ...formData, supports_fractional: v })} />
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="image">Imagem</Label>
@@ -440,8 +453,12 @@ const MenuManagement = () => {
         )}
       </TabsContent>
       
-      <TabsContent value="categories">
+<TabsContent value="categories">
         <CategoryManagement />
+      </TabsContent>
+      <TabsContent value="flavors">
+        {/* Gerenciar sabores para pizzas meio a meio */}
+        <FlavorManagement />
       </TabsContent>
     </Tabs>
     </div>

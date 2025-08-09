@@ -29,6 +29,7 @@ import CustomerOrders from '@/components/CustomerOrders';
 import { MenuFilters } from '@/components/MenuFilters';
 import { useAuth } from '@/hooks/useAuth';
 import FloatingCart from '@/components/FloatingCart';
+import FractionalPizzaDialog from '@/components/FractionalPizzaDialog';
 
 interface MenuItem {
   id: string;
@@ -38,6 +39,7 @@ interface MenuItem {
   image_url: string;
   preparation_time: number;
   category_id: string | null;
+  supports_fractional?: boolean;
 }
 
 interface Business {

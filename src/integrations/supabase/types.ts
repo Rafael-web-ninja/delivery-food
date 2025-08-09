@@ -173,6 +173,74 @@ export type Database = {
         }
         Relationships: []
       }
+      flavor_options: {
+        Row: {
+          active: boolean
+          business_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          business_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          business_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      flavor_prices: {
+        Row: {
+          created_at: string
+          flavor_id: string
+          id: string
+          price: number
+          size: Database["public"]["Enums"]["pizza_size"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          flavor_id: string
+          id?: string
+          price: number
+          size: Database["public"]["Enums"]["pizza_size"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          flavor_id?: string
+          id?: string
+          price?: number
+          size?: Database["public"]["Enums"]["pizza_size"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flavor_prices_flavor_id_fkey"
+            columns: ["flavor_id"]
+            isOneToOne: false
+            referencedRelation: "flavor_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_categories: {
         Row: {
           active: boolean | null
@@ -227,6 +295,7 @@ export type Database = {
           name: string
           preparation_time: number | null
           price: number
+          supports_fractional: boolean
           updated_at: string
         }
         Insert: {
@@ -241,6 +310,7 @@ export type Database = {
           name: string
           preparation_time?: number | null
           price: number
+          supports_fractional?: boolean
           updated_at?: string
         }
         Update: {
@@ -255,6 +325,7 @@ export type Database = {
           name?: string
           preparation_time?: number | null
           price?: number
+          supports_fractional?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -504,6 +575,7 @@ export type Database = {
         | "debit_card"
         | "pix"
         | "food_voucher"
+      pizza_size: "broto" | "grande"
       user_role: "cliente" | "dono_delivery"
     }
     CompositeTypes: {
@@ -646,6 +718,7 @@ export const Constants = {
         "pix",
         "food_voucher",
       ],
+      pizza_size: ["broto", "grande"],
       user_role: ["cliente", "dono_delivery"],
     },
   },
