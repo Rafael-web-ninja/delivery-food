@@ -28,6 +28,7 @@ import CustomerProfile from '@/components/CustomerProfile';
 import CustomerOrders from '@/components/CustomerOrders';
 import { MenuFilters } from '@/components/MenuFilters';
 import { useAuth } from '@/hooks/useAuth';
+import FloatingCart from '@/components/FloatingCart';
 
 interface MenuItem {
   id: string;
@@ -642,6 +643,16 @@ const PublicMenu = () => {
            </>
         )}
       </div>
+
+      {cart.length > 0 && !showCheckout && (
+        <FloatingCart
+          count={cart.reduce((sum, ci) => sum + ci.quantity, 0)}
+          total={getCartTotal()}
+          onClick={() => setShowCheckout(true)}
+          bgColor={business.cart_button_color || '#16A34A'}
+          textColor={business.cart_button_text_color || '#FFFFFF'}
+        />
+      )}
 
       {/* Checkout Modal */}
       {showCheckout && (
