@@ -123,37 +123,8 @@ export const useNotifications = () => {
             )
           );
 
-          // Show status update notification for key statuses
-          switch (updatedOrder.status) {
-            case 'preparing':
-              toast({
-                title: "👨‍🍳 Em preparação",
-                description: `Pedido de ${updatedOrder.customer_name} está em preparação.`,
-                duration: 3000,
-              });
-              break;
-            case 'ready':
-              toast({
-                title: "📦 Pronto para entrega",
-                description: `Pedido de ${updatedOrder.customer_name} está pronto para entrega.`,
-                duration: 3000,
-              });
-              break;
-            case 'out_for_delivery':
-              toast({
-                title: "🛵 Saiu para entrega",
-                description: `Pedido de ${updatedOrder.customer_name} saiu para entrega.`,
-                duration: 3000,
-              });
-              break;
-            case 'delivered':
-              toast({
-                title: "✅ Pedido entregue",
-                description: `Pedido de ${updatedOrder.customer_name} foi entregue.`,
-                duration: 3000,
-              });
-              break;
-          }
+          // For business owners: update the list silently (no status toasts)
+          // We keep only the INSERT toast above for new orders.
         }
       )
       .subscribe();
