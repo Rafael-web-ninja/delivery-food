@@ -10,6 +10,7 @@ import { User, Phone, MapPin, Clock, Package, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, statusTranslations as statusLabels } from '@/lib/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface CustomerProfile {
   id: string;
@@ -60,6 +61,7 @@ const statusColors = {
 const CustomerDashboard = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  useNotifications();
   const [profile, setProfile] = useState<CustomerProfile>({
     id: '',
     name: '',

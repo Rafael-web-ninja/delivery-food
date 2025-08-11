@@ -22,14 +22,53 @@ export const useNotifications = () => {
 
     const setupNotifications = async () => {
 
-    // Get user's business ID first
-    const { data: business } = await supabase
-      .from('delivery_businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
+    // Get user's business (owner) and customer profile in parallel
+    const [{ data: business }, { data: customerProfile }] = await Promise.all([
+      supabase.from('delivery_businesses').select('id').eq('owner_id', user.id).single(),
+      supabase.from('customer_profiles').select('id').eq('user_id', user.id).single(),
+    ]);
 
-    if (!business?.id) return;
+    // If user is a customer (no business), subscribe to their order updates
+    if (!business?.id) {
+      if (!customerProfile?.id) return;
+
+      const customerChannel = supabase
+        .channel(`orders-notifications-customer-${customerProfile.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'orders', filter: `customer_id=eq.${customerProfile.id}` },
+          (payload) => {
+            const updatedOrder = payload.new as OrderNotification;
+            setNotifications(prev => {
+              const exists = prev.some(n => n.id === updatedOrder.id);
+              return (exists
+                ? prev.map(n => (n.id === updatedOrder.id ? updatedOrder : n))
+                : [updatedOrder, ...prev]
+              ).slice(0, 10);
+            });
+
+            switch (updatedOrder.status) {
+              case 'preparing':
+                toast({ title: '👨‍🍳 Em preparação', description: 'Seu pedido está em preparação.', duration: 3000 });
+                break;
+              case 'ready':
+                toast({ title: '📦 Pronto para retirada/entrega', description: 'Seu pedido está pronto.', duration: 3000 });
+                break;
+              case 'out_for_delivery':
+                toast({ title: '🛵 Saiu para entrega', description: 'Seu pedido saiu para entrega.', duration: 3000 });
+                break;
+              case 'delivered':
+                toast({ title: '✅ Pedido entregue', description: 'Seu pedido foi entregue.', duration: 3000 });
+                break;
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(customerChannel);
+      };
+    }
 
     // Subscribe to new orders
     const channel = supabase
