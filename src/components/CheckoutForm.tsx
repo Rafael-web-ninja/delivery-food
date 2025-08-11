@@ -495,79 +495,11 @@ const handleFinishOrder = async () => {
           
             {/* Login/Cadastro ou dados do cliente */}
             {!user ? (
-              <Tabs defaultValue="guest">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="guest">Continuar sem conta</TabsTrigger>
+              <Tabs defaultValue="login">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">Entrar</TabsTrigger>
                   <TabsTrigger value="signup">Cadastrar</TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="guest" className="space-y-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="name" className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Nome completo *
-                      </Label>
-                      <Input
-                        id="name"
-                        value={customerData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        placeholder="Seu nome completo"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="email" className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={customerData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="phone" className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Telefone *
-                      </Label>
-                      <Input
-                        id="phone"
-                        value={customerData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="address" className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Endereço de entrega *
-                      </Label>
-                      <Input
-                        id="address"
-                        value={customerData.address}
-                        onChange={(e) => handleInputChange('address', e.target.value)}
-                        placeholder="Rua, número, bairro, cidade"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="notes">Observações</Label>
-                      <Textarea
-                        id="notes"
-                        value={customerData.notes}
-                        onChange={(e) => handleInputChange('notes', e.target.value)}
-                        placeholder="Observações sobre o pedido (opcional)"
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
                 
                 <TabsContent value="login" className="space-y-4">
                   <div>
