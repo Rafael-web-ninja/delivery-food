@@ -21,6 +21,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import PDV from "./pages/PDV";
+import NotificationsListener from "@/components/NotificationsListener";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <NotificationsListener />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
