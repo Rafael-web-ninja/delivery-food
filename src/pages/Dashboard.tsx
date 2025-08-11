@@ -55,7 +55,7 @@ const Dashboard = () => {
 
       if (data) {
         setBusiness(data);
-        setMenuLink(`${window.location.origin}/menu/${data.id}`);
+        setMenuLink(`${window.location.origin}/menu/${data.slug || data.id}`);
       } else {
         // Criar business se não existir
         const { data: newBusiness } = await supabase
@@ -70,7 +70,7 @@ const Dashboard = () => {
         
         if (newBusiness) {
           setBusiness(newBusiness);
-          setMenuLink(`${window.location.origin}/menu/${newBusiness.id}`);
+          setMenuLink(`${window.location.origin}/menu/${newBusiness.slug || newBusiness.id}`);
         }
       }
     } catch (error) {
