@@ -1,9 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import { formatCurrency, paymentTranslations } from '@/lib/formatters';
+import { formatCurrency, paymentTranslations, statusTranslations } from '@/lib/formatters';
 
 interface Order {
   id: string;
@@ -35,227 +32,163 @@ interface ThermalPrintProps {
 
 export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
   const handlePrint = () => {
-    try {
-      // Criar novo PDF
-      const pdf = new jsPDF({
-        unit: 'mm',
-        format: [80, 200], // Formato de impressora térmica (80mm de largura)
-        orientation: 'portrait'
-      });
+    const COLS = 32;
+    const LF = 0x0A;
 
-      // Configurar fonte
-      pdf.setFont('helvetica', 'normal');
-      
-      let yPosition = 10;
-      const lineHeight = 4;
-      const leftMargin = 5;
-      
-      // Cabeçalho
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(businessName.toUpperCase(), leftMargin, yPosition);
-      yPosition += lineHeight * 1.5;
-      
-      // Linha separadora
-      pdf.text('================================', leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      // Informações do pedido
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`PEDIDO #${order.order_code || order.id.slice(-8)}`, leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.text(`Data: ${new Date(order.created_at).toLocaleString('pt-BR')}`, leftMargin, yPosition);
-      yPosition += lineHeight * 1.5;
-      
-      // Dados do cliente
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CLIENTE:', leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(order.customer_name, leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.text(`Tel: ${order.customer_phone}`, leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      if (order.customer_address) {
-        // Quebrar endereço em múltiplas linhas se necessário
-        const addressLines = pdf.splitTextToSize(order.customer_address, 70);
-        addressLines.forEach((line: string) => {
-          pdf.text(line, leftMargin, yPosition);
-          yPosition += lineHeight;
-        });
-      }
-      
-      yPosition += lineHeight;
-      pdf.text('--------------------------------', leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      // Itens do pedido
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('ITENS:', leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.setFont('helvetica', 'normal');
-      order.order_items.forEach(item => {
-        const itemText = `${item.quantity}x ${item.menu_items.name}`;
-        const priceText = formatCurrency(item.quantity * Number(item.unit_price));
-        
-        // Item name (pode quebrar linha se muito longo)
-        const itemLines = pdf.splitTextToSize(itemText, 50);
-        itemLines.forEach((line: string, index: number) => {
-          pdf.text(line, leftMargin, yPosition);
-          if (index === itemLines.length - 1) {
-            // Preço alinhado à direita na última linha do item
-            pdf.text(priceText, 75 - pdf.getTextWidth(priceText), yPosition);
+    // Helpers
+    const stripAccents = (s: string) =>
+      s
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ç/g, 'c')
+        .replace(/Ç/g, 'C');
+
+    const sanitize = (s: string) => stripAccents(s).replace(/[^\x20-\x7E]/g, '');
+
+    const toLines = (s: string) => {
+      const text = sanitize(s);
+      const words = text.split(/\s+/);
+      const lines: string[] = [];
+      let line = '';
+      for (const w of words) {
+        if ((line.length ? line.length + 1 : 0) + w.length <= COLS) {
+          line = line.length ? line + ' ' + w : w;
+        } else {
+          if (line) lines.push(line);
+          if (w.length > COLS) {
+            for (let i = 0; i < w.length; i += COLS) {
+              lines.push(w.slice(i, i + COLS));
+            }
+            line = '';
+          } else {
+            line = w;
           }
-          yPosition += lineHeight;
-        });
-
-        // Sabores/observações do item (meio a meio, etc.)
-        if ((item as any).notes) {
-          const notesText = (item as any).notes as string;
-          const notesLines = pdf.splitTextToSize(notesText, 70);
-          pdf.setFontSize(9);
-          notesLines.forEach((line: string) => {
-            pdf.text(`- ${line}`, leftMargin + 2, yPosition);
-            yPosition += lineHeight;
-          });
-          pdf.setFontSize(10);
         }
-      });
-      
-      // Total
-      yPosition += lineHeight;
-      pdf.text('--------------------------------', leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(12);
-      const totalText = `TOTAL: ${formatCurrency(Number(order.total_amount))}`;
-      pdf.text(totalText, leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      const paymentLabel = paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method;
-      const paymentText = `PAGAMENTO: ${paymentLabel}`;
-      pdf.text(paymentText, leftMargin, yPosition);
-      yPosition += lineHeight * 1.5;
-      
-      // Observações
-      if (order.notes) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('OBSERVAÇÕES:', leftMargin, yPosition);
-        yPosition += lineHeight;
-        
-        pdf.setFont('helvetica', 'normal');
-        const notesLines = pdf.splitTextToSize(order.notes, 70);
-        notesLines.forEach((line: string) => {
-          pdf.text(line, leftMargin, yPosition);
-          yPosition += lineHeight;
-        });
-        yPosition += lineHeight;
       }
-      
-      // Status e horário
-      pdf.text('--------------------------------', leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      pdf.text(`Status: ${order.status.toUpperCase()}`, leftMargin, yPosition);
-      yPosition += lineHeight;
-      
-      const timeText = formatDistanceToNow(new Date(order.created_at), { 
-        addSuffix: true, 
-        locale: ptBR 
-      });
-      pdf.text(`Horário: ${timeText}`, leftMargin, yPosition);
-      yPosition += lineHeight * 1.5;
-      
-      // Rodapé
-      pdf.text('================================', leftMargin, yPosition);
-      
-      // Abrir PDF em nova aba
-      const pdfBlob = pdf.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, '_blank');
-      
-      // Limpar URL após um tempo
-      setTimeout(() => {
-        URL.revokeObjectURL(pdfUrl);
-      }, 10000);
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      
-      // Fallback: usar método anterior se PDF falhar
-      const printContent = `
-========================================
-           ${businessName.toUpperCase()}
-========================================
+      if (line) lines.push(line);
+      return lines;
+    };
 
-PEDIDO #${order.order_code || order.id.slice(-8)}
-Data: ${new Date(order.created_at).toLocaleString('pt-BR')}
+    const bytes: number[] = [];
+    const push = (...arr: number[]) => bytes.push(...arr);
+    const writeLine = (s: string) => {
+      const t = sanitize(s).slice(0, COLS);
+      for (let i = 0; i < t.length; i++) push(t.charCodeAt(i));
+      push(LF);
+    };
+    const writeLinesWrapped = (s: string) => toLines(s).forEach(writeLine);
 
-----------------------------------------
-CLIENTE:
-${order.customer_name}
-Tel: ${order.customer_phone}
-${order.customer_address ? `End: ${order.customer_address}` : ''}
+    // ESC/POS helpers
+    const alignCenter = () => push(0x1B, 0x61, 0x01);
+    const alignLeft = () => push(0x1B, 0x61, 0x00);
+    const boldOn = () => push(0x1B, 0x45, 0x01);
+    const boldOff = () => push(0x1B, 0x45, 0x00);
+    const doubleOn = () => push(0x1D, 0x21, 0x11);
+    const doubleOff = () => push(0x1D, 0x21, 0x00);
+    const hr = () => writeLine('-'.repeat(COLS));
+    const hrEq = () => writeLine('='.repeat(COLS));
 
-----------------------------------------
-ITENS:
-${order.order_items.map(item => {
-  const line = `${item.quantity}x ${item.menu_items.name.padEnd(20)} ${formatCurrency(item.quantity * Number(item.unit_price))}`;
-  const notes = (item as any).notes ? `\n   - ${(item as any).notes}` : '';
-  return line + notes;
-}).join('\n')}
+    // Initialize and set code page CP-850 (ESC @, ESC t 2)
+    push(0x1B, 0x40);
+    push(0x1B, 0x74, 0x02);
 
-----------------------------------------
-TOTAL: ${formatCurrency(Number(order.total_amount))}
-PAGAMENTO: ${paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method}
+    // Header
+    alignCenter();
+    boldOn();
+    doubleOn();
+    writeLine(businessName.toUpperCase());
+    doubleOff();
+    boldOff();
+    hrEq();
+    alignLeft();
 
-${order.notes ? `\nOBSERVAÇÕES:\n${order.notes}` : ''}
+    // Order info
+    const orderCode = order.order_code || order.id.slice(-8);
+    writeLine(`PEDIDO #${orderCode}`);
+    const d = new Date(order.created_at);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    writeLine(`Data: ${dateStr}`);
+    writeLine('');
 
-----------------------------------------
-Status: ${order.status.toUpperCase()}
-Horário: ${formatDistanceToNow(new Date(order.created_at), { 
-  addSuffix: true, 
-  locale: ptBR 
-})}
+    // Customer
+    boldOn();
+    writeLine('CLIENTE:');
+    boldOff();
+    writeLinesWrapped(order.customer_name);
+    writeLine(`Tel: ${order.customer_phone}`);
+    if (order.customer_address) {
+      writeLine('End:');
+      writeLinesWrapped(order.customer_address);
+    }
+    hr();
 
-========================================
-      `;
+    // Items
+    boldOn();
+    writeLine('ITENS:');
+    boldOff();
 
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Pedido #${order.order_code || order.id.slice(-8)}</title>
-              <style>
-                body {
-                  font-family: 'Courier New', monospace;
-                  font-size: 12px;
-                  line-height: 1.2;
-                  margin: 0;
-                  padding: 10px;
-                  white-space: pre-wrap;
-                }
-                @media print {
-                  body { margin: 0; }
-                }
-              </style>
-            </head>
-            <body>${printContent}</body>
-          </html>
-        `);
-        printWindow.document.close();
+    for (const item of order.order_items) {
+      const name = (item.menu_items?.name || '').toString();
+      const qty = item.quantity;
+      const priceNumber = qty * Number(item.unit_price);
+      const price = sanitize(formatCurrency(priceNumber));
+
+      const left = `${qty}x ${name}`;
+      const priceLen = price.length;
+      const leftMax = Math.max(0, COLS - priceLen - 1);
+      const leftTrim = sanitize(left).slice(0, leftMax);
+      const line = leftTrim.padEnd(leftMax, ' ') + ' ' + price;
+      writeLine(line);
+
+      const itemNotes = (item as any).notes as string | null | undefined;
+      if (itemNotes) {
+        for (const l of toLines(`- ${itemNotes}`)) writeLine(l);
       }
     }
+
+    hr();
+
+    // Total and payment
+    boldOn();
+    const total = sanitize(formatCurrency(Number(order.total_amount)));
+    writeLine(`TOTAL: ${total}`);
+    boldOff();
+
+    const paymentLabel = paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method;
+    writeLine(`PAGAMENTO: ${sanitize(paymentLabel)}`);
+
+    if (order.notes) {
+      writeLine('');
+      boldOn();
+      writeLine('OBS:');
+      boldOff();
+      writeLinesWrapped(order.notes);
+    }
+
+    // Status
+    const statusLabel = (statusTranslations as any)[order.status] || order.status;
+    writeLine('');
+    writeLine(`Status: ${sanitize(statusLabel)}`);
+
+    // Two blank lines
+    writeLine('');
+    writeLine('');
+
+    // Cut (GS V B 0)
+    push(0x1D, 0x56, 0x42, 0x00);
+
+    // Download file immediately
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'text/plain; charset=binary' });
+    const filename = `pedido-${order.id}-termico.txt`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
   return (
