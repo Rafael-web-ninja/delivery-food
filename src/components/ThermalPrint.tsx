@@ -77,11 +77,12 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       push(LF);
     };
     const writeLinesWrapped = (s: string) => toLines(s).forEach(writeLine);
-    const writeLabelValue = (label: string, value: string) => {
-      const val = sanitize(value).slice(0, COLS);
-      const leftMax = Math.max(0, COLS - val.length - 1);
-      const leftText = sanitize(label).slice(0, leftMax);
-      const line = leftText.padEnd(leftMax, ' ') + ' ' + val;
+    const writeLabelValueFixed = (label: string, value: string) => {
+      const LABEL_W = 22; // fixed columns for label
+      const VALUE_W = COLS - LABEL_W; // 10
+      const l = sanitize(label).slice(0, LABEL_W);
+      const v = sanitize(value).slice(0, VALUE_W);
+      const line = l.padEnd(LABEL_W, ' ') + v.padStart(VALUE_W, ' ');
       writeLine(line);
     };
 
@@ -125,14 +126,13 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
     boldOff();
     writeLinesWrapped(order.customer_name);
     writeLine(`Tel: ${order.customer_phone}`);
-    if (order.customer_address) {
-      writeLine('End:');
-      writeLinesWrapped(order.customer_address);
-    }
     const complement = (order as any).customer_complement as string | undefined;
     const neighborhood = (order as any).customer_neighborhood as string | undefined;
-    if (complement) writeLinesWrapped(`Compl.: ${complement}`);
-    if (neighborhood) writeLinesWrapped(`Bairro: ${neighborhood}`);
+    const addrParts: string[] = [];
+    if (order.customer_address) addrParts.push(order.customer_address);
+    if (complement) addrParts.push(`Compl. ${complement}`);
+    if (neighborhood) addrParts.push(`Bairro ${neighborhood}`);
+    if (addrParts.length) writeLinesWrapped(addrParts.join(' - '));
     hr();
 
     // Items
@@ -153,9 +153,23 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       const line = leftTrim.padEnd(leftMax, ' ') + ' ' + price;
       writeLine(line);
 
+      const size = (item as any).size as string | undefined;
+      const f1 = (((item as any).flavor1 && (item as any).flavor1.name) ? (item as any).flavor1.name : (item as any).flavor1) as string | undefined;
+      const f2 = (((item as any).flavor2 && (item as any).flavor2.name) ? (item as any).flavor2.name : (item as any).flavor2) as string | undefined;
+      const flavor = f1 && f2 ? `1/2 ${f1} + 1/2 ${f2}` : (f1 || f2);
+      let addons: string[] | string | undefined = (item as any).addons as any;
+      const addonsStr = Array.isArray(addons) ? addons.join(', ') : addons;
+      const detailsParts: string[] = [];
+      if (flavor) detailsParts.push(`Sabor: ${flavor}`);
+      if (size) detailsParts.push(`Tamanho: ${size}`);
+      if (addonsStr) detailsParts.push(`Adicionais: ${addonsStr}`);
+
       const itemNotes = (item as any).notes as string | null | undefined;
-      if (itemNotes) {
-        for (const l of toLines(`  > ${itemNotes}`)) writeLine(l);
+      if (!detailsParts.length && itemNotes) detailsParts.push(itemNotes);
+
+      if (detailsParts.length) {
+        const detailsLine = `  - ${detailsParts.join(' / ')}`;
+        for (const l of toLines(detailsLine)) writeLine(l);
       }
     }
 
@@ -166,13 +180,13 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
     const deliveryFee = Number((order as any).delivery_fee || 0);
     const discount = Number((order as any).discount || 0);
 
-    writeLabelValue('SUBTOTAL:', sanitize(formatCurrency(subtotalNumber)));
-    if (deliveryFee > 0) writeLabelValue('ENTREGA:', sanitize(formatCurrency(deliveryFee)));
-    if (discount > 0) writeLabelValue('DESCONTO:', `-${sanitize(formatCurrency(discount))}`);
+    writeLabelValueFixed('SUBTOTAL:', sanitize(formatCurrency(subtotalNumber)));
+    if (deliveryFee > 0) writeLabelValueFixed('ENTREGA:', sanitize(formatCurrency(deliveryFee)));
+    if (discount > 0) writeLabelValueFixed('DESCONTOS:', `-${sanitize(formatCurrency(discount))}`);
 
     boldOn();
     const total = sanitize(formatCurrency(Number(order.total_amount)));
-    writeLabelValue('TOTAL:', total);
+    writeLabelValueFixed('TOTAL:', total);
     boldOff();
 
     const paymentLabel = paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method;
@@ -180,28 +194,25 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
     const paymentOut = paymentDetails ? `${paymentLabel} - ${paymentDetails}` : paymentLabel;
     writeLine(`PAGAMENTO: ${sanitize(paymentOut)}`);
 
-    hr();
+    if (order.payment_method === 'cash') {
+      const changeFor = Number((order as any).change_for || (order as any).cash_change || (order as any).change_amount || 0);
+      if (changeFor > 0) writeLine(`Troco para: ${sanitize(formatCurrency(changeFor))}`);
+    }
 
-    // Status
-    const statusLabel = (statusTranslations as any)[order.status] || order.status;
-    writeLine(`Status: ${sanitize(statusLabel)}`);
+    hr();
 
     // Observations
     if (order.notes) {
-      writeLine('');
-      boldOn();
-      writeLine('OBS:');
-      boldOff();
+      writeLine('OBSERVACOES:');
       writeLinesWrapped(order.notes);
     }
 
     // Final message
-    writeLine('');
     alignCenter();
     writeLine('Obrigado pela preferencia!');
     alignLeft();
 
-    // Extra feeds
+    // Extra feeds (3 lines)
     writeLine('');
     writeLine('');
     writeLine('');
