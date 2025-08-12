@@ -631,10 +631,10 @@ const handleFinishOrder = async () => {
 
             {/* Botões de ação */}
             <div className="flex gap-3 pt-4">
-              <Button type="button" onClick={onCancel} className="flex-1">
+              <Button type="button" variant="outline" onClick={onCancel} className="flex-1 hover:bg-primary hover:text-primary-foreground">
                 Cancelar
               </Button>
-<Button 
+              <Button 
   onClick={handleFinishOrder} 
   disabled={loading || total < minOrderValue}
   className="flex-1"
