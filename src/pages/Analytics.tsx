@@ -150,7 +150,13 @@ const Analytics = () => {
     setTimeRange('custom');
   };
 
-  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+
+  // Dados com rótulos traduzidos para o gráfico de status
+  const translatedOrderStatus = (analytics?.orderStatus || []).map((s) => ({
+    ...s,
+    label: statusTranslations[s.status as keyof typeof statusTranslations] || s.status,
+  }));
 
   if (loading) {
     return (
@@ -343,20 +349,20 @@ const Analytics = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={analytics?.orderStatus || []}
+                  data={translatedOrderStatus}
                   dataKey="count"
-                  nameKey="status"
+                  nameKey="label"
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
                   fill="hsl(var(--primary))"
                   label
                 >
-                  {analytics?.orderStatus.map((entry, index) => (
+                  {translatedOrderStatus.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip labelFormatter={(label: string) => statusTranslations[label as keyof typeof statusTranslations] || label} />
+                <Tooltip labelFormatter={(label: string) => label} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>

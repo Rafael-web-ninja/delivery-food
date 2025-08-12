@@ -399,23 +399,6 @@ const { error } = await supabase
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="accent_color">Cor de Destaque</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="accent_color"
-                            type="color"
-                            value={businessData.accent_color}
-                            onChange={(e) => setBusinessData(prev => ({ ...prev, accent_color: e.target.value }))}
-                            className="w-16 h-10 p-1"
-                          />
-                          <Input
-                            value={businessData.accent_color}
-                            onChange={(e) => setBusinessData(prev => ({ ...prev, accent_color: e.target.value }))}
-                            placeholder="#059669"
-                          />
-                        </div>
-                      </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="background_color">Cor de Fundo</Label>

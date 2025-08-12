@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
@@ -9,7 +9,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 const DashboardLayout = () => {
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+  const navigate = useNavigate();
   // AuthGate já garante que só usuarios autenticados chegam aqui
 
   return (
@@ -42,6 +42,7 @@ const DashboardLayout = () => {
                     variant="ghost" 
                     size="sm" 
                     className="flex items-center gap-2"
+                    onClick={() => navigate('/settings')}
                   >
                     <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
                       <span className="text-primary-foreground text-sm font-medium">
