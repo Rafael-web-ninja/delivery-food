@@ -77,6 +77,13 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       push(LF);
     };
     const writeLinesWrapped = (s: string) => toLines(s).forEach(writeLine);
+    const writeLabelValue = (label: string, value: string) => {
+      const val = sanitize(value).slice(0, COLS);
+      const leftMax = Math.max(0, COLS - val.length - 1);
+      const leftText = sanitize(label).slice(0, leftMax);
+      const line = leftText.padEnd(leftMax, ' ') + ' ' + val;
+      writeLine(line);
+    };
 
     // ESC/POS helpers
     const alignCenter = () => push(0x1B, 0x61, 0x01);
@@ -109,6 +116,7 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
     const pad = (n: number) => String(n).padStart(2, '0');
     const dateStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     writeLine(`Data: ${dateStr}`);
+    hrEq();
     writeLine('');
 
     // Customer
@@ -121,6 +129,10 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       writeLine('End:');
       writeLinesWrapped(order.customer_address);
     }
+    const complement = (order as any).customer_complement as string | undefined;
+    const neighborhood = (order as any).customer_neighborhood as string | undefined;
+    if (complement) writeLinesWrapped(`Compl.: ${complement}`);
+    if (neighborhood) writeLinesWrapped(`Bairro: ${neighborhood}`);
     hr();
 
     // Items
@@ -143,21 +155,38 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
 
       const itemNotes = (item as any).notes as string | null | undefined;
       if (itemNotes) {
-        for (const l of toLines(`- ${itemNotes}`)) writeLine(l);
+        for (const l of toLines(`  > ${itemNotes}`)) writeLine(l);
       }
     }
 
     hr();
 
-    // Total and payment
+    // Totals and payment
+    const subtotalNumber = order.order_items.reduce((sum, it) => sum + it.quantity * Number(it.unit_price), 0);
+    const deliveryFee = Number((order as any).delivery_fee || 0);
+    const discount = Number((order as any).discount || 0);
+
+    writeLabelValue('SUBTOTAL:', sanitize(formatCurrency(subtotalNumber)));
+    if (deliveryFee > 0) writeLabelValue('ENTREGA:', sanitize(formatCurrency(deliveryFee)));
+    if (discount > 0) writeLabelValue('DESCONTO:', `-${sanitize(formatCurrency(discount))}`);
+
     boldOn();
     const total = sanitize(formatCurrency(Number(order.total_amount)));
-    writeLine(`TOTAL: ${total}`);
+    writeLabelValue('TOTAL:', total);
     boldOff();
 
     const paymentLabel = paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method;
-    writeLine(`PAGAMENTO: ${sanitize(paymentLabel)}`);
+    const paymentDetails = (order as any).payment_details || (order as any).card_brand || '';
+    const paymentOut = paymentDetails ? `${paymentLabel} - ${paymentDetails}` : paymentLabel;
+    writeLine(`PAGAMENTO: ${sanitize(paymentOut)}`);
 
+    hr();
+
+    // Status
+    const statusLabel = (statusTranslations as any)[order.status] || order.status;
+    writeLine(`Status: ${sanitize(statusLabel)}`);
+
+    // Observations
     if (order.notes) {
       writeLine('');
       boldOn();
@@ -166,12 +195,14 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       writeLinesWrapped(order.notes);
     }
 
-    // Status
-    const statusLabel = (statusTranslations as any)[order.status] || order.status;
+    // Final message
     writeLine('');
-    writeLine(`Status: ${sanitize(statusLabel)}`);
+    alignCenter();
+    writeLine('Obrigado pela preferencia!');
+    alignLeft();
 
-    // Two blank lines
+    // Extra feeds
+    writeLine('');
     writeLine('');
     writeLine('');
 
