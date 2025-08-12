@@ -89,7 +89,7 @@ export const MenuFilters = ({ businessId, onFilterChange }: MenuFiltersProps) =>
               variant={selectedCategory === null ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedCategory(null)}
-              className="h-8"
+              className={`h-8 ${selectedCategory === null ? '' : 'hover:bg-primary hover:text-primary-foreground'}`}
             >
               Todos
             </Button>
@@ -99,7 +99,7 @@ export const MenuFilters = ({ businessId, onFilterChange }: MenuFiltersProps) =>
                 variant={selectedCategory === category.id ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSelectedCategory(category.id)}
-                className="h-8"
+                className={`h-8 ${selectedCategory === category.id ? '' : 'hover:bg-primary hover:text-primary-foreground'}`}
               >
                 {category.name}
               </Button>
