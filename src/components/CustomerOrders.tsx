@@ -180,6 +180,7 @@ export default function CustomerOrders() {
                   variant="outline" 
                   size="sm"
                   onClick={() => window.open(`/public-menu/${order.delivery_businesses.id}`, '_blank')}
+                  className="hover:bg-primary hover:text-primary-foreground"
                 >
                   Ver Cardápio
                 </Button>

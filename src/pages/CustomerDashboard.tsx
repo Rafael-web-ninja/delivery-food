@@ -308,7 +308,7 @@ const CustomerDashboard = () => {
                             variant="outline" 
                             size="sm"
                             onClick={() => window.open(`/menu/${order.delivery_id}`, '_blank')}
-                            className="text-xs ml-2"
+                            className="text-xs ml-2 hover:bg-primary hover:text-primary-foreground"
                           >
                             Ver Cardápio
                           </Button>
