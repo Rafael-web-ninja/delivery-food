@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
-import { formatCurrency, paymentTranslations, statusTranslations } from '@/lib/formatters';
+import { formatCurrency, paymentTranslations } from '@/lib/formatters';
 
 interface Order {
   id: string;
@@ -107,10 +107,8 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
     writeLine(businessName.toUpperCase());
     doubleOff();
     boldOff();
-    hrEq();
-    alignLeft();
-
-    // Order info
+    // Center order code and date before separator
+    // Keep center alignment from header
     const orderCode = order.order_code || order.id.slice(-8);
     writeLine(`PEDIDO #${orderCode}`);
     const d = new Date(order.created_at);
@@ -118,11 +116,12 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
     const dateStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     writeLine(`Data: ${dateStr}`);
     hrEq();
+    alignLeft();
     writeLine('');
 
     // Customer
     boldOn();
-    writeLine('CLIENTE:');
+    writeLine('CLIENTE');
     boldOff();
     writeLinesWrapped(order.customer_name);
     writeLine(`Tel: ${order.customer_phone}`);
@@ -168,7 +167,7 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       if (!detailsParts.length && itemNotes) detailsParts.push(itemNotes);
 
       if (detailsParts.length) {
-        const detailsLine = `  - ${detailsParts.join(' / ')}`;
+        const detailsLine = `  ${detailsParts.join(' / ')}`;
         for (const l of toLines(detailsLine)) writeLine(l);
       }
     }
