@@ -8,7 +8,7 @@ import { AuthErrorBoundary } from "@/components/AuthErrorBoundary";
 import AuthGate from "@/components/AuthGate";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
-import Index from "./pages/Index";
+
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -35,7 +35,7 @@ const App = () => (
           <NotificationsListener />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
+              <Route path="/" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               <Route path="/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />

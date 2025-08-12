@@ -522,7 +522,7 @@ const handleFinishOrder = async () => {
                       placeholder="Sua senha"
                     />
                   </div>
-                  <Button onClick={handleLogin} disabled={loading} className="w-full">
+                  <Button type="button" onClick={handleLogin} disabled={loading} className="w-full">
                     Entrar
                   </Button>
                 </TabsContent>
@@ -567,7 +567,7 @@ const handleFinishOrder = async () => {
                       placeholder="Confirme sua senha"
                     />
                   </div>
-                  <Button onClick={handleSignUp} disabled={loading} className="w-full">
+                  <Button type="button" onClick={handleSignUp} disabled={loading} className="w-full">
                     Cadastrar
                   </Button>
                 </TabsContent>
@@ -631,7 +631,7 @@ const handleFinishOrder = async () => {
 
             {/* Botões de ação */}
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={onCancel} className="flex-1">
+              <Button type="button" onClick={onCancel} className="flex-1">
                 Cancelar
               </Button>
 <Button 
