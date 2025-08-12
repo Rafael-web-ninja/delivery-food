@@ -468,7 +468,7 @@ const getCartTotal = () =>
                 </>
               ) : (
                 <Link to="/auth">
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button variant="outline" className="flex items-center gap-2 hover:bg-primary hover:text-primary-foreground">
                     <User className="h-4 w-4" />
                     Entrar
                   </Button>
@@ -565,6 +565,7 @@ const getCartTotal = () =>
                             size="sm"
                             onClick={() => updateSelectedQuantity(item.id, -1)}
                             disabled={(selectedQuantities[item.id] || 0) === 0}
+                            className="hover:bg-primary hover:text-primary-foreground"
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -575,6 +576,7 @@ const getCartTotal = () =>
                             variant="outline"
                             size="sm"
                             onClick={() => updateSelectedQuantity(item.id, 1)}
+                            className="hover:bg-primary hover:text-primary-foreground"
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -678,6 +680,7 @@ const getCartTotal = () =>
                          size="sm"
                          onClick={() => updateSelectedQuantity(item.id, -1)}
                          disabled={(selectedQuantities[item.id] || 0) === 0}
+                         className="hover:bg-primary hover:text-primary-foreground"
                        >
                          <Minus className="h-4 w-4" />
                        </Button>
@@ -688,6 +691,7 @@ const getCartTotal = () =>
                          variant="outline"
                          size="sm"
                          onClick={() => updateSelectedQuantity(item.id, 1)}
+                         className="hover:bg-primary hover:text-primary-foreground"
                        >
                          <Plus className="h-4 w-4" />
                        </Button>
