@@ -205,7 +205,7 @@ const CustomerDashboard = () => {
             <span className="text-sm text-muted-foreground">
               {user?.email}
             </span>
-            <Button variant="outline" onClick={signOut} size="sm">
+            <Button variant="outline" onClick={signOut} size="sm" className="hover:bg-primary hover:text-primary-foreground">
               Sair
             </Button>
           </div>

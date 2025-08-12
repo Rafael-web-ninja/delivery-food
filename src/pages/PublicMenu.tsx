@@ -462,7 +462,7 @@ const getCartTotal = () =>
                   <span className="text-sm text-muted-foreground hidden lg:block">
                     Olá, {user.email}
                   </span>
-                  <Button variant="outline" onClick={signOut} size="sm">
+                  <Button variant="outline" onClick={signOut} size="sm" className="hover:bg-primary hover:text-primary-foreground">
                     Sair
                   </Button>
                 </>

@@ -51,7 +51,7 @@ const DashboardLayout = () => {
                     </div>
                     <span className="text-sm hidden md:block">{user.email}</span>
                   </Button>
-                  <Button variant="outline" onClick={signOut} size="sm">
+                  <Button variant="outline" onClick={signOut} size="sm" className="hover:bg-primary hover:text-primary-foreground">
                     Sair
                   </Button>
                 </>

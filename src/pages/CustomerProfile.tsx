@@ -114,7 +114,7 @@ const CustomerProfile = () => {
             <h1 className="text-3xl font-bold text-foreground">Meu Perfil</h1>
             <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
+          <Button variant="outline" onClick={handleSignOut} className="hover:bg-primary hover:text-primary-foreground">
             <LogOut className="w-4 h-4 mr-2" />
             Sair
           </Button>
