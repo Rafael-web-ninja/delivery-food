@@ -49,8 +49,11 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       )}>
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
-            <Store className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">DeliveryFácil</span>
+            <img 
+              src="/lovable-uploads/e3282e15-f7f7-4c67-8089-4b56167f770b.png" 
+              alt="Gera Cardápio" 
+              className="h-8 w-auto"
+            />
           </div>
           <Button
             variant="ghost"
