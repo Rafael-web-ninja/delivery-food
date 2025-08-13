@@ -26,8 +26,8 @@ const DashboardLayout = () => {
               <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden">
                 <Menu className="h-5 w-5" />
               </Button>
-              <div>
-                <h1 className="text-xl font-bold">Gera Cardápio</h1>
+              <div className="flex items-center gap-2">
+                <img src="/lovable-uploads/c7a293d3-1336-42ac-bb79-1833a803893a.png" alt="Gera Cardápio" className="h-8" />
               </div>
             </div>
             <div className="flex items-center gap-4">
