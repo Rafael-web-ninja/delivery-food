@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CategoryManagement from '@/components/CategoryManagement';
 import FlavorManagement from '@/components/FlavorManagement';
+import SubscriptionGate from '@/components/SubscriptionGate';
 
 interface MenuItem {
   id: string;
@@ -325,6 +326,7 @@ const itemData = {
   };
 
   return (
+    <SubscriptionGate requiredPlan="basic">
     <div className="px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Gerenciar Cardápio</h1>
@@ -577,6 +579,7 @@ const itemData = {
       </TabsContent>
     </Tabs>
     </div>
+    </SubscriptionGate>
   );
 };
 

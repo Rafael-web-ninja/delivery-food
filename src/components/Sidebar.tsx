@@ -9,7 +9,8 @@ import {
   Menu, 
   X,
   Store,
-  Receipt
+  Receipt,
+  Crown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'PDV', href: '/pdv', icon: Receipt },
   { name: 'Relatórios', href: '/analytics', icon: BarChart3 },
+  { name: 'Assinatura', href: '/subscription', icon: Crown },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ];
 

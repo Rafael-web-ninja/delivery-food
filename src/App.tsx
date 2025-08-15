@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { AuthErrorBoundary } from "@/components/AuthErrorBoundary";
 import AuthGate from "@/components/AuthGate";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -22,6 +23,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import PDV from "./pages/PDV";
+import SubscriptionManagement from "./pages/SubscriptionManagement";
 import NotificationsListener from "@/components/NotificationsListener";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthErrorBoundary>
       <AuthProvider>
+        <SubscriptionProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -80,6 +83,11 @@ const App = () => (
                     <Settings />
                   </ProtectedRoute>
                 } />
+                <Route path="/subscription" element={
+                  <ProtectedRoute requiredUserType="delivery_owner">
+                    <SubscriptionManagement />
+                  </ProtectedRoute>
+                } />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -87,6 +95,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </SubscriptionProvider>
       </AuthProvider>
     </AuthErrorBoundary>
   </QueryClientProvider>
