@@ -35,7 +35,7 @@ const ProtectedRoute = ({ children, requiredUserType }: ProtectedRouteProps) => 
             .from('delivery_businesses')
             .select('id')
             .eq('owner_id', user.id)
-            .single();
+            .maybeSingle();
 
           detectedUserType = business ? 'delivery_owner' : 'customer';
         }

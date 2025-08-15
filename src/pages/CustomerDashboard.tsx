@@ -299,7 +299,7 @@ const CustomerDashboard = () => {
                               <Clock className="h-3 w-3" />
                               {new Date(order.created_at).toLocaleString('pt-BR')}
                             </span>
-                            <span>{order.delivery_businesses.name}</span>
+                            <span>{order.delivery_businesses?.name ?? 'Estabelecimento'}</span>
                           </CardDescription>
                         </div>
                         <div className="flex items-center justify-between gap-2">
@@ -325,7 +325,7 @@ const CustomerDashboard = () => {
                           <div className="space-y-1">
                             {order.order_items.map((item, index) => (
                               <div key={index} className="flex justify-between text-sm">
-                                <span>{item.quantity}x {item.menu_items.name}</span>
+                                <span>{item.quantity}x {item.menu_items?.name || 'Item'}</span>
                                 <span>{formatCurrency(item.quantity * item.unit_price)}</span>
                               </div>
                             ))}
