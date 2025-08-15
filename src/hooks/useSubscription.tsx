@@ -30,13 +30,21 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     
     setLoading(true);
     try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) {
+        throw new Error("Usuário não autenticado");
+      }
+
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          Authorization: `Bearer ${session.data.session.access_token}`,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || "Erro na função de verificação");
+      }
 
       setSubscribed(data.subscribed || false);
       setPlanType(data.subscription_tier || data.plan_type || 'free');
@@ -44,11 +52,19 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       setSubscriptionEnd(data.subscription_end || null);
     } catch (error: any) {
       console.error('Error checking subscription:', error);
-      toast({
-        title: "Erro ao verificar assinatura",
-        description: error.message || "Tente novamente em alguns instantes",
-        variant: "destructive"
-      });
+      // Falhar silenciosamente se for erro de auth, mostrar toast apenas para outros erros
+      if (!error.message?.includes('autenticado') && !error.message?.includes('Session')) {
+        toast({
+          title: "Erro ao verificar assinatura",
+          description: error.message || "Tente novamente em alguns instantes",
+          variant: "destructive"
+        });
+      }
+      // Set default values on error
+      setSubscribed(false);
+      setPlanType('free');
+      setSubscriptionStatus('inactive');
+      setSubscriptionEnd(null);
     } finally {
       setLoading(false);
     }
@@ -59,14 +75,22 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     
     setLoading(true);
     try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) {
+        throw new Error("Usuário não autenticado");
+      }
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { planType: selectedPlanType },
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          Authorization: `Bearer ${session.data.session.access_token}`,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || "Erro na função de checkout");
+      }
 
       // Open Stripe checkout in a new tab
       window.open(data.url, '_blank');

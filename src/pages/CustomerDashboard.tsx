@@ -183,6 +183,23 @@ const CustomerDashboard = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      toast({
+        title: "Erro no logout",
+        description: "Ocorreu um erro ao fazer logout",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -208,7 +225,7 @@ const CustomerDashboard = () => {
             <span className="text-sm text-muted-foreground">
               {user?.email}
             </span>
-            <Button variant="outline" onClick={signOut} size="sm" className="hover:bg-primary hover:text-primary-foreground">
+            <Button variant="outline" onClick={handleSignOut} size="sm" className="hover:bg-primary hover:text-primary-foreground">
               Sair
             </Button>
           </div>
