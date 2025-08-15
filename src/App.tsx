@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import PDV from "./pages/PDV";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
 import NotificationsListener from "@/components/NotificationsListener";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,9 @@ const App = () => (
                   </ProtectedRoute>
                 } />
               </Route>
+              
+              {/* Success after Stripe checkout */}
+              <Route path="/subscription-success" element={<AuthGate requireAuth={true}><SubscriptionSuccess /></AuthGate>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<AuthGate requireAuth={false}><NotFound /></AuthGate>} />

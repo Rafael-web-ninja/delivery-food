@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useStripePrices } from '@/hooks/useStripePrices';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Crown, CreditCard, Calendar, RefreshCw, ExternalLink } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatCurrency } from '@/lib/formatters';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SubscriptionManagement() {
   const { 
@@ -21,6 +23,33 @@ export default function SubscriptionManagement() {
   } = useSubscription();
   
   const { prices, loading: pricesLoading, getPriceByProduct, formatPrice } = useStripePrices();
+
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      if (!subscribed) return;
+      setInvoicesLoading(true);
+      setInvoicesError(null);
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const { data, error } = await supabase.functions.invoke('list-invoices', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (error) throw new Error(error.message || 'Erro ao carregar faturas');
+        setInvoices(data.invoices || []);
+      } catch (e: any) {
+        setInvoicesError(e.message || 'Erro ao carregar faturas');
+        setInvoices([]);
+      } finally {
+        setInvoicesLoading(false);
+      }
+    };
+    fetchInvoices();
+  }, [subscribed]);
 
   const planDetails = {
     free: { name: 'Gratuito', price: 0, color: 'bg-gray-500' },
@@ -229,21 +258,51 @@ export default function SubscriptionManagement() {
               Histórico de Cobrança
             </CardTitle>
             <CardDescription>
-              Acesse seu histórico completo de cobranças através do portal do cliente
+              Veja abaixo suas últimas faturas. Para mais detalhes, acesse o portal do cliente.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {invoicesLoading ? (
+              <div className="flex justify-center py-4"><LoadingSpinner size="sm" /></div>
+            ) : invoicesError ? (
+              <p className="text-sm text-destructive">{invoicesError}</p>
+            ) : invoices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem cobranças encontradas.</p>
+            ) : (
+              <div className="space-y-2">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium">
+                        {inv.created ? new Date(inv.created).toLocaleDateString('pt-BR') : '--/--/----'}
+                      </span>
+                      <span className="capitalize">{inv.status}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold">{formatPrice(inv.amount_paid || inv.amount_due || 0, 'BRL')}</span>
+                      {inv.hosted_invoice_url && (
+                        <a className="underline text-primary" href={inv.hosted_invoice_url} target="_blank" rel="noreferrer">
+                          Ver fatura
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <Button
               onClick={openCustomerPortal}
               disabled={loading}
               className="flex items-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
-              Ver Histórico Completo
+              Abrir Portal do Cliente
             </Button>
           </CardContent>
         </Card>
       )}
+
     </div>
   );
 }

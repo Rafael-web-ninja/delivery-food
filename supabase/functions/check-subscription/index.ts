@@ -100,16 +100,17 @@ serve(async (req) => {
       const productId = price.product;
       
       // Map product IDs to plan types
+      let amount: number | null = null;
       if (productId === "prod_SrUoyAbRcb6Qg8") {
         planType = "mensal";
       } else if (productId === "prod_SrUpK1iT4fKXq7") {
         planType = "anual";
       } else {
         // Fallback for other products
-        const amount = price.unit_amount || 0;
-        if (amount <= 999) {
+        amount = price.unit_amount || 0;
+        if ((amount || 0) <= 999) {
           planType = "basic";
-        } else if (amount <= 2999) {
+        } else if ((amount || 0) <= 2999) {
           planType = "premium";
         } else {
           planType = "enterprise";

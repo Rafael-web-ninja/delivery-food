@@ -97,7 +97,7 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4">Escolha seu Plano</h1>
           <p className="text-xl text-muted-foreground mb-6">
-            Para continuar usando o Gera Cardápio, você precisa de uma assinatura ativa
+            Assine um plano para poder ter seu cardápio online.
           </p>
           {!subscribed && (
             <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-6">
