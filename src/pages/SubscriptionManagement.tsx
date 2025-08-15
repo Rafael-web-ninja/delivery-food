@@ -1,4 +1,5 @@
 import { useSubscription } from '@/hooks/useSubscription';
+import { useStripePrices } from '@/hooks/useStripePrices';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,12 +7,6 @@ import { Separator } from '@/components/ui/separator';
 import { Crown, CreditCard, Calendar, RefreshCw, ExternalLink } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatCurrency } from '@/lib/formatters';
-
-const planDetails = {
-  free: { name: 'Gratuito', price: 0, color: 'bg-gray-500' },
-  mensal: { name: 'Mensal', price: 0, color: 'bg-blue-500' },
-  anual: { name: 'Anual', price: 0, color: 'bg-purple-500' }
-};
 
 export default function SubscriptionManagement() {
   const { 
@@ -24,10 +19,26 @@ export default function SubscriptionManagement() {
     createCheckout, 
     openCustomerPortal 
   } = useSubscription();
+  
+  const { prices, loading: pricesLoading, getPriceByProduct, formatPrice } = useStripePrices();
+
+  const planDetails = {
+    free: { name: 'Gratuito', price: 0, color: 'bg-gray-500' },
+    mensal: { 
+      name: 'Mensal', 
+      price: getPriceByProduct("prod_SrUoyAbRcb6Qg8")?.amount || 0, 
+      color: 'bg-blue-500' 
+    },
+    anual: { 
+      name: 'Anual', 
+      price: getPriceByProduct("prod_SrUpK1iT4fKXq7")?.amount || 0, 
+      color: 'bg-purple-500' 
+    }
+  };
 
   const currentPlan = planDetails[planType as keyof typeof planDetails] || planDetails.free;
 
-  if (loading) {
+  if (loading || pricesLoading) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -81,7 +92,7 @@ export default function SubscriptionManagement() {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Valor Mensal</p>
               <p className="text-2xl font-bold">
-                {currentPlan.price === 0 ? 'Grátis' : formatCurrency(currentPlan.price)}
+                {currentPlan.price === 0 ? 'Grátis' : formatPrice(currentPlan.price, 'BRL')}
               </p>
             </div>
             {subscriptionEnd && (
@@ -153,7 +164,9 @@ export default function SubscriptionManagement() {
             <div className="space-y-4">
               <div className="text-center">
                 <h3 className="font-semibold text-lg">Plano Mensal</h3>
-                <p className="text-2xl font-bold text-blue-600">Consultar</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatPrice(getPriceByProduct("prod_SrUoyAbRcb6Qg8")?.amount || 0, "BRL")}
+                </p>
               </div>
               <ul className="space-y-2 text-sm">
                 <li>✓ Itens ilimitados no cardápio</li>
@@ -181,7 +194,9 @@ export default function SubscriptionManagement() {
               </Badge>
               <div className="text-center">
                 <h3 className="font-semibold text-lg">Plano Anual</h3>
-                <p className="text-2xl font-bold text-purple-600">Consultar</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {formatPrice(getPriceByProduct("prod_SrUpK1iT4fKXq7")?.amount || 0, "BRL")}
+                </p>
               </div>
               <ul className="space-y-2 text-sm">
                 <li>✓ Tudo do Plano Mensal</li>

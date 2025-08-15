@@ -197,7 +197,7 @@ const CustomerDashboard = () => {
         <div className="container mx-auto px-4 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Bem-vindo, {profile?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : 'Usuário')}!
+              Bem-vindo, {profile?.name || (user?.email ? user.email.split('@')[0] : 'Usuário')}!
             </h1>
             <p className="text-muted-foreground mt-1">
               Gerencie seu perfil e acompanhe seus pedidos

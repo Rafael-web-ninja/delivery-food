@@ -1,4 +1,5 @@
 import { useSubscription } from '@/hooks/useSubscription';
+import { useStripePrices } from '@/hooks/useStripePrices';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,8 +68,9 @@ const PlanCard = ({
 
 export default function SubscriptionGate({ children, requiredPlan = 'basic', fallback }: SubscriptionGateProps) {
   const { subscribed, planType, loading, createCheckout } = useSubscription();
+  const { prices, loading: pricesLoading, getPriceByProduct, formatPrice } = useStripePrices();
 
-  if (loading) {
+  if (loading || pricesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -113,7 +115,7 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <PlanCard
             title="Plano Mensal"
-            price="Consultar"
+            price={formatPrice(getPriceByProduct("prod_SrUoyAbRcb6Qg8")?.amount || 0, "BRL")}
             planType="mensal"
             features={[
               "Itens ilimitados no cardápio",
@@ -126,7 +128,7 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
           
           <PlanCard
             title="Plano Anual"
-            price="Consultar"
+            price={formatPrice(getPriceByProduct("prod_SrUpK1iT4fKXq7")?.amount || 0, "BRL")}
             planType="anual"
             isPopular={true}
             features={[
