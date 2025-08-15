@@ -17,12 +17,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Use ANON key for auth verification
-  const supabaseAuth = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-
   try {
     logStep("Function started");
 
@@ -33,6 +27,12 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
     logStep("Authorization header found");
+
+    // Use ANON key for auth verification ONLY
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
@@ -62,7 +62,15 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in customer-portal", { message: errorMessage });
+    logStep("ERROR in customer-portal", { 
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      requestHeaders: {
+        authorization: req.headers.get("Authorization") ? "Bearer [REDACTED]" : "missing",
+        origin: req.headers.get("origin"),
+        userAgent: req.headers.get("user-agent")
+      }
+    });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
