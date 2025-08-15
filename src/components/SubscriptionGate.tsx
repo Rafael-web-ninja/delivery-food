@@ -110,27 +110,14 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <PlanCard
-            title="Básico"
-            price="R$ 29,90"
-            planType="basic"
-            features={[
-              "Até 50 itens no cardápio",
-              "1 delivery cadastrado",
-              "Pedidos online",
-              "Suporte por email"
-            ]}
-          />
-          
-          <PlanCard
-            title="Premium"
-            price="R$ 49,90"
-            planType="premium"
-            isPopular={true}
+            title="Plano Mensal"
+            price="Consultar"
+            planType="mensal"
             features={[
               "Itens ilimitados no cardápio",
-              "Até 3 deliveries",
+              "Deliveries ilimitados",
               "Relatórios avançados",
               "PDV integrado",
               "Suporte prioritário"
@@ -138,14 +125,15 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
           />
           
           <PlanCard
-            title="Enterprise"
-            price="R$ 99,90"
-            planType="enterprise"
+            title="Plano Anual"
+            price="Consultar"
+            planType="anual"
+            isPopular={true}
             features={[
-              "Tudo do Premium",
-              "Deliveries ilimitados",
+              "Tudo do Plano Mensal",
+              "Desconto especial",
+              "Recursos premium",
               "API personalizada",
-              "Integração com sistemas",
               "Suporte dedicado"
             ]}
           />

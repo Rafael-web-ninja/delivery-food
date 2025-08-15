@@ -39,7 +39,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       if (error) throw error;
 
       setSubscribed(data.subscribed || false);
-      setPlanType(data.plan_type || 'free');
+      setPlanType(data.subscription_tier || data.plan_type || 'free');
       setSubscriptionStatus(data.subscription_status || 'inactive');
       setSubscriptionEnd(data.subscription_end || null);
     } catch (error: any) {

@@ -9,9 +9,8 @@ import { formatCurrency } from '@/lib/formatters';
 
 const planDetails = {
   free: { name: 'Gratuito', price: 0, color: 'bg-gray-500' },
-  basic: { name: 'Básico', price: 2990, color: 'bg-blue-500' },
-  premium: { name: 'Premium', price: 4990, color: 'bg-purple-500' },
-  enterprise: { name: 'Enterprise', price: 9990, color: 'bg-gold-500' }
+  mensal: { name: 'Mensal', price: 0, color: 'bg-blue-500' },
+  anual: { name: 'Anual', price: 0, color: 'bg-purple-500' }
 };
 
 export default function SubscriptionManagement() {
@@ -116,16 +115,26 @@ export default function SubscriptionManagement() {
               </Button>
             )}
             
-            {planType !== 'enterprise' && (
-              <Button
-                variant="outline"
-                onClick={() => createCheckout(planType === 'free' ? 'basic' : planType === 'basic' ? 'premium' : 'enterprise')}
-                disabled={loading}
-                className="flex items-center gap-2"
-              >
-                <Crown className="w-4 h-4" />
-                {planType === 'free' ? 'Assinar Plano Básico' : 'Fazer Upgrade'}
-              </Button>
+            {planType === 'free' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => createCheckout('mensal')}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  <Crown className="w-4 h-4" />
+                  Assinar Plano Mensal
+                </Button>
+                <Button
+                  onClick={() => createCheckout('anual')}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  <Crown className="w-4 h-4" />
+                  Assinar Plano Anual
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
@@ -140,27 +149,28 @@ export default function SubscriptionManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="font-semibold text-lg">Básico</h3>
-                <p className="text-2xl font-bold text-blue-600">R$ 29,90/mês</p>
+                <h3 className="font-semibold text-lg">Plano Mensal</h3>
+                <p className="text-2xl font-bold text-blue-600">Consultar</p>
               </div>
               <ul className="space-y-2 text-sm">
-                <li>✓ Até 50 itens no cardápio</li>
-                <li>✓ 1 delivery cadastrado</li>
-                <li>✓ Pedidos online</li>
+                <li>✓ Itens ilimitados no cardápio</li>
+                <li>✓ Deliveries ilimitados</li>
+                <li>✓ Relatórios avançados</li>
+                <li>✓ PDV integrado</li>
                 <li>✓ Suporte por email</li>
               </ul>
-              {planType !== 'basic' && (
+              {planType !== 'mensal' && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => createCheckout('basic')}
+                  onClick={() => createCheckout('mensal')}
                   disabled={loading}
                   className="w-full"
                 >
-                  {planType === 'free' ? 'Assinar' : 'Mudar para Básico'}
+                  Assinar Plano Mensal
                 </Button>
               )}
             </div>
@@ -170,49 +180,24 @@ export default function SubscriptionManagement() {
                 Mais Popular
               </Badge>
               <div className="text-center">
-                <h3 className="font-semibold text-lg">Premium</h3>
-                <p className="text-2xl font-bold text-purple-600">R$ 49,90/mês</p>
+                <h3 className="font-semibold text-lg">Plano Anual</h3>
+                <p className="text-2xl font-bold text-purple-600">Consultar</p>
               </div>
               <ul className="space-y-2 text-sm">
-                <li>✓ Itens ilimitados no cardápio</li>
-                <li>✓ Até 3 deliveries</li>
-                <li>✓ Relatórios avançados</li>
-                <li>✓ PDV integrado</li>
-                <li>✓ Suporte prioritário</li>
-              </ul>
-              {planType !== 'premium' && (
-                <Button
-                  size="sm"
-                  onClick={() => createCheckout('premium')}
-                  disabled={loading}
-                  className="w-full"
-                >
-                  {planType === 'free' ? 'Assinar' : planType === 'basic' ? 'Fazer Upgrade' : 'Mudar para Premium'}
-                </Button>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div className="text-center">
-                <h3 className="font-semibold text-lg">Enterprise</h3>
-                <p className="text-2xl font-bold text-gold-600">R$ 99,90/mês</p>
-              </div>
-              <ul className="space-y-2 text-sm">
-                <li>✓ Tudo do Premium</li>
-                <li>✓ Deliveries ilimitados</li>
+                <li>✓ Tudo do Plano Mensal</li>
+                <li>✓ Desconto especial</li>
+                <li>✓ Recursos premium</li>
                 <li>✓ API personalizada</li>
-                <li>✓ Integração com sistemas</li>
                 <li>✓ Suporte dedicado</li>
               </ul>
-              {planType !== 'enterprise' && (
+              {planType !== 'anual' && (
                 <Button
-                  variant="outline"
                   size="sm"
-                  onClick={() => createCheckout('enterprise')}
+                  onClick={() => createCheckout('anual')}
                   disabled={loading}
                   className="w-full"
                 >
-                  {planType === 'free' ? 'Assinar' : 'Fazer Upgrade'}
+                  Assinar Plano Anual
                 </Button>
               )}
             </div>

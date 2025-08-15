@@ -53,45 +53,40 @@ serve(async (req) => {
       logStep("Creating new customer");
     }
 
-    // Define pricing based on plan type
-    let priceData;
+    // Define pricing based on plan type - using real Stripe product IDs
+    let priceId;
     switch (planType) {
-      case "basic":
-        priceData = {
-          currency: "brl",
-          product_data: { name: "Plano Básico - Gera Cardápio" },
-          unit_amount: 2990, // R$ 29,90
-          recurring: { interval: "month" },
-        };
+      case "mensal":
+        priceId = "prod_SrUoyAbRcb6Qg8"; // Plano mensal
         break;
-      case "premium":
-        priceData = {
-          currency: "brl",
-          product_data: { name: "Plano Premium - Gera Cardápio" },
-          unit_amount: 4990, // R$ 49,90
-          recurring: { interval: "month" },
-        };
-        break;
-      case "enterprise":
-        priceData = {
-          currency: "brl",
-          product_data: { name: "Plano Enterprise - Gera Cardápio" },
-          unit_amount: 9990, // R$ 99,90
-          recurring: { interval: "month" },
-        };
+      case "anual":
+        priceId = "prod_SrUpK1iT4fKXq7"; // Plano anual  
         break;
       default:
         throw new Error("Invalid plan type");
     }
 
-    logStep("Creating checkout session", { priceData });
+    // Get the actual price from Stripe
+    const prices = await stripe.prices.list({
+      product: priceId,
+      active: true,
+      limit: 1,
+    });
+
+    if (prices.data.length === 0) {
+      throw new Error(`No active price found for product ${priceId}`);
+    }
+
+    const priceObject = prices.data[0];
+
+    logStep("Creating checkout session", { priceId: priceObject.id, planType });
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price_data: priceData,
+          price: priceObject.id,
           quantity: 1,
         },
       ],

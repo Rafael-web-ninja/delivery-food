@@ -87,17 +87,26 @@ serve(async (req) => {
       subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
       logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       
-      // Determine plan type from price
+      // Determine plan type from product ID
       const priceId = subscription.items.data[0].price.id;
       const price = await stripe.prices.retrieve(priceId);
-      const amount = price.unit_amount || 0;
+      const productId = price.product;
       
-      if (amount <= 999) {
-        planType = "basic";
-      } else if (amount <= 2999) {
-        planType = "premium";
+      // Map product IDs to plan types
+      if (productId === "prod_SrUoyAbRcb6Qg8") {
+        planType = "mensal";
+      } else if (productId === "prod_SrUpK1iT4fKXq7") {
+        planType = "anual";
       } else {
-        planType = "enterprise";
+        // Fallback for other products
+        const amount = price.unit_amount || 0;
+        if (amount <= 999) {
+          planType = "basic";
+        } else if (amount <= 2999) {
+          planType = "premium";
+        } else {
+          planType = "enterprise";
+        }
       }
       logStep("Determined plan type", { priceId, amount, planType });
     } else {
