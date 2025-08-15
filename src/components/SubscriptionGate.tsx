@@ -70,6 +70,15 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
   const { subscribed, planType, loading, createCheckout } = useSubscription();
   const { prices, loading: pricesLoading, getPriceByProduct, formatPrice } = useStripePrices();
 
+  // Debug logs para identificar o problema
+  console.log('[SubscriptionGate] Debug:', {
+    subscribed,
+    planType,
+    requiredPlan,
+    loading,
+    pricesLoading
+  });
+
   if (loading || pricesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -78,10 +87,25 @@ export default function SubscriptionGate({ children, requiredPlan = 'basic', fal
     );
   }
 
-  // Check if user has required plan level
-  const planLevels = { free: 0, basic: 1, premium: 2, enterprise: 3 };
+  // Check if user has required plan level - updated to include actual plan types
+  const planLevels = { 
+    free: 0, 
+    basic: 1, 
+    mensal: 1,  // mensal is equivalent to basic
+    premium: 2, 
+    anual: 2,   // anual is equivalent to premium
+    enterprise: 3 
+  };
   const userLevel = planLevels[planType as keyof typeof planLevels] || 0;
   const requiredLevel = planLevels[requiredPlan];
+
+  console.log('[SubscriptionGate] Plan levels:', {
+    userLevel,
+    requiredLevel,
+    planType,
+    requiredPlan,
+    shouldAllowAccess: subscribed && userLevel >= requiredLevel
+  });
 
   if (subscribed && userLevel >= requiredLevel) {
     return <>{children}</>;
