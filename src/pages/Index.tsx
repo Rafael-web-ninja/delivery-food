@@ -22,7 +22,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">DeliveryFácil</h1>
+        <h1 className="text-4xl font-bold mb-4">Gera Cardápio</h1>
         <p className="text-xl text-muted-foreground mb-8">
           Plataforma completa para gestão do seu delivery
         </p>

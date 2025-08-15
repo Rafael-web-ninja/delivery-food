@@ -10,6 +10,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
 
 import Auth from "./pages/Auth";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
@@ -35,7 +36,7 @@ const App = () => (
           <NotificationsListener />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
+              <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               <Route path="/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
