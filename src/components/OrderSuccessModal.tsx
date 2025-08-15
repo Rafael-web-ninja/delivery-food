@@ -65,9 +65,9 @@ export default function OrderSuccessModal({
   const generateWhatsAppMessage = () => {
     const totalWithDelivery = total + deliveryFee;
     
-    let message = `*Pedido #${orderId.slice(-8)} - ${business.name}*\n\n`;
+    let message = `*Pedido #${orderId.slice(-8)} - ${business?.name || 'Estabelecimento'}*\n\n`;
     
-    message += `*Cliente:* ${customerData.name}\n`;
+    message += `*Cliente:* ${customerData?.name || 'Cliente'}\n`;
     message += `*Telefone:* ${customerData.phone}\n`;
     message += `*Endereço:* ${customerData.address}\n\n`;
     
@@ -132,8 +132,8 @@ export default function OrderSuccessModal({
           {/* Detalhes do pedido */}
           <div className="bg-muted/50 p-4 rounded-lg space-y-2">
             <h3 className="font-semibold text-sm">Detalhes do Pedido</h3>
-            <p className="text-sm"><strong>Estabelecimento:</strong> {business.name}</p>
-            <p className="text-sm"><strong>Cliente:</strong> {customerData.name}</p>
+            <p className="text-sm"><strong>Estabelecimento:</strong> {business?.name || 'Estabelecimento'}</p>
+            <p className="text-sm"><strong>Cliente:</strong> {customerData?.name || 'Cliente'}</p>
             <p className="text-sm"><strong>Endereço:</strong> {customerData.address}</p>
           </div>
 

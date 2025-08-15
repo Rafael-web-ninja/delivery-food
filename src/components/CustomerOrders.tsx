@@ -142,7 +142,7 @@ export default function CustomerOrders() {
             <div key={order.id} className="border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold">#{order.order_code || order.id.slice(-8)} - {order.delivery_businesses.name}</h3>
+                  <h3 className="font-semibold">#{order.order_code || order.id.slice(-8)} - {order.delivery_businesses?.name || 'Estabelecimento'}</h3>
                   <p className="text-sm text-muted-foreground">
                     {new Date(order.created_at).toLocaleString('pt-BR')}
                   </p>
@@ -170,7 +170,7 @@ export default function CustomerOrders() {
                 <h4 className="font-medium text-sm">Itens do pedido:</h4>
                 {order.order_items.map((item, index) => (
                   <p key={index} className="text-sm">
-                    {item.quantity}x {item.menu_items.name}
+                    {item.quantity}x {item.menu_items?.name || 'Item'}
                   </p>
                 ))}
               </div>

@@ -10,6 +10,7 @@ import { User, Phone, MapPin, Clock, Package, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, statusTranslations as statusLabels } from '@/lib/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getDisplayName } from '@/lib/auth-utils';
 
 
 interface CustomerProfile {
@@ -197,7 +198,7 @@ const CustomerDashboard = () => {
         <div className="container mx-auto px-4 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Bem-vindo, {profile?.name || (user?.email ? user.email.split('@')[0] : 'Usuário')}!
+              Bem-vindo, {getDisplayName(user, profile)}!
             </h1>
             <p className="text-muted-foreground mt-1">
               Gerencie seu perfil e acompanhe seus pedidos

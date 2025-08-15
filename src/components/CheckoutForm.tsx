@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import OrderSuccessModal from './OrderSuccessModal';
 import { DeliveryFeeDisplay, TotalWithDelivery } from './DeliveryFeeDisplay';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { getCustomerName } from '@/lib/auth-utils';
 
 interface CartItem {
   id: string;
@@ -90,7 +91,7 @@ useEffect(() => {
         if (profile) {
           setCustomerData(prev => ({
             ...prev,
-            name: profile.name || '',
+            name: profile?.name || '',
             phone: profile.phone || '',
             address: profile.address || '',
             email: user.email || ''
@@ -282,7 +283,7 @@ useEffect(() => {
           .from('customer_profiles')
           .insert({
             user_id: user.id,
-            name: customerData.name || user.email?.split('@')[0] || 'Cliente',
+            name: getCustomerName(customerData, user),
             phone: customerData.phone || '',
             address: customerData.address || ''
           })

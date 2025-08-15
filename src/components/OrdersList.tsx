@@ -125,7 +125,7 @@ export function OrdersList({ orders, onStatusUpdate, businessName = "Delivery" }
                     {order.order_items.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm">
                         <div>
-                          <div>{item.quantity}x {item.menu_items.name}</div>
+                          <div>{item.quantity}x {item.menu_items?.name || 'Item'}</div>
                           {item.notes && (
                             <div className="text-xs text-muted-foreground">
                               {item.notes}

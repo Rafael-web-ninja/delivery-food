@@ -331,7 +331,7 @@ const getCartTotal = () =>
 
   const generateWhatsAppMessage = () => {
     if (!business || cart.length === 0) return '';
-    let message = `*Pedido - ${business.name}*\n\n`;
+    let message = `*Pedido - ${business?.name || 'Estabelecimento'}*\n\n`;
     cart.forEach(ci => {
       message += `• ${ci.quantity}x ${ci.name} - R$ ${(
         ci.price * ci.quantity
@@ -422,7 +422,7 @@ const getCartTotal = () =>
                 <div className="flex-shrink-0">
                   <img
                     src={business.logo_url}
-                    alt={`${business.name} logo`}
+                    alt={`${business?.name || 'Estabelecimento'} logo`}
                     className="h-20 lg:h-24 w-auto max-w-[200px] object-contain rounded-lg"
                     onError={e => {
                       e.currentTarget.style.display = 'none';
@@ -432,7 +432,7 @@ const getCartTotal = () =>
               )}
               <div className="flex-1 text-center lg:text-left">
                 <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">
-                  {business.name}
+                  {business?.name || 'Estabelecimento'}
                 </h1>
                 {business.description && (
                   <p className="text-muted-foreground text-base lg:text-lg mb-4 max-w-2xl">
