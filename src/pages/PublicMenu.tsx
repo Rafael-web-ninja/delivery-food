@@ -228,7 +228,10 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
           }
         );
 
+        console.log('Subscription check result:', { subscriptionData, subError, ownerId: biz.owner_id });
+
         if (subError || !subscriptionData?.active) {
+          console.log('Subscription not active, hiding menu');
           setBusiness(null);
           setLoading(false);
           return;

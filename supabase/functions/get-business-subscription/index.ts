@@ -20,7 +20,10 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     if (!supabaseUrl || !serviceKey) throw new Error("Missing Supabase env variables");
 
-    const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    // Use service role key to bypass RLS for public subscription checking
+    const supabase = createClient(supabaseUrl, serviceKey, { 
+      auth: { persistSession: false, autoRefreshToken: false } 
+    });
 
     const body = await req.json().catch(() => ({}));
     const ownerId: string | undefined = body.ownerId;
