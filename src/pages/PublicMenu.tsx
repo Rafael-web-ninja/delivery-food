@@ -227,10 +227,29 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
           .eq('user_id', biz.owner_id)
           .single();
 
-        // Se não encontrou dados de assinatura ou não está ativa, não mostrar cardápio
-        if (ownerError || !ownerAuth || 
-            ownerAuth.subscription_status !== 'active' || 
-            (ownerAuth.subscription_end && new Date(ownerAuth.subscription_end) < new Date())) {
+        // Se não encontrou dados de assinatura, considerar como inativo
+        if (ownerError && ownerError.code === 'PGRST116') {
+          // Nenhum registro encontrado - usuário sem assinatura
+          setBusiness(null);
+          setLoading(false);
+          return;
+        }
+
+        // Se encontrou dados, verificar se está ativa
+        if (ownerAuth && ownerAuth.subscription_status === 'active') {
+          // Verificar se não expirou (se tiver data de fim)
+          if (ownerAuth.subscription_end) {
+            const endDate = new Date(ownerAuth.subscription_end);
+            const now = new Date();
+            if (endDate < now) {
+              setBusiness(null);
+              setLoading(false);
+              return;
+            }
+          }
+          // Assinatura ativa - continuar
+        } else {
+          // Assinatura não ativa
           setBusiness(null);
           setLoading(false);
           return;
