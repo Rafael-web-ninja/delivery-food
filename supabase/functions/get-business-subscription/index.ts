@@ -6,6 +6,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type Out =
+  | { ok: true; allow: boolean; status: "active" | "trialing" | "grace" | "inactive"; reason?: string; expires_at?: string | null }
+  | { ok: false; allow: boolean; status: "unknown"; reason: string };
+
+const GRACE_DAYS = 3;
+
+function allowFromFlags(
+  isActive?: boolean | null,
+  status?: string | null,
+  expires_at?: string | null,
+  plan_type?: string | null,
+) {
+  const now = new Date();
+  const exp = expires_at ? new Date(expires_at) : null;
+  const inGrace = exp ? (now.getTime() - exp.getTime()) <= GRACE_DAYS * 86400000 : false;
+
+  if (status === "active" || status === "trialing") return { allow: true, tag: status as "active" | "trialing" };
+  if (inGrace) return { allow: true, tag: "grace" as const };
+  if (plan_type === "free") return { allow: true, tag: "grace" as const };
+  if (isActive) return { allow: true, tag: "grace" as const }; // fallback pró-venda
+  return { allow: false, tag: "inactive" as const };
+}
+
 const log = (msg: string, details?: unknown) => {
   console.log(`[GET-BUSINESS-SUBSCRIPTION] ${msg}${details ? " - " + JSON.stringify(details) : ""}`);
 };
@@ -16,114 +39,78 @@ serve(async (req) => {
   }
 
   try {
+    const body = await req.json().catch(() => ({} as any));
+    const ownerIdIn = body.ownerId as string | undefined;
+    const businessIdIn = body.businessId as string | undefined;
+    const slugIn = body.slug as string | undefined;
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    if (!supabaseUrl || !serviceKey) throw new Error("Missing Supabase env variables");
-
-    // Use service role key to bypass RLS for public subscription checking
-    const supabase = createClient(supabaseUrl, serviceKey, { 
-      auth: { persistSession: false, autoRefreshToken: false } 
-    });
-
-    const body = await req.json().catch(() => ({}));
-    const ownerId: string | undefined = body.ownerId;
-    const businessId: string | undefined = body.businessId;
-    const slug: string | undefined = body.slug;
-
-    log("Function started", { hasOwnerId: !!ownerId, hasBusinessId: !!businessId, hasSlug: !!slug });
-
-    let resolvedOwnerId = ownerId;
-
-    if (!resolvedOwnerId) {
-      // Resolve owner id from business id or slug
-      let query = supabase
-        .from("delivery_businesses")
-        .select("owner_id, id, is_active")
-        .limit(1);
-
-      if (businessId) query = query.eq("id", businessId);
-      else if (slug) query = query.eq("slug", slug);
-
-      const { data: biz, error: bizErr } = await query.maybeSingle();
-      if (bizErr) {
-        log("Error fetching business", { error: bizErr.message });
-        return new Response(JSON.stringify({ active: false, reason: "business_error" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-      if (!biz) {
-        log("Business not found");
-        return new Response(JSON.stringify({ active: false, reason: "business_not_found" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-      resolvedOwnerId = biz.owner_id as string;
+    if (!supabaseUrl || !serviceKey) {
+      log("Missing env, degrading gracefully");
+      const out: Out = { ok: false, allow: true, status: "unknown", reason: "temporary_error" };
+      return new Response(JSON.stringify(out), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
-    if (!resolvedOwnerId) {
-      log("Owner id not resolved");
-      return new Response(JSON.stringify({ active: false, reason: "owner_not_found" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+    const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+
+    // Resolve business and owner
+    let businessId: string | undefined = businessIdIn;
+    let ownerId: string | undefined = ownerIdIn;
+    let isActive: boolean | undefined = undefined;
+
+    if (!businessId) {
+      // Try resolve by slug or owner
+      let q = supabase.from("delivery_businesses").select("id, owner_id, is_active").limit(1);
+      if (slugIn) q = q.eq("slug", slugIn);
+      else if (ownerIdIn) q = q.eq("owner_id", ownerIdIn);
+      const { data: bizByOther, error: bizErr } = await q.maybeSingle();
+      if (bizErr) log("Error fetching business", { error: bizErr.message });
+      if (bizByOther) {
+        businessId = bizByOther.id as string;
+        ownerId = ownerId || (bizByOther.owner_id as string);
+        isActive = (bizByOther.is_active as boolean) ?? undefined;
+      }
+    }
+
+    if (businessId) {
+      const { data: biz, error: bizErr } = await supabase
+        .from("delivery_businesses")
+        .select("id, owner_id, is_active")
+        .eq("id", businessId)
+        .maybeSingle();
+      if (bizErr) log("Business fetch error", { error: bizErr.message });
+      if (biz) {
+        ownerId = ownerId || (biz.owner_id as string);
+        isActive = (biz.is_active as boolean) ?? isActive;
+      }
+    }
+
+    if (!ownerId) {
+      log("Owner not resolved, degrading");
+      const out: Out = { ok: false, allow: true, status: "unknown", reason: "temporary_error" };
+      return new Response(JSON.stringify(out), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
     const { data: plan, error: planErr } = await supabase
       .from("subscriber_plans")
       .select("subscription_status, subscription_end, updated_at, plan_type")
-      .eq("user_id", resolvedOwnerId)
+      .eq("user_id", ownerId)
       .order("updated_at", { ascending: false })
       .maybeSingle();
 
     if (planErr) {
-      log("Error fetching plan", { error: planErr.message });
-      return new Response(JSON.stringify({ active: false, reason: "plan_error" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+      log("Plan fetch error", { error: planErr.message });
     }
 
-    log("Found plan", { plan });
+    const { allow, tag } = allowFromFlags(isActive, plan?.subscription_status ?? null, plan?.subscription_end ?? null, plan?.plan_type ?? null);
 
-    let active = false;
-    if (plan) {
-      // Allow 'active' paid subscriptions and 'free' plans (regardless of status)
-      if (plan.subscription_status === "active") {
-        if (plan.subscription_end) {
-          const endDate = new Date(plan.subscription_end);
-          const now = new Date();
-          active = endDate > now;
-          log("Subscription has end date", { endDate: endDate.toISOString(), now: now.toISOString(), active });
-        } else {
-          active = true;
-          log("Subscription has no end date, marking as active");
-        }
-      } else if (plan.plan_type === "free") {
-        // Free plans are always considered active
-        active = true;
-        log("Free plan detected, marking as active");
-      } else {
-        log("Plan not active", { status: plan.subscription_status, planType: plan.plan_type });
-      }
-    } else {
-      // No plan found - consider allowing free access or handle as needed
-      active = true; // Allow access if no subscription plan exists
-      log("No plan found, allowing access as free");
-    }
-
-    log("Final computed active status", { active, ownerId: resolvedOwnerId });
-    return new Response(JSON.stringify({ active, debug: { plan, ownerId: resolvedOwnerId } }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    const out: Out = { ok: true, allow, status: tag, expires_at: plan?.subscription_end ?? null };
+    log("Computed allow", { out });
+    return new Response(JSON.stringify(out), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    log("Unhandled error", { message });
-    return new Response(JSON.stringify({ active: false, error: message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    log("Unhandled exception, degrading", { message: e instanceof Error ? e.message : String(e) });
+    const out: Out = { ok: false, allow: true, status: "unknown", reason: "temporary_error" };
+    return new Response(JSON.stringify(out), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
   }
 });
