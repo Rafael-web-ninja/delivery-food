@@ -11,6 +11,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
 
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -42,6 +43,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
+              <Route path="/reset-password" element={<AuthGate requireAuth={false}><ResetPassword /></AuthGate>} />
               <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               <Route path="/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               
