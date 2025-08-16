@@ -13,17 +13,65 @@ const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
-    // Se já estiver logado, redireciona
-    if (user) {
-      navigate('/meu-perfil', { replace: true });
-    }
-  }, [user, navigate]);
+    const handleAuthCallback = async () => {
+      // Captura os parâmetros da URL (access_token, refresh_token, etc.)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParamsObj = Object.fromEntries(searchParams.entries());
+      
+      const accessToken = hashParams.get('access_token') || searchParamsObj.access_token;
+      const refreshToken = hashParams.get('refresh_token') || searchParamsObj.refresh_token;
+      const tokenType = hashParams.get('type') || searchParamsObj.type;
+
+      console.log('Reset password params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, tokenType });
+
+      if (accessToken && refreshToken && tokenType === 'recovery') {
+        try {
+          // Estabelece a sessão com os tokens do reset
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            console.error('Erro ao estabelecer sessão:', error);
+            toast({
+              title: "Link inválido",
+              description: "O link de recuperação é inválido ou expirou",
+              variant: "destructive"
+            });
+            navigate('/auth');
+          } else {
+            setIsValidSession(true);
+            console.log('Sessão estabelecida com sucesso para reset de senha');
+          }
+        } catch (error) {
+          console.error('Erro no processo de reset:', error);
+          navigate('/auth');
+        }
+      } else {
+        // Se não há parâmetros de reset, mas o usuário está logado normalmente
+        if (user) {
+          navigate('/meu-perfil', { replace: true });
+        } else {
+          toast({
+            title: "Link inválido",
+            description: "Acesse através do link enviado por email",
+            variant: "destructive"
+          });
+          navigate('/auth');
+        }
+      }
+    };
+
+    handleAuthCallback();
+  }, [searchParams, user, navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +134,20 @@ const ResetPassword = () => {
 
     setLoading(false);
   };
+
+  // Mostra loading enquanto verifica a sessão
+  if (!isValidSession && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center space-y-4 p-6">
+            <LoadingSpinner />
+            <p className="text-sm text-muted-foreground">Verificando link de recuperação...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
