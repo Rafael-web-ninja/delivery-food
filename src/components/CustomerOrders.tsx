@@ -18,6 +18,7 @@ interface Order {
   delivery_businesses: {
     id: string;
     name: string;
+    slug?: string;
   };
   order_items: Array<{
     quantity: number;
@@ -72,7 +73,7 @@ export default function CustomerOrders() {
         .from('orders')
         .select(`
           *,
-          delivery_businesses!orders_delivery_id_fkey(id, name),
+          delivery_businesses!orders_business_id_fkey(id, name, slug),
           order_items(
             quantity,
             menu_items(name)
@@ -179,7 +180,10 @@ export default function CustomerOrders() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => window.open(`/public-menu/${order.delivery_businesses.id}`, '_blank')}
+                  onClick={() => {
+                    const businessSlug = order.delivery_businesses.slug || order.delivery_businesses.id;
+                    window.open(`/public-menu/${businessSlug}`, '_blank');
+                  }}
                   className="hover:bg-primary hover:text-primary-foreground"
                 >
                   Ver Cardápio

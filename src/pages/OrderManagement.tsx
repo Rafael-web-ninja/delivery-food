@@ -94,6 +94,18 @@ const OrderManagement = () => {
 
   const fetchOrders = async () => {
     try {
+      // Primeiro buscar o business_id do usuário
+      const { data: business } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .single();
+
+      if (!business) {
+        setOrders([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -103,6 +115,7 @@ const OrderManagement = () => {
             menu_items (name)
           )
         `)
+        .eq('business_id', business.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
