@@ -28,6 +28,7 @@ import CustomerProfile from '@/components/CustomerProfile';
 import CustomerOrders from '@/components/CustomerOrders';
 import { MenuFilters } from '@/components/MenuFilters';
 import { useAuth } from '@/hooks/useAuth';
+import { useBusinessStatus } from '@/hooks/useBusinessStatus';
 import FloatingCart from '@/components/FloatingCart';
 import FractionalPizzaDialog from '@/components/FractionalPizzaDialog';
 
@@ -62,6 +63,7 @@ interface Business {
   delivery_time_text_color: string;
   delivery_time_minutes: number;
   min_order_value: number;
+  accept_orders_when_closed: boolean;
 }
 
 interface CartItem extends MenuItem {
@@ -87,6 +89,12 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
   const [fractionalOpen, setFractionalOpen] = useState(false);
   const [fractionalBaseItem, setFractionalBaseItem] = useState<MenuItem | null>(null);
   const [fractionalQuantity, setFractionalQuantity] = useState(1);
+
+  // Hook para verificar status do negócio
+  const { canAcceptOrders } = useBusinessStatus(
+    business?.id || '', 
+    business?.accept_orders_when_closed || false
+  );
 
   // 1️⃣ Carregar dados ao montar / businessId mudar
   useEffect(() => {
@@ -452,7 +460,10 @@ const getCartTotal = () =>
                       <span className="text-center lg:text-left">{business.address}</span>
                     </div>
                   )}
-                  <BusinessStatus businessId={business.id} />
+                  <BusinessStatus 
+                    businessId={business.id} 
+                    acceptOrdersWhenClosed={business.accept_orders_when_closed} 
+                  />
                 </div>
               </div>
             </div>
@@ -478,7 +489,7 @@ const getCartTotal = () =>
   variant="secondary"
   onClick={() => setShowCheckout(true)}
   className="relative flex items-center gap-2 border-0"
-  disabled={cart.length === 0}
+  disabled={cart.length === 0 || !canAcceptOrders}
   style={{
     backgroundColor: business.cart_button_color || '#16A34A',
     color: business.cart_button_text_color || '#FFFFFF'
@@ -576,6 +587,7 @@ const getCartTotal = () =>
                             variant="outline"
                             size="sm"
                             onClick={() => updateSelectedQuantity(item.id, 1)}
+                            disabled={!canAcceptOrders}
                             className="hover:bg-primary hover:text-primary-foreground"
                           >
                             <Plus className="h-4 w-4" />
@@ -587,7 +599,7 @@ const getCartTotal = () =>
                             <Button
                               variant="outline"
                               onClick={() => openFractional(item)}
-                              disabled={(selectedQuantities[item.id] || 0) === 0}
+                              disabled={(selectedQuantities[item.id] || 0) === 0 || !canAcceptOrders}
                             >
                               Meio a meio
                             </Button>
@@ -597,7 +609,7 @@ const getCartTotal = () =>
     variant="secondary"
     onClick={() => addToCart(item)}
     className="flex items-center gap-2 border-0"
-    disabled={(selectedQuantities[item.id] || 0) === 0}
+    disabled={(selectedQuantities[item.id] || 0) === 0 || !canAcceptOrders}
     style={{
       backgroundColor: business.button_color || '#16A34A',
       color: business.button_text_color || '#FFFFFF'
@@ -687,32 +699,33 @@ const getCartTotal = () =>
                        <span className="w-8 text-center font-semibold">
                          {selectedQuantities[item.id] || 0}
                        </span>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={() => updateSelectedQuantity(item.id, 1)}
-                         className="hover:bg-primary hover:text-primary-foreground"
-                       >
-                         <Plus className="h-4 w-4" />
-                       </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateSelectedQuantity(item.id, 1)}
+                          disabled={!canAcceptOrders}
+                          className="hover:bg-primary hover:text-primary-foreground"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                      </div>
 
 <div className="flex items-center gap-2">
                          {item.supports_fractional && (
-                           <Button
-                             variant="outline"
-                             onClick={() => openFractional(item)}
-                             disabled={(selectedQuantities[item.id] || 0) === 0}
-                           >
-                             Meio a meio
-                           </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => openFractional(item)}
+                              disabled={(selectedQuantities[item.id] || 0) === 0 || !canAcceptOrders}
+                            >
+                              Meio a meio
+                            </Button>
                          )}
 {!item.supports_fractional && (
   <Button
     variant="secondary"
     onClick={() => addToCart(item)}
     className="flex items-center gap-2 border-0"
-    disabled={(selectedQuantities[item.id] || 0) === 0}
+    disabled={(selectedQuantities[item.id] || 0) === 0 || !canAcceptOrders}
     style={{
       backgroundColor: business.button_color || '#16A34A',
       color: business.button_text_color || '#FFFFFF'
@@ -732,7 +745,7 @@ const getCartTotal = () =>
         )}
       </div>
 
-      {cart.length > 0 && !showCheckout && (
+      {cart.length > 0 && !showCheckout && canAcceptOrders && (
         <FloatingCart
           count={cart.reduce((sum, ci) => sum + ci.quantity, 0)}
           total={getCartTotal()}
