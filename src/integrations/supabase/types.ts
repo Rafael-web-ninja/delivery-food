@@ -95,7 +95,6 @@ export type Database = {
       delivery_businesses: {
         Row: {
           accent_color: string | null
-          accept_orders_when_closed: boolean
           address: string | null
           background_color: string | null
           button_color: string | null
@@ -123,7 +122,6 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
-          accept_orders_when_closed?: boolean
           address?: string | null
           background_color?: string | null
           button_color?: string | null
@@ -151,7 +149,6 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
-          accept_orders_when_closed?: boolean
           address?: string | null
           background_color?: string | null
           button_color?: string | null

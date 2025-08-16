@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -39,7 +38,6 @@ interface BusinessData {
   cart_button_text_color: string;
   delivery_time_bg_color: string;
   delivery_time_text_color: string;
-  accept_orders_when_closed: boolean;
 }
 
 const Settings = () => {
@@ -67,8 +65,7 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   cart_button_color: '#16A34A',
   cart_button_text_color: '#FFFFFF',
   delivery_time_bg_color: '#000000',
-  delivery_time_text_color: '#FFFFFF',
-  accept_orders_when_closed: false
+  delivery_time_text_color: '#FFFFFF'
 });
   const [loading, setLoading] = useState(true);
 
@@ -170,8 +167,7 @@ const { error } = await supabase
     cart_button_color: businessData.cart_button_color,
     cart_button_text_color: businessData.cart_button_text_color,
     delivery_time_bg_color: businessData.delivery_time_bg_color,
-    delivery_time_text_color: businessData.delivery_time_text_color,
-    accept_orders_when_closed: businessData.accept_orders_when_closed
+    delivery_time_text_color: businessData.delivery_time_text_color
   })
   .eq('id', currentBusinessId);
 
@@ -325,23 +321,6 @@ const { error } = await supabase
     onChange={(e) => setBusinessData(prev => ({ ...prev, delivery_time_minutes: Number(e.target.value) }))}
     placeholder="30"
   />
-</div>
-
-{/* Aceitar pedidos quando fechado */}
-<div className="space-y-2">
-  <div className="flex items-center justify-between">
-    <div className="space-y-0.5">
-      <Label htmlFor="accept_orders_when_closed">Aceitar pedidos quando fechado</Label>
-      <p className="text-sm text-muted-foreground">
-        Permite que clientes façam pedidos mesmo fora do horário de funcionamento
-      </p>
-    </div>
-    <Switch
-      id="accept_orders_when_closed"
-      checked={businessData.accept_orders_when_closed}
-      onCheckedChange={(checked) => setBusinessData(prev => ({ ...prev, accept_orders_when_closed: checked }))}
-    />
-  </div>
 </div>
 
                 <div className="flex gap-2 pt-4">
