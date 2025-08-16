@@ -88,18 +88,29 @@ serve(async (req) => {
     log("Found plan", { plan });
 
     let active = false;
-    if (plan && plan.subscription_status === "active") {
-      if (plan.subscription_end) {
-        const endDate = new Date(plan.subscription_end);
-        const now = new Date();
-        active = endDate > now;
-        log("Subscription has end date", { endDate: endDate.toISOString(), now: now.toISOString(), active });
-      } else {
+    if (plan) {
+      // Allow 'active' paid subscriptions and 'free' plans (regardless of status)
+      if (plan.subscription_status === "active") {
+        if (plan.subscription_end) {
+          const endDate = new Date(plan.subscription_end);
+          const now = new Date();
+          active = endDate > now;
+          log("Subscription has end date", { endDate: endDate.toISOString(), now: now.toISOString(), active });
+        } else {
+          active = true;
+          log("Subscription has no end date, marking as active");
+        }
+      } else if (plan.plan_type === "free") {
+        // Free plans are always considered active
         active = true;
-        log("Subscription has no end date, marking as active");
+        log("Free plan detected, marking as active");
+      } else {
+        log("Plan not active", { status: plan.subscription_status, planType: plan.plan_type });
       }
     } else {
-      log("Plan not active", { status: plan?.subscription_status || "no_plan" });
+      // No plan found - consider allowing free access or handle as needed
+      active = true; // Allow access if no subscription plan exists
+      log("No plan found, allowing access as free");
     }
 
     log("Final computed active status", { active, ownerId: resolvedOwnerId });
