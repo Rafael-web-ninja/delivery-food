@@ -172,26 +172,45 @@ const Auth = () => {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      forgotPasswordEmail,
-      {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
-      }
-    );
-
-    if (error) {
-      toast({
-        title: "Erro na recuperação",
-        description: error.message,
-        variant: "destructive"
+    
+    try {
+      // Primeiro, envia o email personalizado via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: forgotPasswordEmail,
+          resetLink: `${window.location.origin}/auth?reset=true&email=${encodeURIComponent(forgotPasswordEmail)}`
+        }
       });
-    } else {
+
+      if (emailError) {
+        throw emailError;
+      }
+
+      // Depois, usa o Supabase para gerar o token de reset
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        forgotPasswordEmail,
+        {
+          redirectTo: `${window.location.origin}/auth?reset=true`,
+        }
+      );
+
+      if (resetError) {
+        throw resetError;
+      }
+
       setResetEmailSent(true);
       toast({
         title: "Email enviado!",
         description: "Verifique sua caixa de entrada para redefinir sua senha",
       });
+    } catch (error: any) {
+      toast({
+        title: "Erro na recuperação",
+        description: error.message,
+        variant: "destructive"
+      });
     }
+    
     setLoading(false);
   };
 
