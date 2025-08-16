@@ -220,40 +220,20 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
       }
 
       if (biz) {
-        // Verificar se o dono do delivery tem assinatura ativa
-        const { data: ownerAuth, error: ownerError } = await supabase
-          .from('subscriber_plans')
-          .select('subscription_status, plan_type, subscription_end')
-          .eq('user_id', biz.owner_id)
-          .single();
-
-        // Se não encontrou dados de assinatura, considerar como inativo
-        if (ownerError && ownerError.code === 'PGRST116') {
-          // Nenhum registro encontrado - usuário sem assinatura
-          setBusiness(null);
-          setLoading(false);
-          return;
-        }
-
-        // Se encontrou dados, verificar se está ativa
-        if (ownerAuth && ownerAuth.subscription_status === 'active') {
-          // Verificar se não expirou (se tiver data de fim)
-          if (ownerAuth.subscription_end) {
-            const endDate = new Date(ownerAuth.subscription_end);
-            const now = new Date();
-            if (endDate < now) {
-              setBusiness(null);
-              setLoading(false);
-              return;
-            }
+        // Verificar assinatura ativa via Edge Function pública (bypass RLS)
+        const { data: subscriptionData, error: subError } = await supabase.functions.invoke(
+          'get-business-subscription',
+          {
+            body: { ownerId: biz.owner_id },
           }
-          // Assinatura ativa - continuar
-        } else {
-          // Assinatura não ativa
+        );
+
+        if (subError || !subscriptionData?.active) {
           setBusiness(null);
           setLoading(false);
           return;
         }
+        // Assinatura ativa - continuar
 
         setBusiness(biz);
         const itemsResult = await supabase
