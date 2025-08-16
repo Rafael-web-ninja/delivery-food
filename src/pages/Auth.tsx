@@ -174,16 +174,16 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      // Gera token de reset via Supabase e obtém os parâmetros necessários
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        forgotPasswordEmail,
-        {
-          redirectTo: `${window.location.origin}/reset-password`,
+      // Envia apenas o email personalizado via edge function
+      // que irá gerar o token internamente e enviar o email
+      const { data, error: emailError } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: forgotPasswordEmail
         }
-      );
+      });
 
-      if (resetError) {
-        throw resetError;
+      if (emailError) {
+        throw emailError;
       }
 
       setResetEmailSent(true);

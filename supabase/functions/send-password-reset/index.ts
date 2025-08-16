@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { Resend } from "npm:resend@2.0.0";
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -11,7 +14,6 @@ const corsHeaders = {
 
 interface PasswordResetRequest {
   email: string;
-  resetLink: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -21,7 +23,39 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, resetLink }: PasswordResetRequest = await req.json();
+    const { email }: PasswordResetRequest = await req.json();
+
+    // Cria cliente Supabase com service role para gerar o token
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    console.log('Gerando token de reset para:', email);
+
+    // Gera o token de recuperação usando admin auth
+    const { data, error: resetError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: `${new URL(req.url).origin}/reset-password`
+      }
+    });
+
+    if (resetError) {
+      console.error('Erro ao gerar token:', resetError);
+      throw resetError;
+    }
+
+    const resetLink = data.properties?.action_link;
+    
+    if (!resetLink) {
+      throw new Error('Não foi possível gerar o link de recuperação');
+    }
+
+    console.log('Token gerado com sucesso, enviando email...');
 
     const emailResponse = await resend.emails.send({
       from: "Gera Cardápio <noreply@resend.dev>",
@@ -86,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email de redefinição enviado:", emailResponse);
 
-    return new Response(JSON.stringify(emailResponse), {
+    return new Response(JSON.stringify({ success: true, emailId: emailResponse.data?.id }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
