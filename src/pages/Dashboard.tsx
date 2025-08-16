@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 import { Sidebar } from '@/components/Sidebar';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface Business {
   id: string;
@@ -25,6 +26,7 @@ interface Business {
 const Dashboard = () => {
   // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { user, signOut, loading } = useAuth();
+  const { subscribed, subscriptionStatus } = useSubscription();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -292,7 +294,7 @@ const Dashboard = () => {
         </div>
 
         {/* Menu Link Section */}
-        {menuLink && (
+        {menuLink && subscribed && subscriptionStatus === 'active' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

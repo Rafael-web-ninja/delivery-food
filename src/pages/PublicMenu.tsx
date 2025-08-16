@@ -220,6 +220,22 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
       }
 
       if (biz) {
+        // Verificar se o dono do delivery tem assinatura ativa
+        const { data: ownerAuth, error: ownerError } = await supabase
+          .from('subscriber_plans')
+          .select('subscription_status, plan_type, subscription_end')
+          .eq('user_id', biz.owner_id)
+          .single();
+
+        // Se não encontrou dados de assinatura ou não está ativa, não mostrar cardápio
+        if (ownerError || !ownerAuth || 
+            ownerAuth.subscription_status !== 'active' || 
+            (ownerAuth.subscription_end && new Date(ownerAuth.subscription_end) < new Date())) {
+          setBusiness(null);
+          setLoading(false);
+          return;
+        }
+
         setBusiness(biz);
         const itemsResult = await supabase
           .from('menu_items')
@@ -400,11 +416,19 @@ const getCartTotal = () =>
   if (!business) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Delivery não encontrado</h1>
-          <p className="text-muted-foreground">
-            O link pode estar incorreto ou o delivery pode estar indisponível.
-          </p>
+        <div className="text-center space-y-4 p-8">
+          <div className="max-w-md mx-auto">
+            <h1 className="text-2xl font-bold mb-4 text-foreground">Cardápio Indisponível</h1>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-yellow-800">
+              <p className="text-lg font-medium mb-2">
+                O cardápio desta empresa está temporariamente desativado.
+              </p>
+              <p className="text-sm">
+                Este estabelecimento pode estar com a assinatura pendente ou inativa. 
+                Entre em contato diretamente com o estabelecimento para mais informações.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
