@@ -221,6 +221,8 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
 
       if (biz) {
         // Verificar assinatura ativa via Edge Function pública (bypass RLS)
+        console.log('Checking subscription for business:', { businessId: biz.id, ownerId: biz.owner_id, name: biz.name });
+        
         const { data: subscriptionData, error: subError } = await supabase.functions.invoke(
           'get-business-subscription',
           {
@@ -228,14 +230,28 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
           }
         );
 
-        console.log('Subscription check result:', { subscriptionData, subError, ownerId: biz.owner_id });
+        console.log('Subscription check result:', { 
+          subscriptionData, 
+          subError: subError?.message || subError,
+          ownerId: biz.owner_id,
+          businessName: biz.name 
+        });
 
-        if (subError || !subscriptionData?.active) {
-          console.log('Subscription not active, hiding menu');
+        if (subError) {
+          console.error('Error checking subscription:', subError);
           setBusiness(null);
           setLoading(false);
           return;
         }
+
+        if (!subscriptionData?.active) {
+          console.log('Subscription not active, hiding menu. Debug data:', subscriptionData?.debug);
+          setBusiness(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('Subscription is active, showing menu');
         // Assinatura ativa - continuar
 
         setBusiness(biz);

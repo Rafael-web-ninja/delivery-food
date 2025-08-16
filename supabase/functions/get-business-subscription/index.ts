@@ -30,7 +30,7 @@ serve(async (req) => {
     const businessId: string | undefined = body.businessId;
     const slug: string | undefined = body.slug;
 
-    log("Function started", { ownerId: !!ownerId, businessId, slug });
+    log("Function started", { hasOwnerId: !!ownerId, hasBusinessId: !!businessId, hasSlug: !!slug });
 
     let resolvedOwnerId = ownerId;
 
@@ -72,7 +72,7 @@ serve(async (req) => {
 
     const { data: plan, error: planErr } = await supabase
       .from("subscriber_plans")
-      .select("subscription_status, subscription_end, updated_at")
+      .select("subscription_status, subscription_end, updated_at, plan_type")
       .eq("user_id", resolvedOwnerId)
       .order("updated_at", { ascending: false })
       .maybeSingle();
@@ -85,17 +85,25 @@ serve(async (req) => {
       });
     }
 
+    log("Found plan", { plan });
+
     let active = false;
     if (plan && plan.subscription_status === "active") {
       if (plan.subscription_end) {
-        active = new Date(plan.subscription_end) > new Date();
+        const endDate = new Date(plan.subscription_end);
+        const now = new Date();
+        active = endDate > now;
+        log("Subscription has end date", { endDate: endDate.toISOString(), now: now.toISOString(), active });
       } else {
         active = true;
+        log("Subscription has no end date, marking as active");
       }
+    } else {
+      log("Plan not active", { status: plan?.subscription_status || "no_plan" });
     }
 
-    log("Computed active status", { active });
-    return new Response(JSON.stringify({ active }), {
+    log("Final computed active status", { active, ownerId: resolvedOwnerId });
+    return new Response(JSON.stringify({ active, debug: { plan, ownerId: resolvedOwnerId } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
