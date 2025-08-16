@@ -62,8 +62,6 @@ interface Business {
   delivery_time_text_color: string;
   delivery_time_minutes: number;
   min_order_value: number;
-  owner_id: string;
-  is_active: boolean;
 }
 
 interface CartItem extends MenuItem {
@@ -89,7 +87,6 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
   const [fractionalOpen, setFractionalOpen] = useState(false);
   const [fractionalBaseItem, setFractionalBaseItem] = useState<MenuItem | null>(null);
   const [fractionalQuantity, setFractionalQuantity] = useState(1);
-  const [subWarning, setSubWarning] = useState<string | null>(null);
 
   // 1️⃣ Carregar dados ao montar / businessId mudar
   useEffect(() => {
@@ -223,42 +220,7 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
       }
 
       if (biz) {
-        // Verificar assinatura ativa via Edge Function pública (resiliente)
-        const { data: subscriptionData, error: subError } = await supabase.functions.invoke(
-          'get-business-subscription',
-          {
-            body: { ownerId: biz.owner_id, businessId: biz.id },
-          }
-        );
-
-        let allow = false;
-        let temporary = false;
-
-        if (subError || !subscriptionData) {
-          temporary = true;
-          allow = !!biz.is_active; // degradar pró-venda se negócio estiver ativo
-        } else if ((subscriptionData as any).ok === false) {
-          temporary = true;
-          // a função já retorna allow:true em erro temporário; manter fallback pró-venda
-          allow = (subscriptionData as any).allow === true || !!biz.is_active;
-        } else {
-          allow = (subscriptionData as any).allow === true;
-        }
-
-        if (temporary && user && user.id === biz.owner_id) {
-          setSubWarning('Problema temporário ao verificar sua assinatura. O cardápio continua disponível.');
-        } else {
-          setSubWarning(null);
-        }
-
-        if (!allow) {
-          setBusiness(null);
-          setLoading(false);
-          return;
-        }
-
-        // Permitido - continuar
-        setBusiness(biz as Business);
+        setBusiness(biz);
         const itemsResult = await supabase
           .from('menu_items')
           .select('*')
@@ -438,19 +400,11 @@ const getCartTotal = () =>
   if (!business) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4 p-8">
-          <div className="max-w-md mx-auto">
-            <h1 className="text-2xl font-bold mb-4 text-foreground">Cardápio Indisponível</h1>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-yellow-800">
-              <p className="text-lg font-medium mb-2">
-                O cardápio desta empresa está temporariamente desativado.
-              </p>
-              <p className="text-sm">
-                Este estabelecimento pode estar com a assinatura pendente ou inativa. 
-                Entre em contato diretamente com o estabelecimento para mais informações.
-              </p>
-            </div>
-          </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Delivery não encontrado</h1>
+          <p className="text-muted-foreground">
+            O link pode estar incorreto ou o delivery pode estar indisponível.
+          </p>
         </div>
       </div>
     );
@@ -547,11 +501,6 @@ const getCartTotal = () =>
 
       {/* Conteúdo Principal */}
       <div className="container mx-auto px-4 py-8">
-        {subWarning && user && business && user.id === business.owner_id && (
-          <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800 px-4 py-2 text-sm">
-            {subWarning}
-          </div>
-        )}
         {user ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList>
