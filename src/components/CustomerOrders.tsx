@@ -68,28 +68,28 @@ export default function CustomerOrders() {
 
       console.log('👤 Customer profile encontrado:', customerProfile);
 
-      // Buscar os pedidos do cliente
-      const { data: orders, error: ordersError } = await supabase
+      // 2. Buscar pedidos do cliente, igual à aba de catálogo > pedidos
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
           delivery_businesses(id, name, slug),
-          order_items(
+          order_items (
             quantity,
-            menu_items(name)
+            menu_items (name)
           )
         `)
         .eq('customer_id', customerProfile.id)
         .order('created_at', { ascending: false });
 
-      if (ordersError) {
-        console.error('Erro ao buscar pedidos:', ordersError);
-        throw ordersError;
+      if (error) {
+        console.error('Erro ao buscar pedidos:', error);
+        throw error;
       } else {
-        console.log('Pedidos do cliente:', orders);
+        console.log('Pedidos do cliente:', data);
       }
 
-      setOrders((orders as any) || []);
+      setOrders((data as any) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
