@@ -24,6 +24,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isBusinessOwner, setIsBusinessOwner] = useState<boolean | null>(null);
 
   const checkSubscription = useCallback(async () => {
     if (!user) return;
@@ -133,9 +134,33 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   }, [user, toast]);
 
-  // Check subscription on user change
+  // Check if user is business owner
   useEffect(() => {
-    if (user) {
+    const checkUserType = async () => {
+      if (!user) {
+        setIsBusinessOwner(null);
+        return;
+      }
+
+      try {
+        const { data: business } = await supabase
+          .from('delivery_businesses')
+          .select('id')
+          .eq('owner_id', user.id)
+          .single();
+
+        setIsBusinessOwner(!!business);
+      } catch (error) {
+        setIsBusinessOwner(false);
+      }
+    };
+
+    checkUserType();
+  }, [user]);
+
+  // Check subscription only for business owners
+  useEffect(() => {
+    if (user && isBusinessOwner === true) {
       checkSubscription();
     } else {
       setSubscribed(false);
@@ -143,7 +168,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       setSubscriptionStatus('inactive');
       setSubscriptionEnd(null);
     }
-  }, [user, checkSubscription]);
+  }, [user, isBusinessOwner, checkSubscription]);
 
   const contextValue = {
     subscribed,
