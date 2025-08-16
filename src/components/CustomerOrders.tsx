@@ -73,7 +73,7 @@ export default function CustomerOrders() {
         .from('orders')
         .select(`
           *,
-          delivery_businesses(id, name, slug),
+          delivery_businesses!orders_delivery_id_fkey(id, name, slug),
           order_items (
             quantity,
             menu_items (name)
@@ -182,7 +182,7 @@ export default function CustomerOrders() {
                   size="sm"
                   onClick={() => {
                     const businessSlug = order.delivery_businesses.slug || order.delivery_businesses.id;
-                    window.open(`/public-menu/${businessSlug}`, '_blank');
+                    window.open(`/menu/${businessSlug}`, '_blank');
                   }}
                   className="hover:bg-primary hover:text-primary-foreground"
                 >
