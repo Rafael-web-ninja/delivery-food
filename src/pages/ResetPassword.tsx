@@ -21,26 +21,41 @@ const ResetPassword = () => {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Captura os parâmetros da URL (access_token, refresh_token, etc.)
+      // Verifica se há parâmetros de erro na URL
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const searchParamsObj = Object.fromEntries(searchParams.entries());
       
+      const error = hashParams.get('error') || searchParamsObj.error;
+      const errorDescription = hashParams.get('error_description') || searchParamsObj.error_description;
+      
+      // Se há erro de token expirado, redireciona para auth com mensagem
+      if (error === 'access_denied' || errorDescription?.includes('expired')) {
+        toast({
+          title: "Link expirado",
+          description: "O link de recuperação expirou. Solicite um novo link.",
+          variant: "destructive"
+        });
+        navigate('/auth');
+        return;
+      }
+      
+      // Captura os tokens de recuperação
       const accessToken = hashParams.get('access_token') || searchParamsObj.access_token;
       const refreshToken = hashParams.get('refresh_token') || searchParamsObj.refresh_token;
       const tokenType = hashParams.get('type') || searchParamsObj.type;
 
-      console.log('Reset password params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, tokenType });
+      console.log('Reset password params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, tokenType, error });
 
       if (accessToken && refreshToken && tokenType === 'recovery') {
         try {
           // Estabelece a sessão com os tokens do reset
-          const { error } = await supabase.auth.setSession({
+          const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
 
-          if (error) {
-            console.error('Erro ao estabelecer sessão:', error);
+          if (sessionError) {
+            console.error('Erro ao estabelecer sessão:', sessionError);
             toast({
               title: "Link inválido",
               description: "O link de recuperação é inválido ou expirou",
