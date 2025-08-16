@@ -73,7 +73,7 @@ export default function CustomerOrders() {
         .from('orders')
         .select(`
           *,
-          delivery_businesses!orders_business_id_fkey(id, name, slug),
+          delivery_businesses(id, name, slug),
           order_items(
             quantity,
             menu_items(name)

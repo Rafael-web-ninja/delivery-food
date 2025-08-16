@@ -152,19 +152,27 @@ export function ThermalPrint({ order, businessName }: ThermalPrintProps) {
       const line = leftTrim.padEnd(leftMax, ' ') + ' ' + price;
       writeLine(line);
 
-      const size = (item as any).size as string | undefined;
-      const f1 = (((item as any).flavor1 && (item as any).flavor1.name) ? (item as any).flavor1.name : (item as any).flavor1) as string | undefined;
-      const f2 = (((item as any).flavor2 && (item as any).flavor2.name) ? (item as any).flavor2.name : (item as any).flavor2) as string | undefined;
-      const flavor = f1 && f2 ? `1/2 ${f1} + 1/2 ${f2}` : (f1 || f2);
-      let addons: string[] | string | undefined = (item as any).addons as any;
-      const addonsStr = Array.isArray(addons) ? addons.join(', ') : addons;
-      const detailsParts: string[] = [];
-      if (flavor) detailsParts.push(`Sabor: ${flavor}`);
-      if (size) detailsParts.push(`Tamanho: ${size}`);
-      if (addonsStr) detailsParts.push(`Adicionais: ${addonsStr}`);
-
+      // Extrair detalhes do notes se for meio a meio
       const itemNotes = (item as any).notes as string | null | undefined;
-      if (!detailsParts.length && itemNotes) detailsParts.push(itemNotes);
+      let detailsParts: string[] = [];
+      
+      // Se tem notes, assumir que é meio a meio e extrair informações
+      if (itemNotes && itemNotes.includes('Meio a meio')) {
+        detailsParts.push(itemNotes);
+      } else {
+        // Fallback para detalhes antigos se não tiver notes
+        const size = (item as any).size as string | undefined;
+        const f1 = (((item as any).flavor1 && (item as any).flavor1.name) ? (item as any).flavor1.name : (item as any).flavor1) as string | undefined;
+        const f2 = (((item as any).flavor2 && (item as any).flavor2.name) ? (item as any).flavor2.name : (item as any).flavor2) as string | undefined;
+        const flavor = f1 && f2 ? `1/2 ${f1} + 1/2 ${f2}` : (f1 || f2);
+        let addons: string[] | string | undefined = (item as any).addons as any;
+        const addonsStr = Array.isArray(addons) ? addons.join(', ') : addons;
+        
+        if (flavor) detailsParts.push(`Sabor: ${flavor}`);
+        if (size) detailsParts.push(`Tamanho: ${size}`);
+        if (addonsStr) detailsParts.push(`Adicionais: ${addonsStr}`);
+        if (!detailsParts.length && itemNotes) detailsParts.push(itemNotes);
+      }
 
       if (detailsParts.length) {
         const detailsLine = `  ${detailsParts.join(' / ')}`;
