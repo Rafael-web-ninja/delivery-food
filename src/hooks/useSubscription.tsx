@@ -133,8 +133,9 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       });
 
       if (error) {
-        logStep("Error from customer-portal function", error);
-        throw error;
+        logStep("Error from customer-portal function", { errorMessage: error.message, status: (error as any)?.context?.response?.status });
+        const serverMessage = (data as any)?.error;
+        throw new Error(serverMessage || error.message || "Erro ao abrir o portal");
       }
 
       if (!data?.url) {

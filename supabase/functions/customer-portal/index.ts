@@ -61,7 +61,7 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
     logStep("Creating customer portal session", { customerId, origin });
     
-    // Try to create the portal session with configuration
+    // Try to create the portal session. If no configuration exists, auto-create one.
     let portalSession;
     try {
       portalSession = await stripe.billingPortal.sessions.create({
@@ -69,15 +69,37 @@ serve(async (req) => {
         return_url: `${origin}/subscription`,
       });
     } catch (stripeError: any) {
-      logStep("Stripe portal creation failed", { error: stripeError.message });
+      const msg = stripeError?.message || String(stripeError);
+      logStep("Stripe portal creation failed", { error: msg });
       
-      // If no configuration exists, provide a helpful error message
-      if (stripeError.message?.includes("configuration") || stripeError.message?.includes("default configuration")) {
-        throw new Error("O portal de pagamentos precisa ser configurado no Stripe. Por favor, acesse o dashboard do Stripe e configure o Customer Portal em Settings > Billing > Customer Portal.");
+      // Auto-create a default configuration in test mode if missing
+      if (msg.includes("No configuration provided") || msg.includes("default configuration")) {
+        logStep("No portal configuration found - creating a default configuration");
+        try {
+          const configuration = await stripe.billingPortal.configurations.create({
+            features: {
+              payment_method_update: { enabled: true },
+              invoice_history: { enabled: true },
+              subscription_cancel: { enabled: true, mode: "at_period_end" },
+            },
+          });
+          logStep("Created portal configuration", { configurationId: configuration.id });
+          
+          portalSession = await stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${origin}/subscription`,
+            configuration: configuration.id,
+          });
+          logStep("Portal session created with new configuration", { sessionId: portalSession.id, url: portalSession.url });
+        } catch (cfgErr: any) {
+          const cfgMsg = cfgErr?.message || String(cfgErr);
+          logStep("Failed to auto-create configuration", { error: cfgMsg });
+          throw new Error("Não foi possível configurar o portal de pagamentos automaticamente. Configure o Customer Portal no Stripe em Settings > Billing > Customer Portal e tente novamente.");
+        }
+      } else {
+        // Re-throw other Stripe errors with message
+        throw new Error(msg);
       }
-      
-      // Re-throw other Stripe errors
-      throw stripeError;
     }
     logStep("Customer portal session created successfully", { 
       sessionId: portalSession.id, 
