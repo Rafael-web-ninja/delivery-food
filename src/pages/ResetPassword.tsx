@@ -21,33 +21,49 @@ const ResetPassword = () => {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Verifica se há parâmetros de erro na URL
+      // Verifica se há parâmetros de erro na URL (tanto na hash quanto nos search params)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const searchParamsObj = Object.fromEntries(searchParams.entries());
       
       const error = hashParams.get('error') || searchParamsObj.error;
       const errorDescription = hashParams.get('error_description') || searchParamsObj.error_description;
       
+      console.log('Reset password URL params:', {
+        hash: window.location.hash,
+        search: window.location.search,
+        error,
+        errorDescription
+      });
+      
       // Se há erro de token expirado, redireciona para auth com mensagem
-      if (error === 'access_denied' || errorDescription?.includes('expired')) {
+      if (error === 'access_denied' || errorDescription?.includes('expired') || errorDescription?.includes('invalid')) {
+        console.log('Link expirado ou inválido detectado');
         toast({
-          title: "Link expirado",
-          description: "O link de recuperação expirou. Solicite um novo link.",
+          title: "Link expirado ou inválido",
+          description: "O link de recuperação expirou ou é inválido. Solicite um novo link.",
           variant: "destructive"
         });
         navigate('/auth');
         return;
       }
       
-      // Captura os tokens de recuperação
+      // Captura os tokens de recuperação (tanto da hash quanto dos search params)
       const accessToken = hashParams.get('access_token') || searchParamsObj.access_token;
       const refreshToken = hashParams.get('refresh_token') || searchParamsObj.refresh_token;
       const tokenType = hashParams.get('type') || searchParamsObj.type;
 
-      console.log('Reset password params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, tokenType, error });
+      console.log('Reset password tokens:', { 
+        hasAccessToken: !!accessToken, 
+        hasRefreshToken: !!refreshToken, 
+        tokenType,
+        error 
+      });
 
+      // Se temos tokens válidos e é do tipo recovery
       if (accessToken && refreshToken && tokenType === 'recovery') {
         try {
+          console.log('Estabelecendo sessão com tokens de recovery...');
+          
           // Estabelece a sessão com os tokens do reset
           const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -63,14 +79,23 @@ const ResetPassword = () => {
             });
             navigate('/auth');
           } else {
-            setIsValidSession(true);
             console.log('Sessão estabelecida com sucesso para reset de senha');
+            setIsValidSession(true);
+            
+            // Limpa os parâmetros da URL
+            window.history.replaceState({}, '', '/reset-password');
           }
         } catch (error) {
           console.error('Erro no processo de reset:', error);
+          toast({
+            title: "Erro",
+            description: "Ocorreu um erro ao processar o link de recuperação",
+            variant: "destructive"
+          });
           navigate('/auth');
         }
       } else {
+        console.log('Tokens não encontrados ou inválidos');
         // Se não há parâmetros de reset, mas o usuário está logado normalmente
         if (user) {
           navigate('/meu-perfil', { replace: true });

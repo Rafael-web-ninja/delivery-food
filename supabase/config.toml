@@ -10,8 +10,8 @@ max_rows = 1000
 [auth]
 enabled = true
 port = 54320
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/"]
+site_url = "https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com"
+additional_redirect_urls = ["https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/", "https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password"]
 jwt_expiry = 3600
 refresh_token_rotation_enabled = true
 security_update_password_require_reauthentication = true
@@ -32,4 +32,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.get-stripe-prices]
+verify_jwt = false
+
+[functions.send-password-reset]
 verify_jwt = false
