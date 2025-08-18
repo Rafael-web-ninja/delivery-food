@@ -293,13 +293,6 @@ export type Database = {
             referencedRelation: "public_business_info"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "menu_categories_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses"
-            referencedColumns: ["id"]
-          },
         ]
       }
       menu_item_flavors: {
@@ -397,13 +390,6 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "public_business_info"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "menu_items_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
           {
@@ -534,13 +520,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "orders_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -559,13 +538,6 @@ export type Database = {
             columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "public_business_info"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_delivery_id_fkey"
-            columns: ["delivery_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -788,9 +760,21 @@ export type Database = {
         }
         Relationships: []
       }
-      public_businesses: {
-        Row: {
+    }
+    Functions: {
+      force_create_user: {
+        Args: { email: string; password?: string }
+        Returns: string
+      }
+      generate_order_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_safe_business_info: {
+        Args: { business_id?: string; business_slug?: string }
+        Returns: {
           accent_color: string | null
+          accept_orders_when_closed: boolean | null
           background_color: string | null
           button_color: string | null
           button_text_color: string | null
@@ -812,93 +796,6 @@ export type Database = {
           slug: string | null
           text_color: string | null
           updated_at: string | null
-        }
-        Insert: {
-          accent_color?: string | null
-          background_color?: string | null
-          button_color?: string | null
-          button_text_color?: string | null
-          cart_button_color?: string | null
-          cart_button_text_color?: string | null
-          created_at?: string | null
-          delivery_fee?: number | null
-          delivery_time_bg_color?: string | null
-          delivery_time_minutes?: number | null
-          delivery_time_text_color?: string | null
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          logo_url?: string | null
-          min_order_value?: number | null
-          name?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          slug?: string | null
-          text_color?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          accent_color?: string | null
-          background_color?: string | null
-          button_color?: string | null
-          button_text_color?: string | null
-          cart_button_color?: string | null
-          cart_button_text_color?: string | null
-          created_at?: string | null
-          delivery_fee?: number | null
-          delivery_time_bg_color?: string | null
-          delivery_time_minutes?: number | null
-          delivery_time_text_color?: string | null
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          logo_url?: string | null
-          min_order_value?: number | null
-          name?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          slug?: string | null
-          text_color?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-    }
-    Functions: {
-      force_create_user: {
-        Args: { email: string; password?: string }
-        Returns: string
-      }
-      generate_order_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_public_business_info: {
-        Args: { business_id?: string; business_slug?: string }
-        Returns: {
-          accent_color: string
-          accept_orders_when_closed: boolean
-          background_color: string
-          button_color: string
-          button_text_color: string
-          cart_button_color: string
-          cart_button_text_color: string
-          created_at: string
-          delivery_fee: number
-          delivery_time_bg_color: string
-          delivery_time_minutes: number
-          delivery_time_text_color: string
-          description: string
-          id: string
-          is_active: boolean
-          logo_url: string
-          min_order_value: number
-          name: string
-          primary_color: string
-          secondary_color: string
-          slug: string
-          text_color: string
-          updated_at: string
         }[]
       }
       get_user_business_id: {
