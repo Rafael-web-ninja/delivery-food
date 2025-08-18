@@ -16,6 +16,7 @@ import { LoadingButton } from '@/components/ui/loading-button';
 import { ArrowLeft, Save, Store } from 'lucide-react';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 import ImageUpload from '@/components/ImageUpload';
+import PasswordChangeForm from '@/components/PasswordChangeForm';
 
 interface BusinessData {
   id: string;
@@ -201,6 +202,7 @@ const { error } = await supabase
             <TabsTrigger value="hours">Horários</TabsTrigger>
             <TabsTrigger value="payments">Pagamentos</TabsTrigger>
             <TabsTrigger value="colors">Personalização</TabsTrigger>
+            <TabsTrigger value="security">Segurança</TabsTrigger>
           </TabsList>
 
           <TabsContent value="business">
@@ -596,6 +598,10 @@ const { error } = await supabase
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="security">
+            <PasswordChangeForm />
           </TabsContent>
         </Tabs>
       </div>

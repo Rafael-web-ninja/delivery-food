@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { LogOut, User, MapPin, Phone } from 'lucide-react';
+import PasswordChangeForm from '@/components/PasswordChangeForm';
 
 interface CustomerProfile {
   name: string;
@@ -190,6 +191,9 @@ const CustomerProfile = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Password Change */}
+        <PasswordChangeForm />
       </div>
     </div>
   );
