@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Password Reset</title>
+</head>
+<body>
+    <h1>Test Password Reset</h1>
+    <form id="resetForm">
+        <input type="email" id="email" placeholder="Email" required>
+        <button type="submit">Send Reset Email</button>
+    </form>
+    
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.innerHTML = 'Enviando...';
+                
+                const response = await fetch('https://rpczvawjzjwytveboiqs.supabase.co/functions/v1/send-password-reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwY3p2YXdqemp3eXR2ZWJvaXFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyMzE1NDksImV4cCI6MjA2OTgwNzU0OX0.7S9wL62SHrkXmI4QHl3lF7sqvaNGe3iZMstwGito8BA'
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const result = await response.json();
+                resultDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `Erro: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -38,10 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Gera o token de recuperação usando admin auth
     const { data, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
-      email: email,
-      options: {
-        redirectTo: `https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password`
-      }
+      email: email
     });
 
     if (resetError) {
@@ -49,13 +46,21 @@ const handler = async (req: Request): Promise<Response> => {
       throw resetError;
     }
 
+    // O link completo já vem configurado pelo Supabase baseado no site_url
     const resetLink = data.properties?.action_link;
     
     if (!resetLink) {
       throw new Error('Não foi possível gerar o link de recuperação');
     }
 
-    console.log('Token gerado com sucesso, enviando email...');
+    // Substitui o link para apontar para nossa rota de reset
+    const correctedLink = resetLink.replace(
+      'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/',
+      'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password'
+    );
+
+    console.log('Token gerado com sucesso:', { originalLink: resetLink, correctedLink });
+    console.log('Enviando email...');
 
     const emailResponse = await resend.emails.send({
       from: "Gera Cardápio <noreply@resend.dev>",
@@ -85,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <div style="text-align: center; margin-bottom: 30px;">
-                  <a href="${resetLink}" 
+                  <a href="${correctedLink}" 
                      style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.4);">
                     Redefinir Minha Senha
                   </a>
@@ -102,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
                     Se você não conseguir clicar no botão, copie e cole este link no seu navegador:
                   </p>
                   <p style="color: #3b82f6; margin: 8px 0 0 0; font-size: 14px; word-break: break-all;">
-                    ${resetLink}
+                    ${correctedLink}
                   </p>
                 </div>
                 

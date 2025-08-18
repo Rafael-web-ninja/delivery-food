@@ -27,17 +27,19 @@ const ResetPassword = () => {
       
       const error = hashParams.get('error') || searchParamsObj.error;
       const errorDescription = hashParams.get('error_description') || searchParamsObj.error_description;
+      const errorCode = hashParams.get('error_code') || searchParamsObj.error_code;
       
       console.log('Reset password URL params:', {
         hash: window.location.hash,
         search: window.location.search,
         error,
-        errorDescription
+        errorDescription,
+        errorCode
       });
       
       // Se há erro de token expirado, redireciona para auth com mensagem
-      if (error === 'access_denied' || errorDescription?.includes('expired') || errorDescription?.includes('invalid')) {
-        console.log('Link expirado ou inválido detectado');
+      if (error === 'access_denied' || errorCode === 'otp_expired' || errorDescription?.includes('expired') || errorDescription?.includes('invalid')) {
+        console.log('Link expirado ou inválido detectado:', { error, errorCode, errorDescription });
         toast({
           title: "Link expirado ou inválido",
           description: "O link de recuperação expirou ou é inválido. Solicite um novo link.",
