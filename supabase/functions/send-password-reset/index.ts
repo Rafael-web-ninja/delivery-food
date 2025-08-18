@@ -35,10 +35,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Gerando token de reset para:', email);
 
-    // Gera o token de recuperação usando admin auth
+    // Gera o token de recuperação usando admin auth com URL específica
     const { data, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
-      email: email
+      email: email,
+      options: {
+        redirectTo: 'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password'
+      }
     });
 
     if (resetError) {
@@ -46,18 +49,19 @@ const handler = async (req: Request): Promise<Response> => {
       throw resetError;
     }
 
-    // O link completo já vem configurado pelo Supabase baseado no site_url
+    // O link completo já vem configurado pelo Supabase
     const resetLink = data.properties?.action_link;
     
     if (!resetLink) {
       throw new Error('Não foi possível gerar o link de recuperação');
     }
 
-    // Substitui o link para apontar para nossa rota de reset
-    const correctedLink = resetLink.replace(
-      'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/',
-      'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password'
-    );
+    console.log('Link gerado:', resetLink);
+
+    // Verifica se o link contém localhost e corrige se necessário
+    const correctedLink = resetLink.includes('localhost') 
+      ? resetLink.replace(/http:\/\/localhost:\d+/, 'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com')
+      : resetLink;
 
     console.log('Token gerado com sucesso:', { originalLink: resetLink, correctedLink });
     console.log('Enviando email...');
