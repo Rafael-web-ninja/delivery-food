@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: 'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password'
+        redirectTo: 'https://app.geracardapio.com/reset-password'
       }
     });
 
@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Verifica se o link contém localhost e corrige se necessário
     const correctedLink = resetLink.includes('localhost') 
-      ? resetLink.replace(/http:\/\/localhost:\d+/, 'https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com')
+      ? resetLink.replace(/http:\/\/localhost:\d+/, 'https://app.geracardapio.com')
       : resetLink;
 
     console.log('Token gerado com sucesso:', { originalLink: resetLink, correctedLink });
