@@ -60,10 +60,25 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
     logStep("Creating customer portal session", { customerId, origin });
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${origin}/subscription`,
-    });
+    
+    // Try to create the portal session with configuration
+    let portalSession;
+    try {
+      portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${origin}/subscription`,
+      });
+    } catch (stripeError: any) {
+      logStep("Stripe portal creation failed", { error: stripeError.message });
+      
+      // If no configuration exists, provide a helpful error message
+      if (stripeError.message?.includes("configuration") || stripeError.message?.includes("default configuration")) {
+        throw new Error("O portal de pagamentos precisa ser configurado no Stripe. Por favor, acesse o dashboard do Stripe e configure o Customer Portal em Settings > Billing > Customer Portal.");
+      }
+      
+      // Re-throw other Stripe errors
+      throw stripeError;
+    }
     logStep("Customer portal session created successfully", { 
       sessionId: portalSession.id, 
       url: portalSession.url,

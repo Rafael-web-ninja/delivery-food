@@ -151,9 +151,13 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       });
     } catch (error: any) {
       console.error('Error opening customer portal:', error);
+      const errorMessage = error.message || "Tente novamente em alguns instantes";
+      
       toast({
         title: "Erro ao abrir portal",
-        description: error.message || "Tente novamente em alguns instantes",
+        description: errorMessage.includes("configurado no Stripe") 
+          ? "O portal de pagamentos precisa ser configurado. Entre em contato com o suporte."
+          : errorMessage,
         variant: "destructive"
       });
     } finally {
