@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { CardSkeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
-import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle, Menu } from 'lucide-react';
+import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle, Menu, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 import { Sidebar } from '@/components/Sidebar';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Business {
   id: string;
@@ -25,6 +27,7 @@ interface Business {
 const Dashboard = () => {
   // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { user, signOut, loading } = useAuth();
+  const { subscribed, planType } = useSubscription();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -140,6 +143,19 @@ const Dashboard = () => {
             Gerencie seu delivery e acompanhe suas vendas
           </p>
         </div>
+
+        {/* Alerta de assinatura inativa */}
+        {!subscribed && (
+          <Alert className="border-warning bg-warning/10">
+            <AlertCircle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-warning">
+              <strong>Ative sua assinatura para usar o Cardápio</strong>
+              <div className="mt-1">
+                Seu cardápio está bloqueado. Assine um plano para liberar o acesso completo.
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -292,7 +308,7 @@ const Dashboard = () => {
         </div>
 
         {/* Menu Link Section */}
-        {menuLink && (
+        {menuLink && subscribed && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

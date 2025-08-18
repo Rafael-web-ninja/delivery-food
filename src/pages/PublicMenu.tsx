@@ -20,7 +20,8 @@ import {
   Phone,
   MapPin,
   Clock,
-  User
+  User,
+  AlertCircle
 } from 'lucide-react';
 import CheckoutForm from '@/components/CheckoutForm';
 import BusinessStatus from '@/components/BusinessStatus';
@@ -31,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBusinessStatus } from '@/hooks/useBusinessStatus';
 import FloatingCart from '@/components/FloatingCart';
 import FractionalPizzaDialog from '@/components/FractionalPizzaDialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface MenuItem {
   id: string;
@@ -89,6 +91,7 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
   const [fractionalOpen, setFractionalOpen] = useState(false);
   const [fractionalBaseItem, setFractionalBaseItem] = useState<MenuItem | null>(null);
   const [fractionalQuantity, setFractionalQuantity] = useState(1);
+  const [businessOwnerSubscription, setBusinessOwnerSubscription] = useState<{ subscribed: boolean; loading: boolean }>({ subscribed: false, loading: true });
 
   // Hook para verificar status do negócio
   const { canAcceptOrders } = useBusinessStatus(
@@ -229,6 +232,26 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
 
       if (biz) {
         setBusiness(biz);
+        
+        // Verificar assinatura do dono do delivery
+        const { data: ownerData } = await supabase.auth.admin.getUserById(biz.owner_id);
+        if (ownerData.user) {
+          const { data: subscriptionData } = await supabase
+            .from('subscriber_plans')
+            .select('subscription_status')
+            .eq('user_id', biz.owner_id)
+            .single();
+          
+          const isSubscribed = subscriptionData?.subscription_status === 'active';
+          setBusinessOwnerSubscription({ subscribed: isSubscribed, loading: false });
+          
+          // Se não está inscrito, não carrega o menu
+          if (!isSubscribed) {
+            setLoading(false);
+            return;
+          }
+        }
+
         const itemsResult = await supabase
           .from('menu_items')
           .select('*')
@@ -413,6 +436,27 @@ const getCartTotal = () =>
           <p className="text-muted-foreground">
             O link pode estar incorreto ou o delivery pode estar indisponível.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar se o dono do delivery tem assinatura ativa
+  if (!businessOwnerSubscription.loading && !businessOwnerSubscription.subscribed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-4">Cardápio Indisponível</h1>
+          <Alert className="border-warning bg-warning/10">
+            <AlertCircle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-warning text-left">
+              <strong>Este delivery está com a assinatura inativa.</strong>
+              <div className="mt-2">
+                O cardápio está temporariamente bloqueado. Entre em contato com o estabelecimento para mais informações.
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
     );
