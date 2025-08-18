@@ -35,26 +35,40 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
+    logStep("Verifying user authentication");
     const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) {
+      logStep("Authentication failed", userError);
+      throw new Error(`Authentication error: ${userError.message}`);
+    }
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email) {
+      logStep("User email not available", { user });
+      throw new Error("User not authenticated or email not available");
+    }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    logStep("Searching for Stripe customer", { email: user.email });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
-      throw new Error("No Stripe customer found for this user");
+      logStep("No Stripe customer found", { email: user.email });
+      throw new Error("No Stripe customer found for this user. Please subscribe to a plan first.");
     }
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
     const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
+    logStep("Creating customer portal session", { customerId, origin });
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/subscription`,
     });
-    logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
+    logStep("Customer portal session created successfully", { 
+      sessionId: portalSession.id, 
+      url: portalSession.url,
+      customerId 
+    });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
