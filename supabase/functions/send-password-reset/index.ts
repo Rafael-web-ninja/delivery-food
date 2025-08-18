@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${new URL(req.url).origin}/reset-password`
+        redirectTo: `https://7fb2c125-715a-40cb-acb8-5b6724f851b8.lovableproject.com/reset-password`
       }
     });
 
