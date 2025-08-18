@@ -3,11 +3,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[SUBSCRIPTION] ${step}${detailsStr}`);
-};
-
 interface SubscriptionContextType {
   subscribed: boolean;
   planType: string;
@@ -117,48 +112,21 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     
     setLoading(true);
     try {
-      logStep("Getting auth session");
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      
-      if (!token) {
-        throw new Error("Usuário não autenticado");
-      }
-
-      logStep("Invoking customer-portal function");
       const { data, error } = await supabase.functions.invoke('customer-portal', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
       });
 
-      if (error) {
-        logStep("Error from customer-portal function", { errorMessage: error.message, status: (error as any)?.context?.response?.status });
-        const serverMessage = (data as any)?.error;
-        throw new Error(serverMessage || error.message || "Erro ao abrir o portal");
-      }
+      if (error) throw error;
 
-      if (!data?.url) {
-        throw new Error("URL do portal não retornada");
-      }
-
-      logStep("Opening customer portal", { url: data.url });
       // Open customer portal in a new tab
       window.open(data.url, '_blank');
-      
-      toast({
-        title: "Portal aberto",
-        description: "O portal de gerenciamento foi aberto em uma nova aba",
-      });
     } catch (error: any) {
       console.error('Error opening customer portal:', error);
-      const errorMessage = error.message || "Tente novamente em alguns instantes";
-      
       toast({
         title: "Erro ao abrir portal",
-        description: errorMessage.includes("configurado no Stripe") 
-          ? "O portal de pagamentos precisa ser configurado. Entre em contato com o suporte."
-          : errorMessage,
+        description: error.message || "Tente novamente em alguns instantes",
         variant: "destructive"
       });
     } finally {
