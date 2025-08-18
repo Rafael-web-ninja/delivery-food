@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency, statusTranslations as statusLabels } from '@/lib/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getDisplayName } from '@/lib/auth-utils';
+import PasswordChangeForm from '@/components/PasswordChangeForm';
 
 
 interface CustomerProfile {
@@ -290,6 +291,9 @@ const CustomerDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Password Change Section */}
+            <PasswordChangeForm className="mt-6" />
           </TabsContent>
 
           <TabsContent value="orders">

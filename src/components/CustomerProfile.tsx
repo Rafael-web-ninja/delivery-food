@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Phone, MapPin } from 'lucide-react';
+import PasswordChangeForm from './PasswordChangeForm';
 
 interface CustomerProfileData {
   name: string;
@@ -96,57 +97,62 @@ export default function CustomerProfile() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Meu Perfil</CardTitle>
-        <CardDescription>
-          Mantenha suas informações atualizadas para facilitar seus pedidos
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="name" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Nome completo
-          </Label>
-          <Input
-            id="name"
-            value={profileData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="Seu nome completo"
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="phone" className="flex items-center gap-2">
-            <Phone className="h-4 w-4" />
-            Telefone
-          </Label>
-          <Input
-            id="phone"
-            value={profileData.phone}
-            onChange={(e) => handleInputChange('phone', e.target.value)}
-            placeholder="(11) 99999-9999"
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="address" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Endereço padrão
-          </Label>
-          <Input
-            id="address"
-            value={profileData.address}
-            onChange={(e) => handleInputChange('address', e.target.value)}
-            placeholder="Rua, número, bairro, cidade"
-          />
-        </div>
+    <div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Meu Perfil</CardTitle>
+          <CardDescription>
+            Mantenha suas informações atualizadas para facilitar seus pedidos
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="name" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Nome completo
+            </Label>
+            <Input
+              id="name"
+              value={profileData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              placeholder="Seu nome completo"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="phone" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Telefone
+            </Label>
+            <Input
+              id="phone"
+              value={profileData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              placeholder="(11) 99999-9999"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="address" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Endereço padrão
+            </Label>
+            <Input
+              id="address"
+              value={profileData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+              placeholder="Rua, número, bairro, cidade"
+            />
+          </div>
 
-        <Button onClick={saveProfile} disabled={loading} className="w-full">
-          {loading ? 'Salvando...' : 'Salvar Perfil'}
-        </Button>
-      </CardContent>
-    </Card>
+          <Button onClick={saveProfile} disabled={loading} className="w-full">
+            {loading ? 'Salvando...' : 'Salvar Perfil'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Password Change Section */}
+      <PasswordChangeForm className="mt-6" />
+    </div>
   );
 }
