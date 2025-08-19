@@ -27,7 +27,7 @@ interface Business {
 const Dashboard = () => {
   // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { user, signOut, loading } = useAuth();
-  const { subscribed, planType } = useSubscription();
+  const { subscribed, planType, loading: subscriptionLoading } = useSubscription();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -144,8 +144,8 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Alerta de assinatura inativa */}
-        {!subscribed && (
+        {/* Alerta de assinatura inativa - só mostra se não estiver carregando */}
+        {!subscriptionLoading && !subscribed && (
           <Alert className="border-warning bg-warning/10">
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertDescription className="text-warning">
