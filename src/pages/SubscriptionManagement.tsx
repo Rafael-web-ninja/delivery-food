@@ -143,18 +143,6 @@ export default function SubscriptionManagement() {
           <Separator />
 
           <div className="flex flex-wrap gap-3">
-            {subscribed && (
-              <Button
-                onClick={openCustomerPortal}
-                disabled={loading}
-                className="flex items-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                Gerenciar Pagamento
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-            )}
-            
             {planType === 'free' && (
               <>
                 <Button
@@ -276,7 +264,7 @@ export default function SubscriptionManagement() {
                       <span className="font-medium">
                         {inv.created ? new Date(inv.created).toLocaleDateString('pt-BR') : '--/--/----'}
                       </span>
-                      <span className="capitalize">{inv.status}</span>
+                      <span className="capitalize">{inv.status === 'paid' ? 'Pago' : inv.status}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-semibold">{formatPrice(inv.amount_paid || inv.amount_due || 0, 'BRL')}</span>
@@ -291,14 +279,6 @@ export default function SubscriptionManagement() {
               </div>
             )}
 
-            <Button
-              onClick={openCustomerPortal}
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Abrir Portal do Cliente
-            </Button>
           </CardContent>
         </Card>
       )}
