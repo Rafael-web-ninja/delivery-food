@@ -118,37 +118,34 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   }, [user, toast]);
 
   const createCheckout = useCallback(async (selectedPlanType: string) => {
-    if (!user) {
-      toast({
-        title: "Usuário não encontrado",
-        description: "Faça login para continuar",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     console.log('[useSubscription] Starting checkout for plan:', selectedPlanType);
     setLoading(true);
     
     try {
+      // Check if user is logged in
       const session = await supabase.auth.getSession();
+      const hasUser = !!session.data.session?.user;
+      
       console.log('[useSubscription] Session check:', {
         hasSession: !!session.data.session,
         hasToken: !!session.data.session?.access_token,
-        userId: session.data.session?.user?.id
+        userId: session.data.session?.user?.id,
+        allowingGuestCheckout: !hasUser
       });
+
+      // Call create-checkout function with or without authentication
+      const requestConfig: any = {
+        body: { planType: selectedPlanType, guestCheckout: !hasUser }
+      };
       
-      if (!session.data.session?.access_token) {
-        throw new Error("Usuário não autenticado - token não encontrado");
+      if (hasUser && session.data.session?.access_token) {
+        requestConfig.headers = {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        };
       }
 
       console.log('[useSubscription] Calling create-checkout function');
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planType: selectedPlanType },
-        headers: {
-          Authorization: `Bearer ${session.data.session.access_token}`,
-        },
-      });
+      const { data, error } = await supabase.functions.invoke('create-checkout', requestConfig);
 
       if (error) {
         console.error('[useSubscription] Supabase function error:', error);

@@ -30,64 +30,52 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
-
-    // Get the user from the token first
-    const token = authHeader.replace("Bearer ", "");
-    
-    // First try to get user with session validation
-    let user;
-    try {
-      const { data, error } = await supabaseClient.auth.getUser(token);
-      if (error) {
-        console.log('First auth attempt failed:', error.message);
-        // Try alternative auth method
-        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-        if (sessionError || !sessionData.session) {
-          throw new Error(`Authentication failed: ${error.message || sessionError?.message || 'No session'}`);
-        }
-        user = sessionData.session.user;
-      } else {
-        user = data.user;
-      }
-    } catch (authError) {
-      logStep("Authentication failed, trying session approach");
-      // Last resort - try to validate token directly
-      try {
-        const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
-          headers: {
-            'Authorization': authHeader,
-            'apikey': Deno.env.get("SUPABASE_ANON_KEY") || ''
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Token validation failed');
-        }
-        
-        user = await response.json();
-      } catch (fetchError) {
-        throw new Error(`Authentication error: Unable to validate user token`);
-      }
-    }
-    
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
-
-    const { planType } = await req.json();
+    const { planType, guestCheckout } = await req.json();
     if (!planType) throw new Error("Plan type is required");
-    logStep("Plan type received", { planType });
+    logStep("Request data", { planType, guestCheckout });
+
+    let user = null;
+    const authHeader = req.headers.get("Authorization");
+    
+    // Try to authenticate user if auth header is provided
+    if (authHeader && !guestCheckout) {
+      logStep("Authorization header found, attempting authentication");
+      const token = authHeader.replace("Bearer ", "");
+      
+      try {
+        const { data, error } = await supabaseClient.auth.getUser(token);
+        if (error) {
+          logStep("Auth failed, proceeding as guest", { error: error.message });
+        } else {
+          user = data.user;
+          logStep("User authenticated", { userId: user.id, email: user.email });
+        }
+      } catch (authError) {
+        logStep("Auth error, proceeding as guest", { error: authError });
+      }
+    } else {
+      logStep("No auth header or guest checkout requested, proceeding as guest");
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    
+    // For guest checkout, we won't look up existing customers
     let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Existing customer found", { customerId });
+    let customerEmail;
+    
+    if (user?.email) {
+      // Authenticated user - check for existing customer
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Existing customer found", { customerId });
+      } else {
+        customerEmail = user.email;
+        logStep("Will create customer during checkout", { email: user.email });
+      }
     } else {
-      logStep("Creating new customer");
+      // Guest checkout - no customer lookup
+      logStep("Guest checkout - customer will be created during payment");
     }
 
     // Define pricing based on plan type - using real Stripe product IDs
@@ -118,9 +106,7 @@ serve(async (req) => {
 
     logStep("Creating checkout session", { priceId: priceObject.id, planType });
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+    const sessionConfig: any = {
       line_items: [
         {
           price: priceObject.id,
@@ -129,14 +115,28 @@ serve(async (req) => {
       ],
       mode: "subscription",
       success_url: `${req.headers.get("origin")}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/subscription-cancel`,
+      cancel_url: `${req.headers.get("origin")}/`,
       allow_promotion_codes: true,
       billing_address_collection: "required",
       metadata: {
-        user_id: user.id,
-        plan_type: planType
+        plan_type: planType,
+        guest_checkout: guestCheckout ? "true" : "false"
       }
-    });
+    };
+
+    // Set customer or email based on authentication status
+    if (customerId) {
+      sessionConfig.customer = customerId;
+    } else if (customerEmail) {
+      sessionConfig.customer_email = customerEmail;
+    }
+    // For guest checkout, neither customer nor customer_email is set
+
+    if (user?.id) {
+      sessionConfig.metadata.user_id = user.id;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
