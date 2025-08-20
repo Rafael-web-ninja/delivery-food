@@ -202,106 +202,97 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = useCallback(async () => {
+    console.log('Auth: Starting signout');
+    setLoading(true);
+
+    // Clear React state early so UI updates even if network fails
+    setUser(null);
+    setSession(null);
+
+    const projectRef = 'rpczvawjzjwytveboiqs';
+    const storageKeys = [
+      `sb-${projectRef}-auth-token`,
+      'supabase.auth.token',
+      'sb-auth-token'
+    ];
+
     try {
-      console.log('Auth: Starting signout');
-      setLoading(true);
-      
-      // Clear state immediately
-      setUser(null);
-      setSession(null);
-      
+      // Try global sign out (server + local)
       const { error } = await supabase.auth.signOut();
-      
       if (error) {
-        console.error('Auth: Signout error:', error);
-        throw error;
-      } else {
-        console.log('Auth: Signout successful');
-        // Redirect to home page after successful logout
-        window.location.href = '/';
+        console.warn('Auth: Global signOut failed, trying local signOut...', error);
+        try {
+          await supabase.auth.signOut({ scope: 'local' } as any);
+        } catch (e) {
+          console.warn('Auth: Local signOut attempt threw, clearing storage manually...', e);
+        }
       }
-    } catch (error) {
-      console.error('Auth: Signout exception:', error);
-      // Even if there's an error, clear local state and redirect
-      setUser(null);
-      setSession(null);
-      window.location.href = '/';
-      throw error;
+    } catch (err) {
+      console.warn('Auth: signOut threw, clearing storage manually...', err);
     } finally {
+      // Hard cleanup of local storage in case SDK didn't
+      try {
+        storageKeys.forEach((k) => localStorage.removeItem(k));
+        // remove any sb-* auth tokens as extra safety
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch {}
+
       setLoading(false);
+      // Full reload to ensure a clean state
+      window.location.href = '/';
     }
   }, []);
 
   // EFFECT WITH NO DEPENDENCIES TO PREVENT LOOPS
   useEffect(() => {
     let mounted = true;
-    let authSubscription: any = null;
 
-    const initializeAuth = async () => {
-      try {
-        console.log('Auth: Initializing...');
-        
-        // Verificar sessão existente
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+    console.log('Auth: Initializing...');
+
+    // 1) Subscribe FIRST to avoid missing events during init
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log('Auth: State change event:', event, newSession?.user?.email || 'null');
+      if (!mounted) return;
+
+      // Only synchronous updates here per best practices
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setInitialized(true);
+      setLoading(false);
+    });
+
+    // 2) Then fetch any existing session
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (!mounted) return;
         if (error) {
           console.error('Auth: Error getting session:', error);
-          if (mounted) {
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            setInitialized(true);
-          }
-          return;
-        }
-
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-          setInitialized(true);
-        }
-
-        // Configurar listener de mudanças de auth - APENAS UMA VEZ
-        if (!authSubscription) {
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, newSession) => {
-              console.log('Auth: State change event:', event, newSession?.user?.email || 'null');
-              
-              // Ignorar eventos INITIAL_SESSION para evitar loops
-              if (event === 'INITIAL_SESSION') {
-                return;
-              }
-              
-              if (mounted) {
-                setSession(newSession);
-                setUser(newSession?.user ?? null);
-                setLoading(false);
-                setInitialized(true);
-              }
-            }
-          );
-          authSubscription = subscription;
-        }
-
-      } catch (error) {
-        console.error('Auth: Initialization failed:', error);
-        if (mounted) {
           setSession(null);
           setUser(null);
-          setLoading(false);
-          setInitialized(true);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
         }
-      }
-    };
-
-    initializeAuth();
+        setInitialized(true);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Auth: Initialization failed:', err);
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
+        setInitialized(true);
+        setLoading(false);
+      });
 
     return () => {
       mounted = false;
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, []); // NO DEPENDENCIES TO PREVENT INFINITE LOOPS
 
