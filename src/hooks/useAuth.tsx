@@ -216,9 +216,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Auth: Signout exception:', error);
     } finally {
-      // Garantir limpeza do estado mesmo se a sessão já não existir
-      setSession(null);
-      setUser(null);
       setLoading(false);
     }
   }, []);
