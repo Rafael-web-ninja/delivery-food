@@ -1,4 +1,3 @@
-
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +13,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatCurrency } from '@/lib/formatters';
 import { useState, useEffect } from 'react';
 import { notificationStore } from '@/stores/notificationStore';
+import { useAuth } from '@/hooks/useAuth';
 
 export const NotificationBell = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState(notificationStore.getNotifications());
   const [hasUnread, setHasUnread] = useState(notificationStore.hasUnread());
 
-  console.log('🔔 NotificationBell - notifications count:', notifications.length, 'hasUnread:', hasUnread);
+  console.log('🔔 NotificationBell render - user:', user?.id || 'none', 'notifications:', notifications.length, 'hasUnread:', hasUnread);
 
   // Subscribe to store changes with proper cleanup
   useEffect(() => {
@@ -37,12 +38,30 @@ export const NotificationBell = () => {
   }, []);
 
   const markAsRead = (orderId: string) => {
+    console.log('👁️ Marking notification as read:', orderId);
     notificationStore.removeNotification(orderId);
   };
 
   const clearAll = () => {
+    console.log('🧹 Clearing all notifications');
     notificationStore.clearAll();
   };
+
+  const handleNotificationClick = (notification: any) => {
+    console.log('🖱️ Notification clicked:', notification.id);
+    markAsRead(notification.id);
+    
+    // Navigate to orders page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/orders';
+    }
+  };
+
+  // Don't render if no user
+  if (!user) {
+    console.log('🔔 NotificationBell - No user, not rendering');
+    return null;
+  }
 
   return (
     <DropdownMenu>
@@ -61,7 +80,7 @@ export const NotificationBell = () => {
       
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
-          Notificações
+          Notificações ({notifications.length})
           {hasUnread && (
             <Button 
               variant="ghost" 
@@ -85,19 +104,22 @@ export const NotificationBell = () => {
             notifications.map((notification) => (
               <DropdownMenuItem
                 key={notification.id}
-                className="flex flex-col items-start p-3 cursor-pointer"
-                onClick={() => {
-                  markAsRead(notification.id);
-                  window.location.href = '/orders';
-                }}
+                className="flex flex-col items-start p-3 cursor-pointer hover:bg-muted"
+                onClick={() => handleNotificationClick(notification)}
               >
                 <div className="font-medium text-sm">
                   Pedido - {notification.customer_name}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {formatCurrency(Number(notification.total_amount))} • {' '}
-                  {new Date(notification.created_at).toLocaleTimeString('pt-BR')}
+                  {new Date(notification.created_at).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
                   {notification.order_code && ` • #${notification.order_code}`}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Status: {notification.status}
                 </div>
               </DropdownMenuItem>
             ))

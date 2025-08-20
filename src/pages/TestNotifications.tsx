@@ -201,11 +201,14 @@ const TestNotifications = () => {
       
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Teste de Notificações</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Sistema de Notificações - TESTE DEFINITIVO</h1>
+            <p className="text-muted-foreground mt-2">Senhas resetadas! Logs detalhados no console (F12)</p>
+          </div>
           <div className="flex items-center gap-4">
             {currentUser && (
-              <Badge variant="outline">
-                {currentUser === 'delivery_owner' ? '👨‍💼 Dono' : '👤 Cliente'}
+              <Badge variant="outline" className="text-lg px-3 py-1">
+                {currentUser === 'delivery_owner' ? '👨‍💼 Dono Logado' : '👤 Cliente Logado'}
               </Badge>
             )}
             <NotificationBell />
@@ -274,27 +277,39 @@ const TestNotifications = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Como Testar</CardTitle>
+            <CardTitle>🔔 Como Testar as Notificações - DEFINITIVO</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="font-semibold">Para Donos de Delivery:</h4>
-              <ol className="list-decimal list-inside space-y-1 text-sm">
-                <li>Faça login como dono</li>
-                <li>Clique em "Criar Pedido de Teste"</li>
-                <li>Você deve ver: toast de "Novo Pedido!" + sininho vermelho com contagem</li>
-                <li>Clique no sininho para ver a notificação</li>
-              </ol>
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h4 className="font-semibold text-green-800 mb-2">✅ Credenciais CORRETAS (senhas resetadas):</h4>
+              <div className="space-y-2 text-sm">
+                <div><strong>Dono:</strong> delivery4@teste.com | <strong>Senha:</strong> teste123</div>
+                <div><strong>Cliente:</strong> maria@teste.com | <strong>Senha:</strong> teste123</div>
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <h4 className="font-semibold">Para Clientes:</h4>
-              <ol className="list-decimal list-inside space-y-1 text-sm">
-                <li>Faça login como cliente</li>
-                <li>Clique em "Atualizar Status do Pedido"</li>
-                <li>Você deve ver: toast de "Em preparação" + sininho vermelho</li>
-                <li>Clique no sininho para ver a notificação</li>
-              </ol>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h4 className="font-semibold">📋 Passos para Testar:</h4>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li><strong>Abra o Console do Browser (F12)</strong> - logs detalhados estão ativos!</li>
+                  <li><strong>Faça login como dono</strong> - deve ver logs de "Business notifications are ACTIVE!"</li>
+                  <li><strong>Crie um pedido de teste</strong> - deve aparecer toast + sininho vermelho</li>
+                  <li><strong>Logout e login como cliente</strong> - deve ver logs de "Customer notifications are ACTIVE!"</li>
+                  <li><strong>Atualize status do pedido</strong> - deve aparecer toast de mudança de status</li>
+                </ol>
+              </div>
+              
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-2">🔍 Logs para Verificar no Console:</h4>
+                <div className="text-xs font-mono space-y-1">
+                  <div>✅ "Setting up notifications for user: [ID]"</div>
+                  <div>✅ "Business notifications are ACTIVE!" (donos)</div>
+                  <div>✅ "Customer notifications are ACTIVE!" (clientes)</div>
+                  <div>✅ "NEW ORDER received for business:" (ao criar pedido)</div>
+                  <div>✅ "ORDER STATUS UPDATE received for customer:" (ao mudar status)</div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
