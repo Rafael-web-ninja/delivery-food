@@ -183,23 +183,7 @@ const Auth = () => {
       });
 
       if (emailError) {
-        // Verificar se é erro de usuário não encontrado
-        if (emailError.message?.includes('User with this email not found') || 
-            emailError.message?.includes('user_not_found')) {
-          toast({
-            title: "Email não cadastrado",
-            description: "Este email não está cadastrado em nossa plataforma",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Erro na recuperação",
-            description: emailError.message,
-            variant: "destructive"
-          });
-        }
-        setLoading(false);
-        return;
+        throw emailError;
       }
 
       setResetEmailSent(true);

@@ -35,35 +35,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Gerando token de reset para:', email);
 
-    // Obtém a origem da requisição para construir o redirectTo correto
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/')[0] + '//' + req.headers.get('referer')?.split('/')[2] || 'http://localhost:3000';
-    const redirectTo = `${origin}/reset-password`;
-    
-    console.log('Usando redirectTo:', redirectTo);
-
-    // Gera o token de recuperação usando admin auth
+    // Gera o token de recuperação usando admin auth com URL específica
     const { data, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: redirectTo
+        redirectTo: 'https://app.geracardapio.com/reset-password'
       }
     });
 
     if (resetError) {
       console.error('Erro ao gerar token:', resetError);
-      
-      // Retorna erro específico para usuário não encontrado
-      if (resetError.message?.includes('User with this email not found')) {
-        return new Response(
-          JSON.stringify({ error: 'User with this email not found' }),
-          {
-            status: 404,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          }
-        );
-      }
-      
       throw resetError;
     }
 
@@ -76,10 +58,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Link gerado:', resetLink);
 
-    // Usar o link direto sem modificações, o Supabase já configura corretamente
-    const finalLink = resetLink;
+    // Verifica se o link contém localhost e corrige se necessário
+    const correctedLink = resetLink.includes('localhost') 
+      ? resetLink.replace(/http:\/\/localhost:\d+/, 'https://app.geracardapio.com')
+      : resetLink;
 
-    console.log('Token gerado com sucesso, enviando email para:', email);
+    console.log('Token gerado com sucesso:', { originalLink: resetLink, correctedLink });
     console.log('Enviando email...');
 
     const emailResponse = await resend.emails.send({
@@ -110,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <div style="text-align: center; margin-bottom: 30px;">
-                  <a href="${finalLink}" 
+                  <a href="${correctedLink}" 
                      style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.4);">
                     Redefinir Minha Senha
                   </a>
@@ -127,7 +111,7 @@ const handler = async (req: Request): Promise<Response> => {
                     Se você não conseguir clicar no botão, copie e cole este link no seu navegador:
                   </p>
                   <p style="color: #3b82f6; margin: 8px 0 0 0; font-size: 14px; word-break: break-all;">
-                    ${finalLink}
+                    ${correctedLink}
                   </p>
                 </div>
                 
