@@ -36,6 +36,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         throw new Error("Usuário não autenticado");
       }
 
+      console.log('[useSubscription] Calling check-subscription function');
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
           Authorization: `Bearer ${session.data.session.access_token}`,
@@ -47,8 +48,10 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         throw new Error(error.message || "Erro na função de verificação");
       }
 
+      console.log('[useSubscription] Response from check-subscription:', data);
+      
       setSubscribed(data.subscribed || false);
-      setPlanType(data.subscription_tier || data.plan_type || 'free');
+      setPlanType(data.plan_type || 'free');
       setSubscriptionStatus(data.subscription_status || 'inactive');
       setSubscriptionEnd(data.subscription_end || null);
     } catch (error: any) {
