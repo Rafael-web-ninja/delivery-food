@@ -36,9 +36,43 @@ serve(async (req) => {
 
     // Get the user from the token first
     const token = authHeader.replace("Bearer ", "");
-    const { data, error } = await supabaseClient.auth.getUser(token);
-    if (error) throw new Error(`Authentication error: ${error.message}`);
-    const user = data.user;
+    
+    // First try to get user with session validation
+    let user;
+    try {
+      const { data, error } = await supabaseClient.auth.getUser(token);
+      if (error) {
+        console.log('First auth attempt failed:', error.message);
+        // Try alternative auth method
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !sessionData.session) {
+          throw new Error(`Authentication failed: ${error.message || sessionError?.message || 'No session'}`);
+        }
+        user = sessionData.session.user;
+      } else {
+        user = data.user;
+      }
+    } catch (authError) {
+      logStep("Authentication failed, trying session approach");
+      // Last resort - try to validate token directly
+      try {
+        const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
+          headers: {
+            'Authorization': authHeader,
+            'apikey': Deno.env.get("SUPABASE_ANON_KEY") || ''
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Token validation failed');
+        }
+        
+        user = await response.json();
+      } catch (fetchError) {
+        throw new Error(`Authentication error: Unable to validate user token`);
+      }
+    }
+    
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 

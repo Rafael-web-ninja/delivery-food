@@ -164,6 +164,17 @@ export default function SubscriptionManagement() {
                 </Button>
               </>
             )}
+            {subscribed && (
+              <Button
+                variant="outline"
+                onClick={openCustomerPortal}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Gerenciar Assinatura
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
