@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import PDV from "./pages/PDV";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
+import TestNotifications from "./pages/TestNotifications";
 import NotificationsListener from "@/components/NotificationsListener";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 
@@ -94,6 +95,7 @@ const App = () => (
               </Route>
               
               {/* Success after Stripe checkout */}
+              <Route path="/test-notifications" element={<TestNotifications />} />
               <Route path="/subscription-success" element={<AuthGate requireAuth={true}><SubscriptionSuccess /></AuthGate>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
