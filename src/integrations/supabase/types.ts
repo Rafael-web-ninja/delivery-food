@@ -286,13 +286,6 @@ export type Database = {
             referencedRelation: "delivery_businesses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "menu_categories_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_business_info"
-            referencedColumns: ["id"]
-          },
         ]
       }
       menu_item_flavors: {
@@ -383,13 +376,6 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "delivery_businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "menu_items_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_business_info"
             referencedColumns: ["id"]
           },
           {
@@ -513,13 +499,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "orders_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_business_info"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -531,13 +510,6 @@ export type Database = {
             columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "delivery_businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_delivery_id_fkey"
-            columns: ["delivery_id"]
-            isOneToOne: false
-            referencedRelation: "public_business_info"
             referencedColumns: ["id"]
           },
         ]
@@ -682,84 +654,7 @@ export type Database = {
       }
     }
     Views: {
-      public_business_info: {
-        Row: {
-          accent_color: string | null
-          accept_orders_when_closed: boolean | null
-          background_color: string | null
-          button_color: string | null
-          button_text_color: string | null
-          cart_button_color: string | null
-          cart_button_text_color: string | null
-          created_at: string | null
-          delivery_fee: number | null
-          delivery_time_bg_color: string | null
-          delivery_time_minutes: number | null
-          delivery_time_text_color: string | null
-          description: string | null
-          id: string | null
-          is_active: boolean | null
-          logo_url: string | null
-          min_order_value: number | null
-          name: string | null
-          primary_color: string | null
-          secondary_color: string | null
-          slug: string | null
-          text_color: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          accent_color?: string | null
-          accept_orders_when_closed?: boolean | null
-          background_color?: string | null
-          button_color?: string | null
-          button_text_color?: string | null
-          cart_button_color?: string | null
-          cart_button_text_color?: string | null
-          created_at?: string | null
-          delivery_fee?: number | null
-          delivery_time_bg_color?: string | null
-          delivery_time_minutes?: number | null
-          delivery_time_text_color?: string | null
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          logo_url?: string | null
-          min_order_value?: number | null
-          name?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          slug?: string | null
-          text_color?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          accent_color?: string | null
-          accept_orders_when_closed?: boolean | null
-          background_color?: string | null
-          button_color?: string | null
-          button_text_color?: string | null
-          cart_button_color?: string | null
-          cart_button_text_color?: string | null
-          created_at?: string | null
-          delivery_fee?: number | null
-          delivery_time_bg_color?: string | null
-          delivery_time_minutes?: number | null
-          delivery_time_text_color?: string | null
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          logo_url?: string | null
-          min_order_value?: number | null
-          name?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          slug?: string | null
-          text_color?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       force_create_user: {
