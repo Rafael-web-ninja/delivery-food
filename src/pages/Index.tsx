@@ -7,63 +7,58 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, ArrowRight, ShoppingCart, BarChart3, Users, Clock, Star } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useStripePrices } from '@/hooks/useStripePrices';
-
 const Index = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const navigate = useNavigate();
-  const { createCheckout } = useSubscription();
-  const { prices, loading: pricesLoading } = useStripePrices();
-
+  const {
+    createCheckout
+  } = useSubscription();
+  const {
+    prices,
+    loading: pricesLoading
+  } = useStripePrices();
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard', {
+        replace: true
+      });
     }
   }, [user, navigate]);
-
-  const features = [
-    {
-      icon: ShoppingCart,
-      title: "Cardápio Digital Completo",
-      description: "Crie e gerencie seu cardápio online com fotos, descrições e preços atualizados em tempo real."
-    },
-    {
-      icon: BarChart3,
-      title: "Analytics Avançados",
-      description: "Acompanhe vendas, produtos mais pedidos e performance do seu delivery em tempo real."
-    },
-    {
-      icon: Users,
-      title: "Gestão de Pedidos",
-      description: "Sistema completo para receber, processar e acompanhar todos os pedidos do seu delivery."
-    },
-    {
-      icon: Clock,
-      title: "Horário de Funcionamento",
-      description: "Configure automaticamente os horários de funcionamento e períodos de pausa."
-    }
-  ];
-
-  const testimonials = [
-    {
-      name: "Maria Silva",
-      business: "Pizzaria Bella Vista",
-      content: "Triplicamos nossas vendas online em apenas 2 meses. O sistema é incrível!",
-      rating: 5
-    },
-    {
-      name: "João Santos",
-      business: "Hambúrgueria do João",
-      content: "Finalmente um sistema que funciona de verdade. Recomendo para todos os donos de delivery.",
-      rating: 5
-    },
-    {
-      name: "Ana Costa",
-      business: "Sushi Express",
-      content: "A gestão de pedidos ficou muito mais fácil. Nossos clientes adoraram o novo cardápio digital.",
-      rating: 5
-    }
-  ];
-
+  const features = [{
+    icon: ShoppingCart,
+    title: "Cardápio Digital Completo",
+    description: "Crie e gerencie seu cardápio online com fotos, descrições e preços atualizados em tempo real."
+  }, {
+    icon: BarChart3,
+    title: "Analytics Avançados",
+    description: "Acompanhe vendas, produtos mais pedidos e performance do seu delivery em tempo real."
+  }, {
+    icon: Users,
+    title: "Gestão de Pedidos",
+    description: "Sistema completo para receber, processar e acompanhar todos os pedidos do seu delivery."
+  }, {
+    icon: Clock,
+    title: "Horário de Funcionamento",
+    description: "Configure automaticamente os horários de funcionamento e períodos de pausa."
+  }];
+  const testimonials = [{
+    name: "Maria Silva",
+    business: "Pizzaria Bella Vista",
+    content: "Triplicamos nossas vendas online em apenas 2 meses. O sistema é incrível!",
+    rating: 5
+  }, {
+    name: "João Santos",
+    business: "Hambúrgueria do João",
+    content: "Finalmente um sistema que funciona de verdade. Recomendo para todos os donos de delivery.",
+    rating: 5
+  }, {
+    name: "Ana Costa",
+    business: "Sushi Express",
+    content: "A gestão de pedidos ficou muito mais fácil. Nossos clientes adoraram o novo cardápio digital.",
+    rating: 5
+  }];
   const handleSubscription = async (planType: 'monthly' | 'annual') => {
     try {
       await createCheckout(planType);
@@ -71,28 +66,20 @@ const Index = () => {
       console.error('Erro ao criar checkout:', error);
     }
   };
-
   const monthlyPrice = prices.find(p => p.interval === 'month');
   const yearlyPrice = prices.find(p => p.interval === 'year');
-
   const getYearlyDiscount = () => {
     if (!monthlyPrice || !yearlyPrice) return 0;
-    const monthlyYearly = (monthlyPrice.amount * 12);
-    const discount = Math.round((1 - (yearlyPrice.amount / monthlyYearly)) * 100);
+    const monthlyYearly = monthlyPrice.amount * 12;
+    const discount = Math.round((1 - yearlyPrice.amount / monthlyYearly) * 100);
     return discount;
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <img 
-              src="/lovable-uploads/dfb072c7-087e-48ca-88a3-40430f88a2d4.png" 
-              alt="Gera Cardápio" 
-              className="h-8 w-8"
-            />
+            <img src="/lovable-uploads/dfb072c7-087e-48ca-88a3-40430f88a2d4.png" alt="Gera Cardápio" className="h-8 w-8" />
             <span className="text-xl font-bold">Gera Cardápio</span>
           </div>
           <Button onClick={() => navigate('/auth')} variant="outline">
@@ -107,11 +94,11 @@ const Index = () => {
           <Badge variant="secondary" className="mb-6">
             🚀 A revolução do delivery chegou
           </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+          <h1 className="text-4xl font-bold mb-6 md:text-8xl">
             Transforme seu delivery em uma
             <span className="gradient-primary bg-clip-text text-transparent"> máquina de vendas</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          <p className="text-muted-foreground mb-8 max-w-3xl mx-auto text-lg">
             Sistema completo de gestão para delivery com cardápio digital, controle de pedidos e analytics poderosos. 
             Tudo que você precisa para aumentar suas vendas em uma única plataforma.
           </p>
@@ -138,8 +125,7 @@ const Index = () => {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="text-center hover:shadow-medium transition-all">
+            {features.map((feature, index) => <Card key={index} className="text-center hover:shadow-medium transition-all">
                 <CardHeader>
                   <feature.icon className="h-12 w-12 mx-auto text-primary mb-4" />
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
@@ -149,8 +135,7 @@ const Index = () => {
                     {feature.description}
                   </CardDescription>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -167,12 +152,9 @@ const Index = () => {
             </p>
           </div>
           
-          {pricesLoading ? (
-            <div className="text-center">
+          {pricesLoading ? <div className="text-center">
               <div className="animate-shimmer h-64 w-full max-w-2xl mx-auto rounded-lg"></div>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            </div> : <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {/* Plano Mensal */}
               <Card className="relative hover:shadow-strong transition-all">
                 <CardHeader className="text-center">
@@ -206,10 +188,7 @@ const Index = () => {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleSubscription('monthly')}
-                  >
+                  <Button className="w-full" onClick={() => handleSubscription('monthly')}>
                     Assinar Plano Mensal
                   </Button>
                 </CardFooter>
@@ -231,11 +210,12 @@ const Index = () => {
                     </span>
                     <span className="text-muted-foreground">/ano</span>
                   </div>
-                  {monthlyPrice && yearlyPrice && (
-                    <p className="text-sm text-muted-foreground">
-                      Equivale a {(yearlyPrice.amount / 12 / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês
-                    </p>
-                  )}
+                  {monthlyPrice && yearlyPrice && <p className="text-sm text-muted-foreground">
+                      Equivale a {(yearlyPrice.amount / 12 / 100).toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                })}/mês
+                    </p>}
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3">
@@ -262,16 +242,12 @@ const Index = () => {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button 
-                    className="w-full gradient-primary" 
-                    onClick={() => handleSubscription('annual')}
-                  >
+                  <Button className="w-full gradient-primary" onClick={() => handleSubscription('annual')}>
                     Assinar Plano Anual
                   </Button>
                 </CardFooter>
               </Card>
-            </div>
-          )}
+            </div>}
         </div>
       </section>
 
@@ -287,13 +263,10 @@ const Index = () => {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="hover:shadow-medium transition-all">
+            {testimonials.map((testimonial, index) => <Card key={index} className="hover:shadow-medium transition-all">
                 <CardHeader>
                   <div className="flex items-center gap-1 mb-2">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    ))}
+                    {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />)}
                   </div>
                   <CardDescription className="text-base">
                     "{testimonial.content}"
@@ -305,8 +278,7 @@ const Index = () => {
                     <p className="text-sm text-muted-foreground">{testimonial.business}</p>
                   </div>
                 </CardFooter>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -332,11 +304,7 @@ const Index = () => {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <img 
-                  src="/lovable-uploads/dfb072c7-087e-48ca-88a3-40430f88a2d4.png" 
-                  alt="Gera Cardápio" 
-                  className="h-6 w-6"
-                />
+                <img src="/lovable-uploads/dfb072c7-087e-48ca-88a3-40430f88a2d4.png" alt="Gera Cardápio" className="h-6 w-6" />
                 <span className="font-bold">Gera Cardápio</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -374,8 +342,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
