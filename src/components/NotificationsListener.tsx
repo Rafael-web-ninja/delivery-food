@@ -3,42 +3,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotifications } from '@/hooks/useNotifications';
 
-// Renders nothing; ensures customer users receive realtime toasts anywhere in the app
-const CustomerNotifications = () => {
-  useNotifications();
-  return null;
-};
-
+// Renders nothing; ensures all authenticated users receive realtime notifications
 const NotificationsListener = () => {
   const { user } = useAuth();
-  const [isOwner, setIsOwner] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    const check = async () => {
-      if (!user?.id) {
-        if (mounted) setIsOwner(null);
-        return;
-      }
-      try {
-        const { data: business } = await supabase
-          .from('delivery_businesses')
-          .select('id')
-          .eq('owner_id', user.id)
-          .single();
-        if (mounted) setIsOwner(!!business?.id);
-      } catch {
-        if (mounted) setIsOwner(false);
-      }
-    };
-    check();
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]);
-
-  if (isOwner === null) return null;
-  return isOwner ? null : <CustomerNotifications />;
+  
+  // Always use notifications hook for any authenticated user
+  // The hook internally handles both business owner and customer notifications
+  useNotifications();
+  
+  console.log('👂 NotificationsListener mounted for user:', user?.id || 'none');
+  
+  return null;
 };
 
 export default NotificationsListener;
