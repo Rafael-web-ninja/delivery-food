@@ -13,6 +13,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
+import Demo from "./pages/Demo";
 import Dashboard from "./pages/Dashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
@@ -45,6 +46,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
+              <Route path="/demo" element={<AuthGate requireAuth={false}><Demo /></AuthGate>} />
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/reset-password" element={<AuthGate requireAuth={false}><ResetPassword /></AuthGate>} />
               <Route path="/termos" element={<AuthGate requireAuth={false}><TermsOfService /></AuthGate>} />

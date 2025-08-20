@@ -59,7 +59,7 @@ const Index = () => {
     content: "A gestão de pedidos ficou muito mais fácil. Nossos clientes adoraram o novo cardápio digital.",
     rating: 5
   }];
-  const handleSubscription = async (planType: 'monthly' | 'annual') => {
+  const handleSubscription = async (planType: 'mensal' | 'anual') => {
     try {
       await createCheckout(planType);
     } catch (error) {
@@ -106,7 +106,7 @@ const Index = () => {
             <Button size="lg" className="text-lg px-8" onClick={() => navigate('/auth')}>
               Começar Agora <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8">
+            <Button variant="outline" size="lg" className="text-lg px-8" onClick={() => navigate('/demo')}>
               Ver Demonstração
             </Button>
           </div>
@@ -114,7 +114,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-muted/30">
+      <section id="funcionalidades" className="py-20 bg-muted/30">
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -140,8 +140,68 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Comparator Section */}
+      <section id="comparador" className="py-20">
+        <div className="container">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Por que escolher o Gera Cardápio?
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Compare e veja a diferença
+            </p>
+          </div>
+          
+          <div className="max-w-4xl mx-auto">
+            <Card className="overflow-hidden">
+              <div className="grid grid-cols-3 bg-muted/50">
+                <div className="p-6 text-center">
+                  <h3 className="font-bold text-lg">Características</h3>
+                </div>
+                <div className="p-6 text-center border-l">
+                  <h3 className="font-bold text-lg text-muted-foreground">Outros Sistemas</h3>
+                </div>
+                <div className="p-6 text-center border-l bg-primary/5">
+                  <h3 className="font-bold text-lg text-primary">Gera Cardápio</h3>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 border-t">
+                <div className="p-6 font-medium">Mensalidade</div>
+                <div className="p-6 text-center border-l">❌ R$ 299+ taxas</div>
+                <div className="p-6 text-center border-l bg-success/5">✅ R$ 147 sem taxa</div>
+              </div>
+              
+              <div className="grid grid-cols-3 border-t bg-muted/20">
+                <div className="p-6 font-medium">Configuração</div>
+                <div className="p-6 text-center border-l">❌ 1 hora ou mais</div>
+                <div className="p-6 text-center border-l bg-success/5">✅ 5 minutos</div>
+              </div>
+              
+              <div className="grid grid-cols-3 border-t">
+                <div className="p-6 font-medium">Suporte</div>
+                <div className="p-6 text-center border-l">❌ Lento e impessoal</div>
+                <div className="p-6 text-center border-l bg-success/5">✅ Rápido e BR</div>
+              </div>
+              
+              <div className="grid grid-cols-3 border-t bg-muted/20">
+                <div className="p-6 font-medium">Treinamento</div>
+                <div className="p-6 text-center border-l">❌ Obrigatório</div>
+                <div className="p-6 text-center border-l bg-success/5">✅ Dispensável</div>
+              </div>
+              
+              <div className="grid grid-cols-3 border-t">
+                <div className="p-6 font-medium">Taxa por venda</div>
+                <div className="p-6 text-center border-l">❌ Sim</div>
+                <div className="p-6 text-center border-l bg-success/5">✅ Zero taxa</div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
-      <section className="py-20">
+      <section id="precos" className="py-20 bg-muted/30">
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -188,7 +248,7 @@ const Index = () => {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full" onClick={() => handleSubscription('monthly')}>
+                  <Button className="w-full" onClick={() => handleSubscription('mensal')}>
                     Assinar Plano Mensal
                   </Button>
                 </CardFooter>
@@ -242,7 +302,7 @@ const Index = () => {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full gradient-primary" onClick={() => handleSubscription('annual')}>
+                  <Button className="w-full gradient-primary" onClick={() => handleSubscription('anual')}>
                     Assinar Plano Anual
                   </Button>
                 </CardFooter>
@@ -252,7 +312,7 @@ const Index = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-20">
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -314,26 +374,17 @@ const Index = () => {
             <div>
               <h4 className="font-semibold mb-4">Produto</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Funcionalidades</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Preços</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Demonstração</a></li>
+                <li><a href="#funcionalidades" className="hover:text-primary transition-colors">Funcionalidades</a></li>
+                <li><a href="#precos" className="hover:text-primary transition-colors">Preços</a></li>
+                <li><a href="#comparador" className="hover:text-primary transition-colors">Comparador</a></li>
+                <li><a href="/demo" className="hover:text-primary transition-colors">Demonstração</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Suporte</h4>
+              <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Central de Ajuda</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contato</a></li>
                 <li><a href="/termos" className="hover:text-primary transition-colors">Termos de Uso</a></li>
                 <li><a href="/privacidade" className="hover:text-primary transition-colors">Política de Privacidade</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Empresa</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Sobre</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Carreiras</a></li>
               </ul>
             </div>
           </div>
