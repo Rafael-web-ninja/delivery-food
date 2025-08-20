@@ -28,6 +28,8 @@ import SubscriptionManagement from "./pages/SubscriptionManagement";
 import TestNotifications from "./pages/TestNotifications";
 import NotificationsListener from "@/components/NotificationsListener";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,8 @@ const App = () => (
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
               <Route path="/auth" element={<AuthGate requireAuth={false}><Auth /></AuthGate>} />
               <Route path="/reset-password" element={<AuthGate requireAuth={false}><ResetPassword /></AuthGate>} />
+              <Route path="/termos" element={<AuthGate requireAuth={false}><TermsOfService /></AuthGate>} />
+              <Route path="/privacidade" element={<AuthGate requireAuth={false}><PrivacyPolicy /></AuthGate>} />
               <Route path="/menu/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               <Route path="/:businessId" element={<AuthGate requireAuth={false}><PublicMenu /></AuthGate>} />
               
