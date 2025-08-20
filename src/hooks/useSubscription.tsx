@@ -111,6 +111,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         body: { planType: selectedPlanType },
         headers: {
           Authorization: `Bearer ${session.data.session.access_token}`,
+          'Content-Type': 'application/json',
         },
       });
 
@@ -141,6 +142,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       const { data, error } = await supabase.functions.invoke('customer-portal', {
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
         },
       });
 

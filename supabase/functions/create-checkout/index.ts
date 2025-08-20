@@ -17,10 +17,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Use ANON key for auth verification
-  const supabaseClient = createClient(
+  // Prepare clients for auth attempts
+  const supabaseAnon = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
+  const supabaseService = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
   );
 
   try {
@@ -36,11 +42,20 @@ serve(async (req) => {
 
     // Get the user from the token first
     const token = authHeader.replace("Bearer ", "");
-    const { data, error } = await supabaseClient.auth.getUser(token);
-    if (error) throw new Error(`Authentication error: ${error.message}`);
-    const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    let user: any;
+    let anonAuth = await supabaseAnon.auth.getUser(token);
+    if (anonAuth.error || !anonAuth.data.user?.email) {
+      logStep("ANON auth failed, trying SERVICE_ROLE", { error: anonAuth.error?.message });
+      const serviceAuth = await supabaseService.auth.getUser(token);
+      if (serviceAuth.error || !serviceAuth.data.user?.email) {
+        throw new Error(`Authentication failed: ${serviceAuth.error?.message || anonAuth.error?.message || 'Unable to authenticate user'}`);
+      }
+      user = serviceAuth.data.user;
+      logStep("User authenticated with SERVICE_ROLE", { userId: user.id, email: user.email });
+    } else {
+      user = anonAuth.data.user;
+      logStep("User authenticated with ANON", { userId: user.id, email: user.email });
+    }
 
     const { planType } = await req.json();
     if (!planType) throw new Error("Plan type is required");
@@ -84,6 +99,8 @@ serve(async (req) => {
 
     logStep("Creating checkout session", { priceId: priceObject.id, planType });
 
+    const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -94,8 +111,8 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/subscription-cancel`,
+      success_url: `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/subscription-cancel`,
       allow_promotion_codes: true,
       billing_address_collection: "required",
       metadata: {
