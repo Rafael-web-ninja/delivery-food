@@ -84,6 +84,8 @@ serve(async (req) => {
 
     logStep("Creating checkout session", { priceId: priceObject.id, planType });
 
+    const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -94,8 +96,8 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/subscription-cancel`,
+      success_url: `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/subscription-cancel`,
       allow_promotion_codes: true,
       billing_address_collection: "required",
       metadata: {
