@@ -27,7 +27,10 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const [isBusinessOwner, setIsBusinessOwner] = useState<boolean | null>(null);
 
   const checkSubscription = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("No user, skipping subscription check");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -57,22 +60,19 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         throw new Error(error.message || "Erro na função de verificação");
       }
 
-      // Check if response has error field
-      if (data && data.error) {
-        console.error('Function returned error:', data.error);
-        throw new Error(data.error);
-      }
-
-      setSubscribed(data.subscribed || false);
-      setPlanType(data.subscription_tier || data.plan_type || 'free');
-      setSubscriptionStatus(data.subscription_status || 'inactive');
-      setSubscriptionEnd(data.subscription_end || null);
+      // Always use the response data, even if there's an error field
+      const responseData = data || {};
+      
+      setSubscribed(responseData.subscribed || false);
+      setPlanType(responseData.subscription_tier || responseData.plan_type || 'free');
+      setSubscriptionStatus(responseData.subscription_status || 'inactive');
+      setSubscriptionEnd(responseData.subscription_end || null);
       
       console.log("Subscription data set:", {
-        subscribed: data.subscribed || false,
-        planType: data.subscription_tier || data.plan_type || 'free',
-        subscriptionStatus: data.subscription_status || 'inactive',
-        subscriptionEnd: data.subscription_end || null
+        subscribed: responseData.subscribed || false,
+        planType: responseData.subscription_tier || responseData.plan_type || 'free',
+        subscriptionStatus: responseData.subscription_status || 'inactive',
+        subscriptionEnd: responseData.subscription_end || null
       });
       
     } catch (error: any) {
@@ -84,8 +84,8 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       setSubscriptionStatus('inactive');
       setSubscriptionEnd(null);
       
-      // Only show toast for non-auth errors
-      if (!error.message?.includes('Session') && !error.message?.includes('session') && !error.message?.includes('Authentication')) {
+      // Only show toast for unexpected errors
+      if (!error.message?.includes('Session') && !error.message?.includes('authentication')) {
         toast({
           title: "Erro ao verificar assinatura",
           description: error.message || "Tente novamente em alguns instantes",

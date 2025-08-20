@@ -20,78 +20,54 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Validate environment variables
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
-
-    const token = authHeader.replace("Bearer ", "");
-    logStep("Extracting token from header");
-
-    // Primeira tentativa: usar ANON key para validar o token
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-
-    logStep("Attempting user authentication with ANON key");
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
-    
-    if (userError || !userData.user?.email) {
-      logStep("ANON auth failed, trying SERVICE_ROLE key", { error: userError?.message });
-      
-      // Segunda tentativa: usar SERVICE_ROLE key
-      const supabaseServiceAuth = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-      
-      const { data: serviceUserData, error: serviceUserError } = await supabaseServiceAuth.auth.getUser(token);
-      
-      if (serviceUserError || !serviceUserData.user?.email) {
-        logStep("Both auth methods failed", { 
-          anonError: userError?.message, 
-          serviceError: serviceUserError?.message 
-        });
-        throw new Error(`Authentication failed: ${serviceUserError?.message || userError?.message || 'Unable to authenticate user'}`);
-      }
-      
-      logStep("Authentication successful with SERVICE_ROLE", { 
-        userId: serviceUserData.user.id, 
-        email: serviceUserData.user.email 
-      });
-      
-      // Use service data
-      var user = serviceUserData.user;
-    } else {
-      logStep("Authentication successful with ANON", { 
-        userId: userData.user.id, 
-        email: userData.user.email 
-      });
-      
-      // Use anon data
-      var user = userData.user;
+    if (!stripeKey) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
     }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase environment variables are not set");
+    }
+    logStep("Environment variables validated");
 
-    // Use SERVICE_ROLE key for database operations
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+    // Get authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new Error("No valid authorization header provided");
+    }
+    
+    const token = authHeader.replace("Bearer ", "");
+    logStep("Token extracted from header");
 
+    // Initialize Supabase client with service role for user verification
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verify user with token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user?.email) {
+      logStep("Authentication failed", { error: authError?.message });
+      throw new Error("User authentication failed");
+    }
+    
+    logStep("User authenticated successfully", { userId: user.id, email: user.email });
+
+    // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
-    logStep("Searching for Stripe customer", { email: user.email });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    // Search for Stripe customer
+    const customers = await stripe.customers.list({ 
+      email: user.email, 
+      limit: 1 
+    });
     
     if (customers.data.length === 0) {
-      logStep("No customer found, updating unsubscribed state");
-      await supabaseClient.from("subscriber_plans").upsert({
+      logStep("No Stripe customer found");
+      
+      // Update database with no subscription
+      await supabase.from("subscriber_plans").upsert({
         user_id: user.id,
         email: user.email,
         stripe_customer_id: null,
@@ -105,7 +81,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         subscribed: false, 
         plan_type: "free",
-        subscription_status: "inactive" 
+        subscription_status: "inactive",
+        subscription_end: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -113,13 +90,15 @@ serve(async (req) => {
     }
 
     const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
+    logStep("Stripe customer found", { customerId });
 
+    // Get active subscriptions
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
       limit: 1,
     });
+
     const hasActiveSub = subscriptions.data.length > 0;
     let planType = "free";
     let subscriptionEnd = null;
@@ -129,37 +108,39 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       
-      // Determine plan type from product ID
+      // Get price details to determine plan type
       const priceId = subscription.items.data[0].price.id;
       const price = await stripe.prices.retrieve(priceId);
-      const productId = price.product;
-      
-      logStep("Determined plan type", { priceId, productId });
+      const productId = typeof price.product === 'string' ? price.product : price.product.id;
       
       // Map product IDs to plan types
-      if (productId === "prod_SrUoyAbRcb6Qg8") {
-        planType = "mensal";
-      } else if (productId === "prod_SrUpK1iT4fKXq7") {
-        planType = "anual";
-      } else {
-        // Fallback for other products based on amount
-        const amount = price.unit_amount || 0;
-        if (amount <= 999) {
-          planType = "basic";
-        } else if (amount <= 2999) {
-          planType = "premium";
-        } else {
-          planType = "enterprise";
-        }
+      switch (productId) {
+        case "prod_SrUoyAbRcb6Qg8":
+          planType = "mensal";
+          break;
+        case "prod_SrUpK1iT4fKXq7":
+          planType = "anual";
+          break;
+        default:
+          // Fallback based on amount
+          const amount = price.unit_amount || 0;
+          if (amount <= 999) planType = "basic";
+          else if (amount <= 2999) planType = "premium";
+          else planType = "enterprise";
       }
-      logStep("Determined plan type", { priceId, productId, planType });
+      
+      logStep("Active subscription found", { 
+        subscriptionId: subscription.id, 
+        planType, 
+        endDate: subscriptionEnd 
+      });
     } else {
       logStep("No active subscription found");
     }
 
-    await supabaseClient.from("subscriber_plans").upsert({
+    // Update database
+    await supabase.from("subscriber_plans").upsert({
       user_id: user.id,
       email: user.email,
       stripe_customer_id: customerId,
@@ -170,8 +151,8 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'email' });
 
-    logStep("Updated database with subscription info", { subscribed: hasActiveSub, planType });
-    
+    logStep("Database updated successfully");
+
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan_type: planType,
@@ -181,27 +162,23 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-    
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in check-subscription", { 
+    logStep("ERROR", { 
       message: errorMessage, 
-      stack: error instanceof Error ? error.stack : undefined,
-      requestHeaders: {
-        authorization: req.headers.get("Authorization") ? "Bearer [REDACTED]" : "missing",
-        origin: req.headers.get("origin"),
-        userAgent: req.headers.get("user-agent")
-      }
+      stack: error instanceof Error ? error.stack : undefined 
     });
     
     return new Response(JSON.stringify({ 
       error: errorMessage,
       subscribed: false,
       plan_type: "free",
-      subscription_status: "inactive"
+      subscription_status: "inactive",
+      subscription_end: null
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200, // Return 200 instead of 500 to avoid triggering error handlers
+      status: 200, // Return 200 to avoid breaking the frontend
     });
   }
 });

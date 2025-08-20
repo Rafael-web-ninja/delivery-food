@@ -27,6 +27,7 @@ import PDV from "./pages/PDV";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
 import NotificationsListener from "@/components/NotificationsListener";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import SubscriptionCancel from "./pages/SubscriptionCancel";
 
 const queryClient = new QueryClient();
 
@@ -93,8 +94,9 @@ const App = () => (
                 } />
               </Route>
               
-              {/* Success after Stripe checkout */}
+              {/* Success/Cancel after Stripe checkout */}
               <Route path="/subscription-success" element={<AuthGate requireAuth={true}><SubscriptionSuccess /></AuthGate>} />
+              <Route path="/subscription-cancel" element={<AuthGate requireAuth={true}><SubscriptionCancel /></AuthGate>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<AuthGate requireAuth={false}><NotFound /></AuthGate>} />

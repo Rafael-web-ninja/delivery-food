@@ -17,96 +17,111 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Prepare clients for auth attempts
-  const supabaseAnon = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-
-  const supabaseService = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
-
   try {
     logStep("Function started");
 
+    // Validate environment variables
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
-
-    // Get the user from the token first
-    const token = authHeader.replace("Bearer ", "");
-    let user: any;
-    let anonAuth = await supabaseAnon.auth.getUser(token);
-    if (anonAuth.error || !anonAuth.data.user?.email) {
-      logStep("ANON auth failed, trying SERVICE_ROLE", { error: anonAuth.error?.message });
-      const serviceAuth = await supabaseService.auth.getUser(token);
-      if (serviceAuth.error || !serviceAuth.data.user?.email) {
-        throw new Error(`Authentication failed: ${serviceAuth.error?.message || anonAuth.error?.message || 'Unable to authenticate user'}`);
-      }
-      user = serviceAuth.data.user;
-      logStep("User authenticated with SERVICE_ROLE", { userId: user.id, email: user.email });
-    } else {
-      user = anonAuth.data.user;
-      logStep("User authenticated with ANON", { userId: user.id, email: user.email });
+    if (!stripeKey) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
     }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase environment variables are not set");
+    }
+    logStep("Environment variables validated");
 
-    const { planType } = await req.json();
-    if (!planType) throw new Error("Plan type is required");
+    // Get authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new Error("No valid authorization header provided");
+    }
+    
+    const token = authHeader.replace("Bearer ", "");
+    logStep("Token extracted from header");
+
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verify user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user?.email) {
+      logStep("Authentication failed", { error: authError?.message });
+      throw new Error("User authentication failed");
+    }
+    
+    logStep("User authenticated successfully", { userId: user.id, email: user.email });
+
+    // Get request body
+    const body = await req.json();
+    const { planType } = body;
+    
+    if (!planType) {
+      throw new Error("Plan type is required");
+    }
     logStep("Plan type received", { planType });
 
+    // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+
+    // Find or create customer
     let customerId;
+    const customers = await stripe.customers.list({ 
+      email: user.email, 
+      limit: 1 
+    });
+    
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Existing customer found", { customerId });
     } else {
-      logStep("Creating new customer");
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          user_id: user.id
+        }
+      });
+      customerId = customer.id;
+      logStep("New customer created", { customerId });
     }
 
-    // Define pricing based on plan type - using real Stripe product IDs
-    let priceId;
+    // Get price for the plan
+    let productId;
     switch (planType) {
       case "mensal":
-        priceId = "prod_SrUoyAbRcb6Qg8"; // Plano mensal
+        productId = "prod_SrUoyAbRcb6Qg8";
         break;
       case "anual":
-        priceId = "prod_SrUpK1iT4fKXq7"; // Plano anual  
+        productId = "prod_SrUpK1iT4fKXq7";
         break;
       default:
-        throw new Error("Invalid plan type");
+        throw new Error(`Invalid plan type: ${planType}`);
     }
 
-    // Get the actual price from Stripe
+    // Get the price for this product
     const prices = await stripe.prices.list({
-      product: priceId,
+      product: productId,
       active: true,
       limit: 1,
     });
 
     if (prices.data.length === 0) {
-      throw new Error(`No active price found for product ${priceId}`);
+      throw new Error(`No active price found for product ${productId}`);
     }
 
-    const priceObject = prices.data[0];
+    const price = prices.data[0];
+    logStep("Price found", { priceId: price.id, amount: price.unit_amount });
 
-    logStep("Creating checkout session", { priceId: priceObject.id, planType });
-
-    const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
-
+    // Create checkout session
+    const origin = req.headers.get("origin") || "http://localhost:3000";
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: priceObject.id,
+          price: price.id,
           quantity: 1,
         },
       ],
@@ -123,24 +138,26 @@ serve(async (req) => {
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ 
+      url: session.url,
+      sessionId: session.id 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-checkout", { 
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-      requestHeaders: {
-        authorization: req.headers.get("Authorization") ? "Bearer [REDACTED]" : "missing",
-        origin: req.headers.get("origin"),
-        userAgent: req.headers.get("user-agent")
-      }
+    logStep("ERROR", { 
+      message: errorMessage, 
+      stack: error instanceof Error ? error.stack : undefined 
     });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    
+    return new Response(JSON.stringify({ 
+      error: errorMessage 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 400,
     });
   }
 });
