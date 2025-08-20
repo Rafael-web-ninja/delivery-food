@@ -32,13 +32,18 @@ export default function SubscriptionSuccess() {
 
       try {
         setProcessing(true);
+        
+        console.log('Calling process-checkout-success with sessionId:', sessionId);
 
         // Process the checkout success (for guest users, this will create account)
         const { data, error } = await supabase.functions.invoke('process-checkout-success', {
           body: { sessionId }
         });
 
+        console.log('Response from process-checkout-success:', { data, error });
+
         if (error) {
+          console.error('Edge function error:', error);
           throw new Error(error.message);
         }
 
