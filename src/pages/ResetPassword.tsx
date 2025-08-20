@@ -156,14 +156,24 @@ const ResetPassword = () => {
         throw error;
       }
 
+      // Check if this is a new subscription user
+      const searchParams = new URLSearchParams(window.location.search);
+      const isNewSubscriptionUser = searchParams.get('email') && window.location.pathname === '/reset-password';
+      
       toast({
-        title: "Senha redefinida!",
-        description: "Sua senha foi alterada com sucesso. Redirecionando...",
+        title: isNewSubscriptionUser ? "Senha definida com sucesso!" : "Senha redefinida!",
+        description: isNewSubscriptionUser 
+          ? "Sua conta foi criada e senha definida. Bem-vindo!" 
+          : "Sua senha foi alterada com sucesso. Redirecionando...",
       });
 
-      // Redireciona após sucesso
+      // Redirect based on user type
       setTimeout(() => {
-        navigate('/meu-perfil', { replace: true });
+        if (isNewSubscriptionUser) {
+          navigate('/', { replace: true }); // New subscription users go to dashboard
+        } else {
+          navigate('/meu-perfil', { replace: true }); // Existing users go to profile
+        }
       }, 2000);
 
     } catch (error: any) {

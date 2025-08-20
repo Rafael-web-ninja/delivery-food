@@ -61,8 +61,8 @@ serve(async (req) => {
     const { data: existingUser, error: userError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
     
     let userId;
-    if (existingUser && !userError) {
-      userId = existingUser.id;
+    if (existingUser && existingUser.user && !userError) {
+      userId = existingUser.user.id;
       logStep("Existing user found", { userId });
     } else {
       // Create new user if this was a guest checkout
@@ -72,6 +72,9 @@ serve(async (req) => {
         const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
           email: customerEmail,
           email_confirm: true, // Auto-confirm email since they completed payment
+          user_metadata: {
+            subscription_created: true
+          }
         });
 
         if (createError || !newUser.user) {
@@ -115,15 +118,17 @@ serve(async (req) => {
       logStep("Subscription data updated", { userId, planType, status: subscription.status });
     }
 
-    // Generate auth token for the user if this was a guest checkout
+    // Generate password reset link for new users to set their password
     let authResponse = null;
     if (session.metadata?.guest_checkout === "true") {
-      // For guest checkouts, generate a password reset link that will allow auto-login
+      logStep("Generating password reset link for new user", { email: customerEmail });
+      
+      const baseUrl = req.headers.get("origin") || "http://localhost:3000";
       const { data: tokenData, error: tokenError } = await supabaseClient.auth.admin.generateLink({
         type: 'recovery',
         email: customerEmail,
         options: {
-          redirectTo: `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.vercel.app') || 'http://localhost:3000'}/auth`
+          redirectTo: `${baseUrl}/reset-password`
         }
       });
 
@@ -136,12 +141,13 @@ serve(async (req) => {
           authResponse = { 
             token, 
             refresh_token,
-            type: 'recovery'
+            type: 'recovery',
+            redirectTo: `${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(customerEmail)}`
           };
-          logStep("Auth token generated for auto-login", { email: customerEmail, hasToken: !!token });
+          logStep("Password reset link generated", { email: customerEmail, hasToken: !!token, redirectTo: authResponse.redirectTo });
         }
       } else {
-        logStep("Failed to generate auth token", { error: tokenError });
+        logStep("Failed to generate password reset link", { error: tokenError });
       }
     }
 

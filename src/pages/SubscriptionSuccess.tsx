@@ -42,35 +42,27 @@ export default function SubscriptionSuccess() {
           throw new Error(error.message);
         }
 
-        // If auth token was provided (guest checkout), auto-login the user
-        if (data.auth?.token && !user && data.email) {
-          console.log('Attempting auto-login with token for:', data.email);
+        // If password reset link was provided (guest checkout), redirect to set password
+        if (data.auth?.redirectTo && data.email) {
+          console.log('Redirecting new user to set password:', data.email);
           
-          const { error: authError } = await supabase.auth.verifyOtp({
-            token: data.auth.token,
-            type: data.auth.type || 'recovery',
-            email: data.email
-          });
-
-          if (authError) {
-            console.error('Auto-login failed:', authError);
-            toast({
-              title: "Conta criada!",
-              description: `Sua assinatura foi ativada para ${data.email}. Você pode fazer login agora.`,
-            });
-          } else {
-            console.log('Auto-login successful');
-            toast({
-              title: "Bem-vindo!",
-              description: "Sua conta foi criada e assinatura ativada com sucesso!",
-            });
-          }
-        } else {
           toast({
-            title: "Assinatura ativada!",
-            description: "Sua assinatura foi processada com sucesso.",
+            title: "Conta criada!",
+            description: `Sua assinatura foi ativada para ${data.email}. Defina sua senha para continuar.`,
           });
+          
+          // Redirect to password setup after a brief delay
+          setTimeout(() => {
+            window.location.href = data.auth.redirectTo;
+          }, 2000);
+          
+          return;
         }
+
+        toast({
+          title: "Assinatura ativada!",
+          description: "Sua assinatura foi processada com sucesso.",
+        });
 
         // Check subscription status
         await checkSubscription();
