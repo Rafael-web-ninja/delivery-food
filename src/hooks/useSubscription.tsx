@@ -31,41 +31,67 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     
     setLoading(true);
     try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session?.access_token) {
-        throw new Error("Usuário não autenticado");
+      // Get fresh session
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session.session?.access_token) {
+        console.warn("Session error:", sessionError?.message || "No session");
+        setSubscribed(false);
+        setPlanType('free');
+        setSubscriptionStatus('inactive');
+        setSubscriptionEnd(null);
+        return;
       }
 
+      console.log("Calling check-subscription function...");
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
-          Authorization: `Bearer ${session.data.session.access_token}`,
+          Authorization: `Bearer ${session.session.access_token}`,
+          'Content-Type': 'application/json',
         },
       });
+
+      console.log("Function response:", { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
         throw new Error(error.message || "Erro na função de verificação");
       }
 
+      // Check if response has error field
+      if (data && data.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
       setSubscribed(data.subscribed || false);
       setPlanType(data.subscription_tier || data.plan_type || 'free');
       setSubscriptionStatus(data.subscription_status || 'inactive');
       setSubscriptionEnd(data.subscription_end || null);
+      
+      console.log("Subscription data set:", {
+        subscribed: data.subscribed || false,
+        planType: data.subscription_tier || data.plan_type || 'free',
+        subscriptionStatus: data.subscription_status || 'inactive',
+        subscriptionEnd: data.subscription_end || null
+      });
+      
     } catch (error: any) {
       console.error('Error checking subscription:', error);
-      // Falhar silenciosamente se for erro de auth, mostrar toast apenas para outros erros
-      if (!error.message?.includes('autenticado') && !error.message?.includes('Session')) {
+      
+      // Set default values on error
+      setSubscribed(false);
+      setPlanType('free');
+      setSubscriptionStatus('inactive');
+      setSubscriptionEnd(null);
+      
+      // Only show toast for non-auth errors
+      if (!error.message?.includes('Session') && !error.message?.includes('session') && !error.message?.includes('Authentication')) {
         toast({
           title: "Erro ao verificar assinatura",
           description: error.message || "Tente novamente em alguns instantes",
           variant: "destructive"
         });
       }
-      // Set default values on error
-      setSubscribed(false);
-      setPlanType('free');
-      setSubscriptionStatus('inactive');
-      setSubscriptionEnd(null);
     } finally {
       setLoading(false);
     }

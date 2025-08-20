@@ -17,13 +17,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Use SERVICE_ROLE key for both auth verification and database operations
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
-
   try {
     logStep("Function started");
 
@@ -36,16 +29,64 @@ serve(async (req) => {
     logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
-    logStep("Authenticating user with token");
+    logStep("Extracting token from header");
+
+    // Primeira tentativa: usar ANON key para validar o token
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+
+    logStep("Attempting user authentication with ANON key");
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
     
-    // Use service role client to verify token
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    if (userError || !userData.user?.email) {
+      logStep("ANON auth failed, trying SERVICE_ROLE key", { error: userError?.message });
+      
+      // Segunda tentativa: usar SERVICE_ROLE key
+      const supabaseServiceAuth = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      
+      const { data: serviceUserData, error: serviceUserError } = await supabaseServiceAuth.auth.getUser(token);
+      
+      if (serviceUserError || !serviceUserData.user?.email) {
+        logStep("Both auth methods failed", { 
+          anonError: userError?.message, 
+          serviceError: serviceUserError?.message 
+        });
+        throw new Error(`Authentication failed: ${serviceUserError?.message || userError?.message || 'Unable to authenticate user'}`);
+      }
+      
+      logStep("Authentication successful with SERVICE_ROLE", { 
+        userId: serviceUserData.user.id, 
+        email: serviceUserData.user.email 
+      });
+      
+      // Use service data
+      var user = serviceUserData.user;
+    } else {
+      logStep("Authentication successful with ANON", { 
+        userId: userData.user.id, 
+        email: userData.user.email 
+      });
+      
+      // Use anon data
+      var user = userData.user;
+    }
+
+    // Use SERVICE_ROLE key for database operations
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    
+    logStep("Searching for Stripe customer", { email: user.email });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
@@ -60,6 +101,7 @@ serve(async (req) => {
         subscription_end: null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'email' });
+      
       return new Response(JSON.stringify({ 
         subscribed: false, 
         plan_type: "free",
@@ -94,24 +136,25 @@ serve(async (req) => {
       const price = await stripe.prices.retrieve(priceId);
       const productId = price.product;
       
+      logStep("Determined plan type", { priceId, productId });
+      
       // Map product IDs to plan types
-      let amount: number | null = null;
       if (productId === "prod_SrUoyAbRcb6Qg8") {
         planType = "mensal";
       } else if (productId === "prod_SrUpK1iT4fKXq7") {
         planType = "anual";
       } else {
-        // Fallback for other products
-        amount = price.unit_amount || 0;
-        if ((amount || 0) <= 999) {
+        // Fallback for other products based on amount
+        const amount = price.unit_amount || 0;
+        if (amount <= 999) {
           planType = "basic";
-        } else if ((amount || 0) <= 2999) {
+        } else if (amount <= 2999) {
           planType = "premium";
         } else {
           planType = "enterprise";
         }
       }
-      logStep("Determined plan type", { priceId, amount, planType });
+      logStep("Determined plan type", { priceId, productId, planType });
     } else {
       logStep("No active subscription found");
     }
@@ -128,6 +171,7 @@ serve(async (req) => {
     }, { onConflict: 'email' });
 
     logStep("Updated database with subscription info", { subscribed: hasActiveSub, planType });
+    
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan_type: planType,
@@ -137,6 +181,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
+    
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in check-subscription", { 
@@ -148,6 +193,7 @@ serve(async (req) => {
         userAgent: req.headers.get("user-agent")
       }
     });
+    
     return new Response(JSON.stringify({ 
       error: errorMessage,
       subscribed: false,
@@ -155,7 +201,7 @@ serve(async (req) => {
       subscription_status: "inactive"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 200, // Return 200 instead of 500 to avoid triggering error handlers
     });
   }
 });
