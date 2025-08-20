@@ -118,19 +118,30 @@ serve(async (req) => {
     // Generate auth token for the user if this was a guest checkout
     let authResponse = null;
     if (session.metadata?.guest_checkout === "true") {
+      // For guest checkouts, generate a password reset link that will allow auto-login
       const { data: tokenData, error: tokenError } = await supabaseClient.auth.admin.generateLink({
-        type: 'magiclink',
+        type: 'recovery',
         email: customerEmail,
+        options: {
+          redirectTo: `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.vercel.app') || 'http://localhost:3000'}/auth`
+        }
       });
 
       if (!tokenError && tokenData.properties?.action_link) {
         // Extract the token from the action_link
         const url = new URL(tokenData.properties.action_link);
         const token = url.searchParams.get('token');
+        const refresh_token = url.searchParams.get('refresh_token');
         if (token) {
-          authResponse = { token };
-          logStep("Auth token generated for auto-login", { email: customerEmail });
+          authResponse = { 
+            token, 
+            refresh_token,
+            type: 'recovery'
+          };
+          logStep("Auth token generated for auto-login", { email: customerEmail, hasToken: !!token });
         }
+      } else {
+        logStep("Failed to generate auth token", { error: tokenError });
       }
     }
 

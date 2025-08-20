@@ -44,9 +44,11 @@ export default function SubscriptionSuccess() {
 
         // If auth token was provided (guest checkout), auto-login the user
         if (data.auth?.token && !user && data.email) {
+          console.log('Attempting auto-login with token for:', data.email);
+          
           const { error: authError } = await supabase.auth.verifyOtp({
             token: data.auth.token,
-            type: 'magiclink',
+            type: data.auth.type || 'recovery',
             email: data.email
           });
 
@@ -54,9 +56,10 @@ export default function SubscriptionSuccess() {
             console.error('Auto-login failed:', authError);
             toast({
               title: "Conta criada!",
-              description: `Sua assinatura foi ativada para ${data.email}. Faça login para continuar.`,
+              description: `Sua assinatura foi ativada para ${data.email}. Você pode fazer login agora.`,
             });
           } else {
+            console.log('Auto-login successful');
             toast({
               title: "Bem-vindo!",
               description: "Sua conta foi criada e assinatura ativada com sucesso!",
