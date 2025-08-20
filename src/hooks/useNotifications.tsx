@@ -60,6 +60,15 @@ export const useNotifications = () => {
               case 'delivered':
                 toast({ title: '✅ Pedido entregue', description: 'Seu pedido foi entregue.', duration: 3000 });
                 break;
+              case 'cancelled':
+                toast({ title: '❌ Pedido cancelado', description: 'Seu pedido foi cancelado.', duration: 4000 });
+                break;
+              case 'rejected':
+                toast({ title: '🚫 Pedido rejeitado', description: 'Seu pedido foi rejeitado.', duration: 4000 });
+                break;
+              default:
+                toast({ title: '🔄 Status atualizado', description: 'O status do seu pedido foi atualizado.', duration: 3000 });
+                break;
             }
           }
         )
