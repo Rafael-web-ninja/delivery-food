@@ -20,100 +20,106 @@ const ResetPassword = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      // Verifica se há parâmetros de erro na URL (tanto na hash quanto nos search params)
+    const handlePasswordReset = async () => {
+      // Parse URL parameters
+      const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const searchParamsObj = Object.fromEntries(searchParams.entries());
       
-      const error = hashParams.get('error') || searchParamsObj.error;
-      const errorDescription = hashParams.get('error_description') || searchParamsObj.error_description;
-      const errorCode = hashParams.get('error_code') || searchParamsObj.error_code;
+      const token = searchParams.get('token') || hashParams.get('access_token');
+      const refresh_token = searchParams.get('refresh_token') || hashParams.get('refresh_token');
+      const email = searchParams.get('email');
+      const type = searchParams.get('type') || hashParams.get('type');
+      const error = searchParams.get('error') || hashParams.get('error');
       
-      console.log('Reset password URL params:', {
-        hash: window.location.hash,
-        search: window.location.search,
+      console.log('Reset password params:', { 
+        hasToken: !!token, 
+        hasRefreshToken: !!refresh_token, 
+        email, 
+        type, 
         error,
-        errorDescription,
-        errorCode
+        pathname: window.location.pathname 
       });
-      
-      // Se há erro de token expirado, redireciona para auth com mensagem
-      if (error === 'access_denied' || errorCode === 'otp_expired' || errorDescription?.includes('expired') || errorDescription?.includes('invalid')) {
-        console.log('Link expirado ou inválido detectado:', { error, errorCode, errorDescription });
+
+      // Handle errors
+      if (error) {
         toast({
-          title: "Link expirado ou inválido",
-          description: "O link de recuperação expirou ou é inválido. Solicite um novo link.",
+          title: "Link inválido",
+          description: "O link de recuperação expirou ou é inválido.",
           variant: "destructive"
         });
         navigate('/auth');
         return;
       }
-      
-      // Captura os tokens de recuperação (tanto da hash quanto dos search params)
-      const accessToken = hashParams.get('access_token') || searchParamsObj.access_token;
-      const refreshToken = hashParams.get('refresh_token') || searchParamsObj.refresh_token;
-      const tokenType = hashParams.get('type') || searchParamsObj.type;
 
-      console.log('Reset password tokens:', { 
-        hasAccessToken: !!accessToken, 
-        hasRefreshToken: !!refreshToken, 
-        tokenType,
-        error 
-      });
+      // If no tokens but user is logged in, redirect to profile
+      if (!token && user) {
+        navigate('/meu-perfil');
+        return;
+      }
 
-      // Se temos tokens válidos e é do tipo recovery
-      if (accessToken && refreshToken && tokenType === 'recovery') {
-        try {
-          console.log('Estabelecendo sessão com tokens de recovery...');
-          
-          // Estabelece a sessão com os tokens do reset
+      // If no tokens and no user, redirect to auth
+      if (!token) {
+        toast({
+          title: "Link necessário",
+          description: "Acesse através do link enviado por email.",
+          variant: "destructive"
+        });
+        navigate('/auth');
+        return;
+      }
+
+      // Set session with tokens
+      try {
+        if (token && refresh_token) {
           const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
+            access_token: token,
+            refresh_token: refresh_token
           });
 
           if (sessionError) {
-            console.error('Erro ao estabelecer sessão:', sessionError);
+            console.error('Session error:', sessionError);
             toast({
               title: "Link inválido",
-              description: "O link de recuperação é inválido ou expirou",
+              description: "O link de recuperação é inválido ou expirou.",
               variant: "destructive"
             });
             navigate('/auth');
-          } else {
-            console.log('Sessão estabelecida com sucesso para reset de senha');
-            setIsValidSession(true);
-            
-            // Limpa os parâmetros da URL
-            window.history.replaceState({}, '', '/reset-password');
+            return;
           }
-        } catch (error) {
-          console.error('Erro no processo de reset:', error);
-          toast({
-            title: "Erro",
-            description: "Ocorreu um erro ao processar o link de recuperação",
-            variant: "destructive"
+        } else if (email && type === 'recovery') {
+          // Verify OTP for new subscription users
+          const { error: otpError } = await supabase.auth.verifyOtp({
+            token: token,
+            type: 'recovery',
+            email: email
           });
-          navigate('/auth');
+
+          if (otpError) {
+            console.error('OTP error:', otpError);
+            toast({
+              title: "Link inválido",
+              description: "Não foi possível verificar o link.",
+              variant: "destructive"
+            });
+            navigate('/auth');
+            return;
+          }
         }
-      } else {
-        console.log('Tokens não encontrados ou inválidos');
-        // Se não há parâmetros de reset, mas o usuário está logado normalmente
-        if (user) {
-          navigate('/meu-perfil', { replace: true });
-        } else {
-          toast({
-            title: "Link inválido",
-            description: "Acesse através do link enviado por email",
-            variant: "destructive"
-          });
-          navigate('/auth');
-        }
+
+        setIsValidSession(true);
+        console.log('Session established successfully for password reset');
+        
+        // Clean URL
+        window.history.replaceState({}, '', '/reset-password');
+        
+      } catch (error) {
+        console.error('Error setting session:', error);
+        navigate('/auth');
       }
     };
 
-    handleAuthCallback();
-  }, [searchParams, user, navigate, toast]);
+    handlePasswordReset();
+  }, [navigate, user, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();

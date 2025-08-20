@@ -58,35 +58,32 @@ serve(async (req) => {
     }
 
     // Check if user already exists
-    const { data: existingUser, error: userError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
+    const { data: existingUserData, error: userError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
     
     let userId;
-    if (existingUser && existingUser.user && !userError) {
-      userId = existingUser.user.id;
+    if (existingUserData?.user && !userError) {
+      userId = existingUserData.user.id;
       logStep("Existing user found", { userId });
     } else {
-      // Create new user if this was a guest checkout
-      if (session.metadata?.guest_checkout === "true") {
-        logStep("Creating new user for guest checkout", { email: customerEmail });
-        
-        const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
-          email: customerEmail,
-          email_confirm: true, // Auto-confirm email since they completed payment
-          user_metadata: {
-            subscription_created: true
-          }
-        });
-
-        if (createError || !newUser.user) {
-          logStep("Failed to create user", { error: createError });
-          throw new Error(`Failed to create user: ${createError?.message}`);
+      // Create new user for guest checkout
+      logStep("Creating new user for guest checkout", { email: customerEmail });
+      
+      const { data: newUserData, error: createError } = await supabaseClient.auth.admin.createUser({
+        email: customerEmail,
+        email_confirm: true, // Auto-confirm email since they completed payment
+        user_metadata: {
+          subscription_created: true,
+          created_via_checkout: true
         }
+      });
 
-        userId = newUser.user.id;
-        logStep("New user created", { userId });
-      } else {
-        throw new Error("User not found and not a guest checkout");
+      if (createError || !newUserData?.user) {
+        logStep("Failed to create user", { error: createError });
+        throw new Error(`Failed to create user: ${createError?.message}`);
       }
+
+      userId = newUserData.user.id;
+      logStep("New user created successfully", { userId, email: customerEmail });
     }
 
     // Update subscription data in database
@@ -99,6 +96,7 @@ serve(async (req) => {
         .from('subscriber_plans')
         .upsert({
           user_id: userId,
+          email: customerEmail,
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: subscription.id,
           plan_type: planType,
@@ -118,37 +116,42 @@ serve(async (req) => {
       logStep("Subscription data updated", { userId, planType, status: subscription.status });
     }
 
-    // Generate password reset link for new users to set their password
+    // Generate password reset link for new users
     let authResponse = null;
-    if (session.metadata?.guest_checkout === "true") {
-      logStep("Generating password reset link for new user", { email: customerEmail });
-      
-      const baseUrl = req.headers.get("origin") || "http://localhost:3000";
-      const { data: tokenData, error: tokenError } = await supabaseClient.auth.admin.generateLink({
-        type: 'recovery',
-        email: customerEmail,
-        options: {
-          redirectTo: `${baseUrl}/reset-password`
-        }
-      });
-
-      if (!tokenError && tokenData.properties?.action_link) {
-        // Extract the token from the action_link
-        const url = new URL(tokenData.properties.action_link);
-        const token = url.searchParams.get('token');
-        const refresh_token = url.searchParams.get('refresh_token');
-        if (token) {
-          authResponse = { 
-            token, 
-            refresh_token,
-            type: 'recovery',
-            redirectTo: `${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(customerEmail)}`
-          };
-          logStep("Password reset link generated", { email: customerEmail, hasToken: !!token, redirectTo: authResponse.redirectTo });
-        }
-      } else {
-        logStep("Failed to generate password reset link", { error: tokenError });
+    logStep("Generating password reset link for user", { email: customerEmail });
+    
+    const baseUrl = req.headers.get("origin") || req.headers.get("referer")?.split('/')[0] + '//' + req.headers.get("referer")?.split('/')[2] || "http://localhost:3000";
+    
+    const { data: tokenData, error: tokenError } = await supabaseClient.auth.admin.generateLink({
+      type: 'recovery',
+      email: customerEmail,
+      options: {
+        redirectTo: `${baseUrl}/reset-password`
       }
+    });
+
+    if (!tokenError && tokenData.properties?.action_link) {
+      // Extract the token from the action_link
+      const url = new URL(tokenData.properties.action_link);
+      const token = url.searchParams.get('token');
+      const refresh_token = url.searchParams.get('refresh_token');
+      
+      if (token) {
+        const redirectUrl = `${baseUrl}/reset-password?token=${token}&refresh_token=${refresh_token}&email=${encodeURIComponent(customerEmail)}&type=recovery`;
+        authResponse = { 
+          token, 
+          refresh_token,
+          type: 'recovery',
+          redirectTo: redirectUrl
+        };
+        logStep("Password reset link generated successfully", { 
+          email: customerEmail, 
+          hasToken: !!token, 
+          redirectTo: redirectUrl 
+        });
+      }
+    } else {
+      logStep("Failed to generate password reset link", { error: tokenError });
     }
 
     return new Response(JSON.stringify({ 
