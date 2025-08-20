@@ -19,11 +19,16 @@ export const NotificationBell = () => {
   const [notifications, setNotifications] = useState(notificationStore.getNotifications());
   const [hasUnread, setHasUnread] = useState(notificationStore.hasUnread());
 
+  console.log('🔔 NotificationBell - notifications count:', notifications.length, 'hasUnread:', hasUnread);
+
   // Subscribe to store changes with proper cleanup
   useEffect(() => {
     const unsubscribe = notificationStore.subscribe(() => {
-      setNotifications(notificationStore.getNotifications());
-      setHasUnread(notificationStore.hasUnread());
+      const newNotifications = notificationStore.getNotifications();
+      const newHasUnread = notificationStore.hasUnread();
+      console.log('🔔 NotificationBell store update - count:', newNotifications.length, 'hasUnread:', newHasUnread);
+      setNotifications(newNotifications);
+      setHasUnread(newHasUnread);
     });
     
     return () => {

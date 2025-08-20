@@ -37,6 +37,8 @@ export const useNotifications = () => {
       return;
     }
 
+    let cleanupFn: (() => void) | undefined;
+
     const setupNotifications = async () => {
       console.log('🔔 Setting up notifications for user:', user.id);
 
@@ -102,9 +104,11 @@ export const useNotifications = () => {
                 notificationStore.updateNotification(updatedOrder);
               }
             )
-            .subscribe();
+            .subscribe((status) => {
+              console.log('Business channel subscription status:', status);
+            });
 
-          return () => {
+          cleanupFn = () => {
             console.log('🛑 Cleaning up business owner notifications');
             supabase.removeChannel(businessChannel);
           };
@@ -173,9 +177,11 @@ export const useNotifications = () => {
                 notificationStore.addNotification(newOrder);
               }
             )
-            .subscribe();
+            .subscribe((status) => {
+              console.log('Customer channel subscription status:', status);
+            });
 
-          return () => {
+          cleanupFn = () => {
             console.log('🛑 Cleaning up customer notifications');
             supabase.removeChannel(customerChannel);
           };
@@ -185,11 +191,7 @@ export const useNotifications = () => {
       }
     };
 
-    let cleanupFn: (() => void) | undefined;
-    
-    setupNotifications().then((cleanup) => {
-      cleanupFn = cleanup;
-    });
+    setupNotifications();
 
     return () => {
       if (cleanupFn) {
