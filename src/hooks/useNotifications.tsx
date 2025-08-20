@@ -20,12 +20,15 @@ export const useNotifications = () => {
   const { toast } = useToast();
   const [notifications, setNotifications] = useState(notificationStore.getNotifications());
 
-  // Subscribe to store changes
+  // Subscribe to store changes with proper cleanup
   useEffect(() => {
     const unsubscribe = notificationStore.subscribe(() => {
       setNotifications(notificationStore.getNotifications());
     });
-    return unsubscribe;
+    
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -182,10 +185,15 @@ export const useNotifications = () => {
       }
     };
 
-    const cleanup = setupNotifications();
+    let cleanupFn: (() => void) | undefined;
+    
+    setupNotifications().then((cleanup) => {
+      cleanupFn = cleanup;
+    });
+
     return () => {
-      if (cleanup instanceof Promise) {
-        cleanup.then(fn => fn && fn());
+      if (cleanupFn) {
+        cleanupFn();
       }
     };
   }, [user?.id, toast]);

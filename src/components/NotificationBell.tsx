@@ -19,13 +19,16 @@ export const NotificationBell = () => {
   const [notifications, setNotifications] = useState(notificationStore.getNotifications());
   const [hasUnread, setHasUnread] = useState(notificationStore.hasUnread());
 
-  // Subscribe to store changes
+  // Subscribe to store changes with proper cleanup
   useEffect(() => {
     const unsubscribe = notificationStore.subscribe(() => {
       setNotifications(notificationStore.getNotifications());
       setHasUnread(notificationStore.hasUnread());
     });
-    return unsubscribe;
+    
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const markAsRead = (orderId: string) => {
