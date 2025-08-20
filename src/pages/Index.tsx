@@ -102,13 +102,30 @@ const Index = () => {
             Sistema completo de gestão para delivery com cardápio digital, controle de pedidos e analytics poderosos. 
             Tudo que você precisa para aumentar suas vendas em uma única plataforma.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8" onClick={() => navigate('/auth')}>
-              Começar Agora <ArrowRight className="ml-2 h-5 w-5" />
+          <div className="flex flex-col items-center gap-6">
+            <Button 
+              size="lg" 
+              className="text-lg px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
+              onClick={() => document.getElementById('precos')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Ver Planos <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8" onClick={() => navigate('/demo')}>
-              Ver Demonstração
-            </Button>
+            
+            {/* Highlights */}
+            <div className="flex flex-col sm:flex-row items-center gap-6 mt-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
+                <span className="text-sm font-medium">Sem Taxa de Setup</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
+                <span className="text-sm font-medium">Sem Taxa por Venda</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
+                <span className="text-sm font-medium">Cardápio pronto em minutos</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
