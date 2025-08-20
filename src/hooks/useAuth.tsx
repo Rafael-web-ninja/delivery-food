@@ -206,15 +206,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Auth: Starting signout');
       setLoading(true);
       
+      // Clear state immediately
+      setUser(null);
+      setSession(null);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Auth: Signout error:', error);
+        throw error;
       } else {
         console.log('Auth: Signout successful');
+        // Redirect to home page after successful logout
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('Auth: Signout exception:', error);
+      // Even if there's an error, clear local state and redirect
+      setUser(null);
+      setSession(null);
+      window.location.href = '/';
+      throw error;
     } finally {
       setLoading(false);
     }
