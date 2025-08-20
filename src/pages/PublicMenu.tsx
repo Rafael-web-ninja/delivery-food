@@ -233,16 +233,22 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
       if (biz) {
         setBusiness(biz);
         
-        // Verificar assinatura do dono do delivery
-        const { data: ownerData } = await supabase.auth.admin.getUserById(biz.owner_id);
-        if (ownerData.user) {
-          const { data: subscriptionData } = await supabase
-            .from('subscriber_plans')
-            .select('subscription_status')
-            .eq('user_id', biz.owner_id)
-            .single();
+        // Verificar assinatura do dono do delivery usando edge function
+        try {
+          console.log('[PublicMenu] Checking business subscription via edge function', { businessId: biz.id });
+          const { data: subscriptionData, error: subscriptionError } = await supabase.functions.invoke('check-business-subscription', {
+            body: { businessId: biz.id }
+          });
           
-          const isSubscribed = subscriptionData?.subscription_status === 'active';
+          if (subscriptionError) {
+            console.error('[PublicMenu] Error checking subscription:', subscriptionError);
+            setBusinessOwnerSubscription({ subscribed: false, loading: false });
+            setLoading(false);
+            return;
+          }
+          
+          console.log('[PublicMenu] Business subscription result:', subscriptionData);
+          const isSubscribed = subscriptionData?.subscribed || false;
           setBusinessOwnerSubscription({ subscribed: isSubscribed, loading: false });
           
           // Se não está inscrito, não carrega o menu
@@ -250,6 +256,11 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
             setLoading(false);
             return;
           }
+        } catch (error) {
+          console.error('[PublicMenu] Exception checking subscription:', error);
+          setBusinessOwnerSubscription({ subscribed: false, loading: false });
+          setLoading(false);
+          return;
         }
 
         const itemsResult = await supabase

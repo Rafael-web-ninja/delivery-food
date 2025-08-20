@@ -137,7 +137,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   }, [user, toast]);
 
-  // Check if user is business owner
+  // Check if user is business owner - more robust
   useEffect(() => {
     const checkUserType = async () => {
       if (!user) {
@@ -146,14 +146,19 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       }
 
       try {
-        const { data: business } = await supabase
-          .from('delivery_businesses')
-          .select('id')
-          .eq('owner_id', user.id)
-          .single();
+        // Use database function for reliable owner check
+        const { data: businessId, error } = await supabase.rpc('get_user_business_id');
+        
+        if (error) {
+          console.error('Error checking business owner:', error);
+          setIsBusinessOwner(false);
+          return;
+        }
 
-        setIsBusinessOwner(!!business);
+        setIsBusinessOwner(!!businessId);
+        console.log('[useSubscription] Business owner check:', { businessId, isOwner: !!businessId });
       } catch (error) {
+        console.error('Error in business owner check:', error);
         setIsBusinessOwner(false);
       }
     };
@@ -161,11 +166,19 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     checkUserType();
   }, [user]);
 
-  // Check subscription only for business owners
+  // Check subscription only for business owners - prevent state reset during loading
   useEffect(() => {
+    if (isBusinessOwner === null) {
+      // Still determining if user is business owner, don't reset state
+      return;
+    }
+    
     if (user && isBusinessOwner === true) {
+      console.log('[useSubscription] Triggering checkSubscription for business owner');
       checkSubscription();
     } else {
+      // Only reset if we're sure user is not a business owner
+      console.log('[useSubscription] User is not business owner, resetting subscription state');
       setSubscribed(false);
       setPlanType('free');
       setSubscriptionStatus('inactive');
