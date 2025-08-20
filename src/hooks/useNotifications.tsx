@@ -1,8 +1,10 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/formatters';
+import { notificationStore } from '@/stores/notificationStore';
 
 interface OrderNotification {
   id: string;
@@ -10,173 +12,196 @@ interface OrderNotification {
   total_amount: number;
   status: string;
   created_at: string;
+  order_code?: string;
 }
 
 export const useNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<OrderNotification[]>([]);
+  const [notifications, setNotifications] = useState(notificationStore.getNotifications());
+
+  // Subscribe to store changes
+  useEffect(() => {
+    const unsubscribe = notificationStore.subscribe(() => {
+      setNotifications(notificationStore.getNotifications());
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('❌ No user, skipping notifications setup');
+      return;
+    }
 
     const setupNotifications = async () => {
       console.log('🔔 Setting up notifications for user:', user.id);
 
-      // Get user's business (owner) and customer profile in parallel
-      const [{ data: business, error: businessError }, { data: customerProfile, error: customerError }] = await Promise.all([
-        supabase.from('delivery_businesses').select('id').eq('owner_id', user.id).single(),
-        supabase.from('customer_profiles').select('id').eq('user_id', user.id).single(),
-      ]);
+      try {
+        // Check if user is business owner
+        const { data: business, error: businessError } = await supabase
+          .from('delivery_businesses')
+          .select('id')
+          .eq('owner_id', user.id)
+          .single();
 
-      console.log('🏢 Business data:', business, businessError);
-      console.log('👤 Customer profile:', customerProfile, customerError);
-
-      // If user is a customer (no business), subscribe to their order updates
-      if (!business?.id) {
-        if (!customerProfile?.id) {
-          console.log('❌ No customer profile found, cannot setup customer notifications');
+        if (businessError && businessError.code !== 'PGRST116') {
+          console.error('❌ Error checking business:', businessError);
           return;
         }
 
-        console.log('👤 Setting up customer notifications for customer_id:', customerProfile.id);
+        if (business?.id) {
+          // Business owner notifications
+          console.log('🏢 Setting up business owner notifications for business:', business.id);
+          
+          const businessChannel = supabase
+            .channel(`orders-owner-${business.id}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'orders',
+                filter: `business_id=eq.${business.id}`,
+              },
+              (payload) => {
+                console.log('🎉 New order for business owner:', payload);
+                const newOrder = payload.new as OrderNotification;
+                
+                notificationStore.addNotification(newOrder);
+                
+                toast({
+                  title: "🎉 Novo Pedido!",
+                  description: `${newOrder.customer_name} fez um pedido de ${formatCurrency(Number(newOrder.total_amount))}`,
+                  duration: 5000,
+                });
 
-        const customerChannel = supabase
-          .channel(`orders-notifications-customer-${customerProfile.id}`)
-          .on(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'orders', filter: `customer_id=eq.${customerProfile.id}` },
-            (payload) => {
-              console.log('🔄 Customer order update received:', payload);
-              const updatedOrder = payload.new as OrderNotification;
-              setNotifications(prev => {
-                const exists = prev.some(n => n.id === updatedOrder.id);
-                return (exists
-                  ? prev.map(n => (n.id === updatedOrder.id ? updatedOrder : n))
-                  : [updatedOrder, ...prev]
-                ).slice(0, 10);
-              });
-
-              console.log('📱 Showing toast for status:', updatedOrder.status);
-              switch (updatedOrder.status) {
-                case 'preparing':
-                  toast({ title: '👨‍🍳 Em preparação', description: 'Seu pedido está em preparação.', duration: 3000 });
-                  break;
-                case 'ready':
-                  toast({ title: '📦 Pronto para retirada/entrega', description: 'Seu pedido está pronto.', duration: 3000 });
-                  break;
-                case 'out_for_delivery':
-                  toast({ title: '🛵 Saiu para entrega', description: 'Seu pedido saiu para entrega.', duration: 3000 });
-                  break;
-                case 'delivered':
-                  toast({ title: '✅ Pedido entregue', description: 'Seu pedido foi entregue.', duration: 3000 });
-                  break;
-                case 'cancelled':
-                  toast({ title: '❌ Pedido cancelado', description: 'Seu pedido foi cancelado.', duration: 4000 });
-                  break;
-                case 'rejected':
-                  toast({ title: '🚫 Pedido rejeitado', description: 'Seu pedido foi rejeitado.', duration: 4000 });
-                  break;
-                default:
-                  toast({ title: '🔄 Status atualizado', description: 'O status do seu pedido foi atualizado.', duration: 3000 });
-                  break;
+                // Play notification sound
+                try {
+                  const audio = new Audio('/notification.mp3');
+                  audio.play().catch(() => {});
+                } catch (error) {
+                  // Ignore audio errors
+                }
               }
-            }
-          )
-          .subscribe();
+            )
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'orders',
+                filter: `business_id=eq.${business.id}`,
+              },
+              (payload) => {
+                console.log('🔄 Order update for business owner:', payload);
+                const updatedOrder = payload.new as OrderNotification;
+                notificationStore.updateNotification(updatedOrder);
+              }
+            )
+            .subscribe();
 
-        return () => {
-          console.log('🛑 Cleaning up customer notifications');
-          supabase.removeChannel(customerChannel);
-        };
+          return () => {
+            console.log('🛑 Cleaning up business owner notifications');
+            supabase.removeChannel(businessChannel);
+          };
+        } else {
+          // Customer notifications
+          const { data: customerProfile, error: customerError } = await supabase
+            .from('customer_profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+
+          if (customerError || !customerProfile?.id) {
+            console.log('❌ No customer profile found:', customerError);
+            return;
+          }
+
+          console.log('👤 Setting up customer notifications for customer:', customerProfile.id);
+
+          const customerChannel = supabase
+            .channel(`orders-customer-${customerProfile.id}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'orders',
+                filter: `customer_id=eq.${customerProfile.id}`,
+              },
+              (payload) => {
+                console.log('🔄 Order update for customer:', payload);
+                const updatedOrder = payload.new as OrderNotification;
+                
+                notificationStore.updateNotification(updatedOrder);
+
+                // Show status change toasts for customers
+                const statusMessages = {
+                  'preparing': { title: '👨‍🍳 Em preparação', description: 'Seu pedido está sendo preparado.' },
+                  'ready': { title: '📦 Pronto!', description: 'Seu pedido está pronto para retirada/entrega.' },
+                  'out_for_delivery': { title: '🛵 Saiu para entrega', description: 'Seu pedido saiu para entrega.' },
+                  'delivered': { title: '✅ Entregue', description: 'Seu pedido foi entregue com sucesso!' },
+                  'cancelled': { title: '❌ Cancelado', description: 'Seu pedido foi cancelado.' },
+                  'rejected': { title: '🚫 Rejeitado', description: 'Seu pedido foi rejeitado.' }
+                };
+
+                const statusInfo = statusMessages[updatedOrder.status as keyof typeof statusMessages];
+                if (statusInfo) {
+                  toast({
+                    title: statusInfo.title,
+                    description: statusInfo.description,
+                    duration: 4000,
+                  });
+                }
+              }
+            )
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'orders',
+                filter: `customer_id=eq.${customerProfile.id}`,
+              },
+              (payload) => {
+                console.log('🆕 New order for customer:', payload);
+                const newOrder = payload.new as OrderNotification;
+                notificationStore.addNotification(newOrder);
+              }
+            )
+            .subscribe();
+
+          return () => {
+            console.log('🛑 Cleaning up customer notifications');
+            supabase.removeChannel(customerChannel);
+          };
+        }
+      } catch (error) {
+        console.error('❌ Error setting up notifications:', error);
       }
-
-      // Business owner notifications for new orders
-      console.log('🏢 Setting up business owner notifications for business_id:', business.id);
-
-      // Subscribe to new orders
-      const channel = supabase
-        .channel('orders-notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'orders',
-            filter: `business_id=eq.${business.id}`,
-          },
-          (payload) => {
-            console.log('🎉 New order received:', payload);
-            const newOrder = payload.new as OrderNotification;
-            
-            // Add to notifications
-            setNotifications(prev => [newOrder, ...prev.slice(0, 9)]); // Keep last 10
-            
-            // Show toast notification
-            console.log('📱 Showing new order toast for:', newOrder.customer_name);
-            toast({
-              title: "🎉 Novo Pedido!",
-              description: `${newOrder.customer_name} fez um pedido de ${formatCurrency(Number(newOrder.total_amount))}`,
-              duration: 5000,
-            });
-
-            // Play notification sound (optional)
-            try {
-              const audio = new Audio('/notification.mp3');
-              audio.play().catch(() => {
-                // Ignore if audio fails to play
-              });
-            } catch (error) {
-              // Ignore audio errors
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'orders',
-            filter: `business_id=eq.${business.id}`,
-          },
-          (payload) => {
-            console.log('🔄 Business order update received:', payload);
-            const updatedOrder = payload.new as OrderNotification;
-            
-            // Update notifications list
-            setNotifications(prev => 
-              prev.map(notif => 
-                notif.id === updatedOrder.id ? updatedOrder : notif
-              )
-            );
-
-            // For business owners: update the list silently (no status toasts)
-            // We keep only the INSERT toast above for new orders.
-          }
-        )
-        .subscribe();
-
-      return () => {
-        console.log('🛑 Cleaning up business notifications');
-        supabase.removeChannel(channel);
-      };
     };
 
-    setupNotifications();
+    const cleanup = setupNotifications();
+    return () => {
+      if (cleanup instanceof Promise) {
+        cleanup.then(fn => fn && fn());
+      }
+    };
   }, [user?.id, toast]);
 
   const markAsRead = (orderId: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== orderId));
+    notificationStore.removeNotification(orderId);
   };
 
   const clearAll = () => {
-    setNotifications([]);
+    notificationStore.clearAll();
   };
 
   return {
     notifications,
     markAsRead,
     clearAll,
-    hasUnread: notifications.length > 0
+    hasUnread: notificationStore.hasUnread()
   };
 };

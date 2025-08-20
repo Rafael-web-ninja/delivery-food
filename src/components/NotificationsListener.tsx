@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
+
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { useNotifications } from '@/hooks/useNotifications';
 
-// Renders nothing; ensures all authenticated users receive realtime notifications
+// Componente invisível que garante que as notificações sejam inicializadas para usuários autenticados
 const NotificationsListener = () => {
   const { user } = useAuth();
   
-  // Always use notifications hook for any authenticated user
-  // The hook internally handles both business owner and customer notifications
+  // Sempre usa o hook de notificações para qualquer usuário autenticado
+  // O hook internamente gerencia notificações tanto para donos quanto para clientes
   useNotifications();
   
-  console.log('👂 NotificationsListener mounted for user:', user?.id || 'none');
+  console.log('👂 NotificationsListener ativo para usuário:', user?.id || 'nenhum');
   
   return null;
 };

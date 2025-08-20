@@ -1,3 +1,4 @@
+
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +10,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useNotifications } from '@/hooks/useNotifications';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatCurrency } from '@/lib/formatters';
+import { useState, useEffect } from 'react';
+import { notificationStore } from '@/stores/notificationStore';
 
 export const NotificationBell = () => {
-  const { notifications, markAsRead, clearAll, hasUnread } = useNotifications();
+  const [notifications, setNotifications] = useState(notificationStore.getNotifications());
+  const [hasUnread, setHasUnread] = useState(notificationStore.hasUnread());
+
+  // Subscribe to store changes
+  useEffect(() => {
+    const unsubscribe = notificationStore.subscribe(() => {
+      setNotifications(notificationStore.getNotifications());
+      setHasUnread(notificationStore.hasUnread());
+    });
+    return unsubscribe;
+  }, []);
+
+  const markAsRead = (orderId: string) => {
+    notificationStore.removeNotification(orderId);
+  };
+
+  const clearAll = () => {
+    notificationStore.clearAll();
+  };
 
   return (
     <DropdownMenu>
@@ -64,11 +84,12 @@ export const NotificationBell = () => {
                 }}
               >
                 <div className="font-medium text-sm">
-                  Novo pedido - {notification.customer_name}
+                  Pedido - {notification.customer_name}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {formatCurrency(Number(notification.total_amount))} • {' '}
                   {new Date(notification.created_at).toLocaleTimeString('pt-BR')}
+                  {notification.order_code && ` • #${notification.order_code}`}
                 </div>
               </DropdownMenuItem>
             ))
