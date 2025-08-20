@@ -20,27 +20,14 @@ export const useStripePrices = () => {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        console.log("Fetching Stripe prices...");
         const { data, error } = await supabase.functions.invoke('get-stripe-prices');
         
-        console.log("Stripe prices response:", { data, error });
+        if (error) throw error;
         
-        if (error) {
-          console.error('Error response:', error);
-          throw error;
-        }
-        
-        if (data && data.prices) {
-          setPrices(data.prices);
-          console.log("Prices set:", data.prices);
-        } else {
-          console.warn("No prices in response");
-          setPrices([]);
-        }
+        setPrices(data.prices || []);
       } catch (err: any) {
         console.error('Error fetching Stripe prices:', err);
         setError(err.message || 'Erro ao buscar preços');
-        setPrices([]);
       } finally {
         setLoading(false);
       }

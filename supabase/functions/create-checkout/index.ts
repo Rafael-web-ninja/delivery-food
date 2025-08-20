@@ -17,117 +17,85 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Use ANON key for auth verification
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
   try {
     logStep("Function started");
 
-    // Validate environment variables
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    logStep("Stripe key verified");
 
-    if (!stripeKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
-    }
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Supabase environment variables are not set");
-    }
-    logStep("Environment variables validated");
-
-    // Get authorization header
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new Error("No valid authorization header provided");
-    }
-    
+    if (!authHeader) throw new Error("No authorization header provided");
+    logStep("Authorization header found");
+
+    // Get the user from the token first
     const token = authHeader.replace("Bearer ", "");
-    logStep("Token extracted from header");
+    const { data, error } = await supabaseClient.auth.getUser(token);
+    if (error) throw new Error(`Authentication error: ${error.message}`);
+    const user = data.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Verify user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user?.email) {
-      logStep("Authentication failed", { error: authError?.message });
-      throw new Error("User authentication failed");
-    }
-    
-    logStep("User authenticated successfully", { userId: user.id, email: user.email });
-
-    // Get request body
-    const body = await req.json();
-    const { planType } = body;
-    
-    if (!planType) {
-      throw new Error("Plan type is required");
-    }
+    const { planType } = await req.json();
+    if (!planType) throw new Error("Plan type is required");
     logStep("Plan type received", { planType });
 
-    // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-
-    // Find or create customer
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
-    const customers = await stripe.customers.list({ 
-      email: user.email, 
-      limit: 1 
-    });
-    
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Existing customer found", { customerId });
     } else {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          user_id: user.id
-        }
-      });
-      customerId = customer.id;
-      logStep("New customer created", { customerId });
+      logStep("Creating new customer");
     }
 
-    // Get price for the plan
-    let productId;
+    // Define pricing based on plan type - using real Stripe product IDs
+    let priceId;
     switch (planType) {
       case "mensal":
-        productId = "prod_SrUoyAbRcb6Qg8";
+        priceId = "prod_SrUoyAbRcb6Qg8"; // Plano mensal
         break;
       case "anual":
-        productId = "prod_SrUpK1iT4fKXq7";
+        priceId = "prod_SrUpK1iT4fKXq7"; // Plano anual  
         break;
       default:
-        throw new Error(`Invalid plan type: ${planType}`);
+        throw new Error("Invalid plan type");
     }
 
-    // Get the price for this product
+    // Get the actual price from Stripe
     const prices = await stripe.prices.list({
-      product: productId,
+      product: priceId,
       active: true,
       limit: 1,
     });
 
     if (prices.data.length === 0) {
-      throw new Error(`No active price found for product ${productId}`);
+      throw new Error(`No active price found for product ${priceId}`);
     }
 
-    const price = prices.data[0];
-    logStep("Price found", { priceId: price.id, amount: price.unit_amount });
+    const priceObject = prices.data[0];
 
-    // Create checkout session
-    const origin = req.headers.get("origin") || "http://localhost:3000";
-    
+    logStep("Creating checkout session", { priceId: priceObject.id, planType });
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: price.id,
+          price: priceObject.id,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/subscription-cancel`,
+      success_url: `${req.headers.get("origin")}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get("origin")}/subscription-cancel`,
       allow_promotion_codes: true,
       billing_address_collection: "required",
       metadata: {
@@ -138,26 +106,24 @@ serve(async (req) => {
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
-    return new Response(JSON.stringify({ 
-      url: session.url,
-      sessionId: session.id 
-    }), {
+    return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { 
-      message: errorMessage, 
-      stack: error instanceof Error ? error.stack : undefined 
+    logStep("ERROR in create-checkout", { 
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      requestHeaders: {
+        authorization: req.headers.get("Authorization") ? "Bearer [REDACTED]" : "missing",
+        origin: req.headers.get("origin"),
+        userAgent: req.headers.get("user-agent")
+      }
     });
-    
-    return new Response(JSON.stringify({ 
-      error: errorMessage 
-    }), {
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: 500,
     });
   }
 });

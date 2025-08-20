@@ -28,33 +28,18 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
     logStep("Authorization header found");
 
-    // Prepare clients for auth attempts
-    const supabaseAnon = createClient(
+    // Use ANON key for auth verification ONLY
+    const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    const supabaseService = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
     const token = authHeader.replace("Bearer ", "");
-    let user: any;
-    const anonAuth = await supabaseAnon.auth.getUser(token);
-    if (anonAuth.error || !anonAuth.data.user?.email) {
-      logStep("ANON auth failed, trying SERVICE_ROLE", { error: anonAuth.error?.message });
-      const serviceAuth = await supabaseService.auth.getUser(token);
-      if (serviceAuth.error || !serviceAuth.data.user?.email) {
-        throw new Error(`Authentication failed: ${serviceAuth.error?.message || anonAuth.error?.message || 'Unable to authenticate user'}`);
-      }
-      user = serviceAuth.data.user;
-      logStep("User authenticated with SERVICE_ROLE", { userId: user.id, email: user.email });
-    } else {
-      user = anonAuth.data.user;
-      logStep("User authenticated with ANON", { userId: user.id, email: user.email });
-    }
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    const user = userData.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });

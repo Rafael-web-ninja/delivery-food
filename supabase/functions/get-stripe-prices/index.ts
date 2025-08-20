@@ -20,81 +20,59 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
-    }
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Product IDs for our plans
+    // Get prices for both products
     const productIds = ["prod_SrUoyAbRcb6Qg8", "prod_SrUpK1iT4fKXq7"];
     const pricesData = [];
 
     for (const productId of productIds) {
-      try {
-        logStep("Fetching prices for product", { productId });
-        
-        // Get product details
+      logStep("Fetching prices for product", { productId });
+      
+      const prices = await stripe.prices.list({
+        product: productId,
+        active: true,
+        limit: 10,
+      });
+
+      if (prices.data.length > 0) {
+        const price = prices.data[0]; // Get the first active price
         const product = await stripe.products.retrieve(productId);
         
-        // Get prices for this product
-        const prices = await stripe.prices.list({
-          product: productId,
-          active: true,
-          limit: 10,
+        pricesData.push({
+          productId,
+          productName: product.name,
+          priceId: price.id,
+          amount: price.unit_amount,
+          currency: price.currency,
+          interval: price.recurring?.interval || 'one_time',
+          intervalCount: price.recurring?.interval_count || 1,
+          formattedPrice: `${price.currency.toUpperCase()} ${(price.unit_amount! / 100).toFixed(2)}`
         });
-
-        if (prices.data.length > 0) {
-          const price = prices.data[0]; // Get the first active price
-          
-          pricesData.push({
-            productId,
-            productName: product.name,
-            priceId: price.id,
-            amount: price.unit_amount,
-            currency: price.currency,
-            interval: price.recurring?.interval || 'one_time',
-            intervalCount: price.recurring?.interval_count || 1,
-            formattedPrice: `${price.currency.toUpperCase()} ${(price.unit_amount! / 100).toFixed(2)}`
-          });
-          
-          logStep("Price found", { 
-            productId, 
-            priceId: price.id,
-            amount: price.unit_amount, 
-            currency: price.currency 
-          });
-        } else {
-          logStep("No active prices found for product", { productId });
-        }
-      } catch (error) {
-        logStep("Error fetching product", { productId, error: error.message });
-        // Continue with other products even if one fails
+        
+        logStep("Price found", { 
+          productId, 
+          amount: price.unit_amount, 
+          currency: price.currency 
+        });
+      } else {
+        logStep("No active prices found for product", { productId });
       }
     }
 
-    logStep("All prices fetched", { count: pricesData.length });
-
-    return new Response(JSON.stringify({ 
-      prices: pricesData,
-      success: true 
-    }), {
+    return new Response(JSON.stringify({ prices: pricesData }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
-    
-    return new Response(JSON.stringify({ 
-      error: errorMessage,
-      prices: [],
-      success: false
-    }), {
+    logStep("ERROR in get-stripe-prices", { message: errorMessage });
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200, // Return 200 to avoid breaking the frontend
+      status: 500,
     });
   }
 });

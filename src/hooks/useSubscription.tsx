@@ -27,71 +27,45 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const [isBusinessOwner, setIsBusinessOwner] = useState<boolean | null>(null);
 
   const checkSubscription = useCallback(async () => {
-    if (!user) {
-      console.log("No user, skipping subscription check");
-      return;
-    }
+    if (!user) return;
     
     setLoading(true);
     try {
-      // Get fresh session
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session.session?.access_token) {
-        console.warn("Session error:", sessionError?.message || "No session");
-        setSubscribed(false);
-        setPlanType('free');
-        setSubscriptionStatus('inactive');
-        setSubscriptionEnd(null);
-        return;
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) {
+        throw new Error("Usuário não autenticado");
       }
 
-      console.log("Calling check-subscription function...");
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
-          Authorization: `Bearer ${session.session.access_token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.data.session.access_token}`,
         },
       });
-
-      console.log("Function response:", { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
         throw new Error(error.message || "Erro na função de verificação");
       }
 
-      // Always use the response data, even if there's an error field
-      const responseData = data || {};
-      
-      setSubscribed(responseData.subscribed || false);
-      setPlanType(responseData.subscription_tier || responseData.plan_type || 'free');
-      setSubscriptionStatus(responseData.subscription_status || 'inactive');
-      setSubscriptionEnd(responseData.subscription_end || null);
-      
-      console.log("Subscription data set:", {
-        subscribed: responseData.subscribed || false,
-        planType: responseData.subscription_tier || responseData.plan_type || 'free',
-        subscriptionStatus: responseData.subscription_status || 'inactive',
-        subscriptionEnd: responseData.subscription_end || null
-      });
-      
+      setSubscribed(data.subscribed || false);
+      setPlanType(data.subscription_tier || data.plan_type || 'free');
+      setSubscriptionStatus(data.subscription_status || 'inactive');
+      setSubscriptionEnd(data.subscription_end || null);
     } catch (error: any) {
       console.error('Error checking subscription:', error);
-      
-      // Set default values on error
-      setSubscribed(false);
-      setPlanType('free');
-      setSubscriptionStatus('inactive');
-      setSubscriptionEnd(null);
-      
-      // Only show toast for unexpected errors
-      if (!error.message?.includes('Session') && !error.message?.includes('authentication')) {
+      // Falhar silenciosamente se for erro de auth, mostrar toast apenas para outros erros
+      if (!error.message?.includes('autenticado') && !error.message?.includes('Session')) {
         toast({
           title: "Erro ao verificar assinatura",
           description: error.message || "Tente novamente em alguns instantes",
           variant: "destructive"
         });
       }
+      // Set default values on error
+      setSubscribed(false);
+      setPlanType('free');
+      setSubscriptionStatus('inactive');
+      setSubscriptionEnd(null);
     } finally {
       setLoading(false);
     }
@@ -111,7 +85,6 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         body: { planType: selectedPlanType },
         headers: {
           Authorization: `Bearer ${session.data.session.access_token}`,
-          'Content-Type': 'application/json',
         },
       });
 
@@ -142,7 +115,6 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       const { data, error } = await supabase.functions.invoke('customer-portal', {
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
         },
       });
 
