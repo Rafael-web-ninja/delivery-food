@@ -122,10 +122,16 @@ serve(async (req) => {
       });
 
       if (createUserError) {
-        // Check if user already exists
-        if (createUserError.message?.includes('email_address_not_unique') || 
-            createUserError.message?.includes('email_exists') ||
-            createUserError.message?.includes('User already registered')) {
+        // Check if user already exists - be more comprehensive in error detection
+        const errorMessage = createUserError.message?.toLowerCase() || '';
+        const isUserExistsError = errorMessage.includes('email_address_not_unique') || 
+            errorMessage.includes('email_exists') ||
+            errorMessage.includes('user already registered') ||
+            errorMessage.includes('already been registered') ||
+            errorMessage.includes('email address has already been registered') ||
+            createUserError.status === 422;
+        
+        if (isUserExistsError) {
           logStep("User already exists", { email: customerEmail });
           isNewUser = false;
           
