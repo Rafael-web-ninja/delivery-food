@@ -105,108 +105,110 @@ serve(async (req) => {
 
     logStep("Customer email found", { email: customerEmail });
 
-    // Check if user already exists
-    let userId: string;
+    // Try to create user directly (handles existing users via error handling)
+    let userId: string = '';
     let isNewUser = false;
     let emailSent = false;
-
+    
     try {
-      const { data: existingUser, error: userCheckError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
+      const randomPassword = generateRandomPassword();
+      logStep("Attempting to create user", { email: customerEmail });
       
-      if (existingUser?.user) {
-        // User already exists
-        userId = existingUser.user.id;
-        logStep("User already exists", { userId, email: customerEmail });
-      } else {
-        // Create new user
-        isNewUser = true;
-        const randomPassword = generateRandomPassword();
-        logStep("Creating new user", { email: customerEmail });
-        
-        const { data: newUserData, error: createUserError } = await supabaseClient.auth.admin.createUser({
-          email: customerEmail,
-          password: randomPassword,
-          email_confirm: true,
-          user_metadata: { subscription_created: true }
-        });
+      const { data: newUserData, error: createUserError } = await supabaseClient.auth.admin.createUser({
+        email: customerEmail,
+        password: randomPassword,
+        email_confirm: true,
+        user_metadata: { subscription_created: true }
+      });
 
-        if (createUserError) {
-          if (createUserError.code === 'email_exists') {
-            // Handle race condition - user was created between check and create
-            logStep("User exists (race condition detected)", { email: customerEmail });
-            const { data: raceUser } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
-            userId = raceUser?.user?.id || '';
-            isNewUser = false;
-          } else {
-            logStep("Failed to create user", { error: createUserError });
-            throw new Error(`Failed to create user: ${createUserError.message}`);
-          }
-        } else if (!newUserData?.user?.id) {
-          logStep("User creation returned no ID");
-          throw new Error("User creation returned no user ID");
-        } else {
-          userId = newUserData.user.id;
-          logStep("New user created successfully", { userId, email: customerEmail });
-
-          // Send welcome email with password (non-blocking)
+      if (createUserError) {
+        // Check if user already exists
+        if (createUserError.message?.includes('email_address_not_unique') || 
+            createUserError.message?.includes('email_exists') ||
+            createUserError.message?.includes('User already registered')) {
+          logStep("User already exists", { email: customerEmail });
+          isNewUser = false;
+          
+          // Try to get existing user ID via listUsers
           try {
-            const resendKey = Deno.env.get("RESEND_API_KEY");
-            if (!resendKey) {
-              logStep("RESEND_API_KEY missing - email not sent");
-            } else {
-              const resend = new Resend(resendKey);
-              logStep("Sending welcome email", { email: customerEmail });
-              
-              const emailResponse = await resend.emails.send({
-                from: "Gera Cardápio <onboarding@resend.dev>",
-                to: [customerEmail],
-                subject: "Bem-vindo! Sua assinatura foi ativada",
-                html: `
-                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
-                    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
-                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                      <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
-                      <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
-                      <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
-                    </div>
-                    <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
-                      <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
-                    </div>
-                    <div style="margin: 30px 0;">
-                      <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
-                         style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-                         Fazer Login Agora
-                      </a>
-                    </div>
-                    <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
-                  </div>
-                `,
-              });
-              
-              if (emailResponse.data?.id) {
-                emailSent = true;
-                logStep("Welcome email sent successfully", { emailId: emailResponse.data.id });
-              } else {
-                logStep("Email send failed - no response ID");
-              }
+            const { data: usersData } = await supabaseClient.auth.admin.listUsers();
+            const existingUser = usersData.users.find(u => u.email === customerEmail);
+            userId = existingUser?.id || '';
+            if (userId) {
+              logStep("Found existing user ID", { userId });
             }
-          } catch (emailError) {
-            logStep("Email sending error (non-critical)", { 
-              error: emailError instanceof Error ? emailError.message : String(emailError) 
-            });
+          } catch (listError) {
+            logStep("Could not retrieve existing user ID (non-critical)", { error: listError });
           }
-
-          // Brief verification wait
-          await sleep(500);
-          logStep("User creation process completed", { userId, emailSent });
+        } else {
+          logStep("Failed to create user", { error: createUserError.message });
+          throw new Error(`Failed to create user: ${createUserError.message}`);
         }
+      } else if (!newUserData?.user?.id) {
+        logStep("User creation returned no ID");
+        throw new Error("User creation returned no user ID");
+      } else {
+        userId = newUserData.user.id;
+        isNewUser = true;
+        logStep("New user created successfully", { userId, email: customerEmail });
+
+        // Send welcome email with password (non-blocking)
+        try {
+          const resendKey = Deno.env.get("RESEND_API_KEY");
+          if (!resendKey) {
+            logStep("RESEND_API_KEY missing - email not sent");
+          } else {
+            const resend = new Resend(resendKey);
+            logStep("Sending welcome email", { email: customerEmail });
+            
+            const emailResponse = await resend.emails.send({
+              from: "Gera Cardápio <onboarding@resend.dev>",
+              to: [customerEmail],
+              subject: "Bem-vindo! Sua assinatura foi ativada",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
+                  <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
+                    <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
+                    <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
+                  </div>
+                  <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
+                  </div>
+                  <div style="margin: 30px 0;">
+                    <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+                       style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                       Fazer Login Agora
+                    </a>
+                  </div>
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
+                </div>
+              `,
+            });
+            
+            if (emailResponse.data?.id) {
+              emailSent = true;
+              logStep("Welcome email sent successfully", { emailId: emailResponse.data.id });
+            } else {
+              logStep("Email send failed - no response ID");
+            }
+          }
+        } catch (emailError) {
+          logStep("Email sending error (non-critical)", { 
+            error: emailError instanceof Error ? emailError.message : String(emailError) 
+          });
+        }
+
+        await sleep(500);
+        logStep("User creation process completed", { userId, emailSent });
       }
     } catch (error) {
-      logStep("Critical error in user management", { 
+      logStep("Error in user management (continuing with subscription update)", { 
         error: error instanceof Error ? error.message : String(error) 
       });
-      throw error;
+      // Don't throw - continue with subscription update even if user creation fails
     }
 
     // Update subscription in Supabase (if session has subscription)
@@ -227,7 +229,7 @@ serve(async (req) => {
           const { error: upsertError } = await supabaseClient
             .from('subscriber_plans')
             .upsert({
-              user_id: userId,
+              user_id: userId || null,
               email: customerEmail,
               stripe_customer_id: session.customer as string,
               stripe_subscription_id: subscription.id,
@@ -237,7 +239,7 @@ serve(async (req) => {
               subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
               updated_at: new Date().toISOString(),
             }, {
-              onConflict: 'user_id'
+              onConflict: 'email'
             });
 
           if (upsertError) {

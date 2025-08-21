@@ -39,27 +39,29 @@ export default function SubscriptionSuccess() {
 
         if (error) throw error;
 
-        if (data?.isNewUser && data?.emailSent) {
+        if (data?.isNewUser) {
           setEmailSent(true);
           setUserEmail(data.email);
-          toast({
-            title: "Conta criada!",
-            description: "Credenciais enviadas por email. Verifique sua caixa de entrada.",
-          });
-        } else if (data?.isNewUser) {
-          setEmailSent(true);
-          setUserEmail(data.email);
-          toast({
-            title: "Conta criada!",
-            description: "Sua conta foi criada. Entre em contato para receber suas credenciais.",
-          });
+          if (data?.emailSent) {
+            toast({
+              title: "Conta criada!",
+              description: "Credenciais enviadas por email. Verifique sua caixa de entrada.",
+            });
+          } else {
+            toast({
+              title: "Conta criada!",
+              description: "Sua conta foi criada. Faça login para acessar.",
+              variant: "default",
+            });
+          }
         } else {
           toast({
             title: "Assinatura ativada!",
-            description: "Seu pagamento foi processado com sucesso.",
+            description: "Seu pagamento foi processado com sucesso. Faça login para acessar.",
           });
           await checkSubscription();
-          navigate('/');
+          setProcessing(false);
+          // Don't auto-navigate, let user click login button
         }
       } catch (error: any) {
         console.error('Erro ao processar checkout:', error);
@@ -68,7 +70,8 @@ export default function SubscriptionSuccess() {
           description: "Houve um problema. Tente novamente em alguns minutos.",
           variant: "destructive",
         });
-        // Don't navigate away on error - let user retry
+        // Don't navigate away on error - show login button
+        setProcessing(false);
       } finally {
         setProcessing(false);
       }
@@ -77,16 +80,20 @@ export default function SubscriptionSuccess() {
     processCheckout();
   }, [searchParams, checkSubscription, navigate, toast]);
 
-  if (emailSent) {
+  // Show success page for all cases (new user or existing user)
+  if (!processing && !loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-6">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <CardTitle className="text-green-600 text-2xl">
-              ✅ Conta Criada com Sucesso!
+              ✅ Pagamento Confirmado!
             </CardTitle>
             <CardDescription className="text-lg">
-              Sua assinatura foi ativada e suas credenciais foram enviadas por email.
+              {emailSent && userEmail ? 
+                "Sua assinatura foi ativada e suas credenciais foram enviadas por email." :
+                "Sua assinatura foi ativada com sucesso!"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-6">
@@ -94,20 +101,22 @@ export default function SubscriptionSuccess() {
               ✅
             </div>
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-              <div className="flex items-center justify-center text-blue-600 mb-2">
-                ✉️
+            {emailSent && userEmail && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-center text-blue-600 mb-2">
+                  ✉️
+                </div>
+                <p className="text-blue-800 font-medium">
+                  Enviamos sua senha temporária para:
+                </p>
+                <p className="text-blue-600 text-sm">
+                  <strong>{userEmail}</strong>
+                </p>
+                <p className="text-blue-600 text-sm">
+                  Verifique sua caixa de entrada e pasta de spam!
+                </p>
               </div>
-              <p className="text-blue-800 font-medium">
-                Verifique sua caixa de entrada
-              </p>
-              <p className="text-blue-600 text-sm">
-                <strong>{userEmail}</strong>
-              </p>
-              <p className="text-blue-600 text-sm">
-                Enviamos seu email e senha temporária. Não esqueça de verificar a pasta de spam!
-              </p>
-            </div>
+            )}
 
             <div className="space-y-3 pt-2">
               <Button 
@@ -115,11 +124,13 @@ export default function SubscriptionSuccess() {
                 className="w-full"
                 size="lg"
               >
-                Fazer Login Agora
+                Fazer Login
               </Button>
-              <p className="text-xs text-muted-foreground">
-                Lembre-se de alterar sua senha após o primeiro login por segurança
-              </p>
+              {emailSent && (
+                <p className="text-xs text-muted-foreground">
+                  Lembre-se de alterar sua senha após o primeiro login por segurança
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -147,8 +158,8 @@ export default function SubscriptionSuccess() {
               <LoadingSpinner size="lg" />
             </div>
           ) : (
-            <Button onClick={() => navigate('/')}>
-              Ir para o Dashboard
+            <Button onClick={() => navigate('/auth')}>
+              Fazer Login
             </Button>
           )}
         </CardContent>
