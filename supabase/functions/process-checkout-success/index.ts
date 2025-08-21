@@ -106,142 +106,171 @@ serve(async (req) => {
     logStep("Customer email found", { email: customerEmail });
 
     // Check if user already exists
-    let userId;
-    let userExists = false;
-    
+    let userId: string;
+    let isNewUser = false;
+    let emailSent = false;
+
     try {
-      const { data: existingUserData, error: userError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
+      const { data: existingUser, error: userCheckError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
       
-      if (existingUserData?.user && !userError) {
-        userId = existingUserData.user.id;
-        userExists = true;
-        logStep("Existing user found", { userId });
-      }
-    } catch (checkError) {
-      logStep("Error checking existing user", { error: checkError });
-    }
+      if (existingUser?.user) {
+        // User already exists
+        userId = existingUser.user.id;
+        logStep("User already exists", { userId, email: customerEmail });
+      } else {
+        // Create new user
+        isNewUser = true;
+        const randomPassword = generateRandomPassword();
+        logStep("Creating new user", { email: customerEmail });
+        
+        const { data: newUserData, error: createUserError } = await supabaseClient.auth.admin.createUser({
+          email: customerEmail,
+          password: randomPassword,
+          email_confirm: true,
+          user_metadata: { subscription_created: true }
+        });
 
-    if (!userExists) {
-      // Create new user for guest checkout
-      logStep("Creating new user for guest checkout", { email: customerEmail });
-      
-      // Generate random password for the user
-      const randomPassword = generateRandomPassword();
-      logStep("Generated random password", { email: customerEmail });
-      
-      const { data: newUserData, error: createError } = await supabaseClient.auth.admin.createUser({
-        email: customerEmail,
-        password: randomPassword,
-        email_confirm: true, // Auto-confirm email since they completed payment
-        user_metadata: {
-          subscription_created: true,
-          created_via_checkout: true
-        }
-      });
-
-      if (createError || !newUserData?.user) {
-        logStep("Failed to create user", { error: createError });
-        throw new Error(`Failed to create user: ${createError?.message}`);
-      }
-
-      userId = newUserData.user.id;
-      logStep("New user created successfully", { userId, email: customerEmail });
-
-      // Send welcome email with password (non-blocking if fails)
-      try {
-        const resendKey = Deno.env.get("RESEND_API_KEY");
-        if (!resendKey) {
-          logStep("RESEND_API_KEY missing - skipping email send");
-        } else {
-          const resend = new Resend(resendKey);
-          logStep("Sending welcome email with password", { email: customerEmail });
-          const emailResponse = await resend.emails.send({
-            from: "Gera Cardápio <onboarding@resend.dev>",
-            to: [customerEmail],
-            subject: "Bem-vindo! Sua assinatura foi ativada",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
-                <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso! Agora você pode acessar sua conta.</p>
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
-                  <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
-                  <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
-                </div>
-                <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
-                  <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login.</p>
-                </div>
-                <div style="margin: 30px 0;">
-                  <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Fazer Login</a>
-                </div>
-              </div>
-            `,
-          });
-          logStep("Welcome email sent", { id: emailResponse.data?.id });
-        }
-      } catch (emailError) {
-        logStep("Error sending welcome email", { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      }
-
-      // Verify the user is available via getUserByEmail (retry to avoid eventual consistency issues)
-      for (let attempt = 1; attempt <= 5; attempt++) {
-        await sleep(300);
-        try {
-          const { data: verifyData, error: verifyError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
-          if (verifyData?.user && !verifyError) {
-            logStep("Verified user exists after creation", { attempt });
-            break;
+        if (createUserError) {
+          if (createUserError.code === 'email_exists') {
+            // Handle race condition - user was created between check and create
+            logStep("User exists (race condition detected)", { email: customerEmail });
+            const { data: raceUser } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
+            userId = raceUser?.user?.id || '';
+            isNewUser = false;
+          } else {
+            logStep("Failed to create user", { error: createUserError });
+            throw new Error(`Failed to create user: ${createUserError.message}`);
           }
-          logStep("Retrying user verification", { attempt });
-        } catch (verifyError) {
-          logStep("User verification attempt failed", { attempt, error: verifyError });
+        } else if (!newUserData?.user?.id) {
+          logStep("User creation returned no ID");
+          throw new Error("User creation returned no user ID");
+        } else {
+          userId = newUserData.user.id;
+          logStep("New user created successfully", { userId, email: customerEmail });
+
+          // Send welcome email with password (non-blocking)
+          try {
+            const resendKey = Deno.env.get("RESEND_API_KEY");
+            if (!resendKey) {
+              logStep("RESEND_API_KEY missing - email not sent");
+            } else {
+              const resend = new Resend(resendKey);
+              logStep("Sending welcome email", { email: customerEmail });
+              
+              const emailResponse = await resend.emails.send({
+                from: "Gera Cardápio <onboarding@resend.dev>",
+                to: [customerEmail],
+                subject: "Bem-vindo! Sua assinatura foi ativada",
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
+                    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
+                      <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
+                      <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
+                    </div>
+                    <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+                      <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
+                    </div>
+                    <div style="margin: 30px 0;">
+                      <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+                         style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                         Fazer Login Agora
+                      </a>
+                    </div>
+                    <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
+                  </div>
+                `,
+              });
+              
+              if (emailResponse.data?.id) {
+                emailSent = true;
+                logStep("Welcome email sent successfully", { emailId: emailResponse.data.id });
+              } else {
+                logStep("Email send failed - no response ID");
+              }
+            }
+          } catch (emailError) {
+            logStep("Email sending error (non-critical)", { 
+              error: emailError instanceof Error ? emailError.message : String(emailError) 
+            });
+          }
+
+          // Brief verification wait
+          await sleep(500);
+          logStep("User creation process completed", { userId, emailSent });
         }
       }
+    } catch (error) {
+      logStep("Critical error in user management", { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      throw error;
     }
 
-    // Update subscription data in database
+    // Update subscription in Supabase (if session has subscription)
+    let subscriptionUpdated = false;
+    
     if (session.subscription) {
-      const subscription = typeof session.subscription === 'object' ? session.subscription : null;
-      if (subscription) {
-        const planType = session.metadata?.plan_type || 'mensal';
-        
-        logStep("Updating subscriber_plans", { userId, planType });
-        
-        // Upsert subscriber_plans record
-        const { error: upsertError } = await supabaseClient
-          .from('subscriber_plans')
-          .upsert({
-            user_id: userId,
-            email: customerEmail,
-            stripe_customer_id: session.customer as string,
-            stripe_subscription_id: subscription.id,
-            plan_type: planType,
-            subscription_status: subscription.status,
-            subscription_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'user_id'
+      try {
+        const subscription = typeof session.subscription === 'object' ? session.subscription : null;
+        if (subscription) {
+          const planType = session.metadata?.plan_type || 'mensal';
+          
+          logStep("Updating subscription in database", { 
+            userId, 
+            stripeSubscriptionId: subscription.id,
+            subscriptionStatus: subscription.status 
           });
 
-        if (upsertError) {
-          logStep("Failed to update subscription data", { error: upsertError });
-          throw new Error(`Failed to update subscription: ${upsertError.message}`);
-        }
+          const { error: upsertError } = await supabaseClient
+            .from('subscriber_plans')
+            .upsert({
+              user_id: userId,
+              email: customerEmail,
+              stripe_customer_id: session.customer as string,
+              stripe_subscription_id: subscription.id,
+              plan_type: planType,
+              subscription_status: subscription.status,
+              subscription_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id'
+            });
 
-        logStep("Subscription data updated successfully", { userId, planType, status: subscription.status });
+          if (upsertError) {
+            logStep("Subscription update failed (non-critical)", { error: upsertError });
+          } else {
+            subscriptionUpdated = true;
+            logStep("Subscription updated successfully in database");
+          }
+        }
+      } catch (subscriptionError) {
+        logStep("Subscription update error (non-critical)", { 
+          error: subscriptionError instanceof Error ? subscriptionError.message : String(subscriptionError)
+        });
       }
     }
+
+    logStep("Process completed", { 
+      userId, 
+      email: customerEmail, 
+      isNewUser,
+      emailSent,
+      subscriptionUpdated,
+      hasSubscription: !!session.subscription 
+    });
 
     const response = { 
-      success: true, 
+      success: true,
       userId,
       email: customerEmail,
-      isNewUser: !userExists,
-      subscription: session.subscription ? {
-        id: typeof session.subscription === 'string' ? session.subscription : session.subscription.id,
-        status: typeof session.subscription === 'object' ? session.subscription.status : 'active'
-      } : null
+      isNewUser,
+      emailSent,
+      subscriptionUpdated,
+      hasSubscription: !!session.subscription
     };
 
     logStep("Function completed successfully", response);
