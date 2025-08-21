@@ -1,15 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "npm:resend@4.0.0";
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 interface PasswordResetRequest {
@@ -23,7 +22,34 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Check if RESEND_API_KEY exists
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY não configurado');
+      return new Response(
+        JSON.stringify({ error: "Serviço de email não configurado. Entre em contato com o suporte." }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Initialize Resend inside handler to avoid preflight issues
+    const resend = new Resend(resendApiKey);
+
     const { email }: PasswordResetRequest = await req.json();
+
+    if (!email) {
+      console.error('Email não fornecido');
+      return new Response(
+        JSON.stringify({ error: "Email é obrigatório" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
 
     // Cria cliente Supabase com service role para gerar o token
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {

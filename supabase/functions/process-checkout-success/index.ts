@@ -5,6 +5,7 @@ import { Resend } from "npm:resend@4.0.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -225,7 +226,7 @@ serve(async (req) => {
               type: 'recovery',
               email: customerEmail,
               options: {
-                redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth`
+                redirectTo: `${req.headers.get("origin") || "https://app.geracardapio.com"}/reset-password`
               }
             });
 
@@ -298,9 +299,9 @@ serve(async (req) => {
                     <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
                   </div>
                   <div style="margin: 30px 0;">
-                    <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+                    <a href="${req.headers.get("origin") || "https://app.geracardapio.com"}/auth" 
                        style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-                       Fazer Login Agora
+                      Fazer Login Agora
                     </a>
                   </div>
                   <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
@@ -326,7 +327,7 @@ serve(async (req) => {
                 type: 'recovery',
                 email: customerEmail,
                 options: {
-                  redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth`
+                  redirectTo: `${req.headers.get("origin") || "https://app.geracardapio.com"}/reset-password`
                 }
               });
 
