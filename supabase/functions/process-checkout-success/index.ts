@@ -15,6 +15,16 @@ const logStep = (step: string, details?: any) => {
 // Small helper for retries (helps with eventual consistency on Auth APIs)
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Generate random password
+const generateRandomPassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -115,8 +125,13 @@ serve(async (req) => {
       // Create new user for guest checkout
       logStep("Creating new user for guest checkout", { email: customerEmail });
       
+      // Generate random password for the user
+      const randomPassword = generateRandomPassword();
+      logStep("Generated random password", { email: customerEmail });
+      
       const { data: newUserData, error: createError } = await supabaseClient.auth.admin.createUser({
         email: customerEmail,
+        password: randomPassword,
         email_confirm: true, // Auto-confirm email since they completed payment
         user_metadata: {
           subscription_created: true,
@@ -131,6 +146,26 @@ serve(async (req) => {
 
       userId = newUserData.user.id;
       logStep("New user created successfully", { userId, email: customerEmail });
+
+      // Send welcome email with password
+      try {
+        logStep("Sending welcome email with password", { email: customerEmail });
+        const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
+          body: { 
+            email: customerEmail, 
+            password: randomPassword,
+            userId: userId 
+          }
+        });
+
+        if (emailError) {
+          logStep("Failed to send welcome email", { error: emailError });
+        } else {
+          logStep("Welcome email sent successfully", { email: customerEmail });
+        }
+      } catch (emailError) {
+        logStep("Error sending welcome email", { error: emailError });
+      }
 
       // Verify the user is available via getUserByEmail (retry to avoid eventual consistency issues)
       for (let attempt = 1; attempt <= 5; attempt++) {

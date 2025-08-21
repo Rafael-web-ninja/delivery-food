@@ -47,19 +47,20 @@ export default function SubscriptionSuccess() {
           throw new Error(error.message);
         }
 
-        // If password reset link was provided (guest checkout), redirect to set password
+        // If new user was created (guest checkout), show email sent message
         if (data.auth?.redirectTo && data.email) {
-          console.log('Redirecting new user to set password:', data.email);
+          console.log('New user created, password sent to email:', data.email);
           
           toast({
-            title: "Conta criada!",
-            description: `Sua assinatura foi ativada para ${data.email}. Defina sua senha para continuar.`,
+            title: "Conta criada com sucesso!",
+            description: `Sua senha de acesso foi enviada para ${data.email}. Verifique sua caixa de entrada.`,
+            duration: 6000,
           });
           
-          // Redirect to password setup after a brief delay
+          // Redirect to login after showing the message
           setTimeout(() => {
-            window.location.href = data.auth.redirectTo;
-          }, 2000);
+            navigate('/auth', { replace: true });
+          }, 3000);
           
           return;
         }
@@ -101,8 +102,8 @@ export default function SubscriptionSuccess() {
           </CardTitle>
           <CardDescription>
             {processing 
-              ? "Estamos processando seu pagamento e ativando sua assinatura."
-              : "Sua assinatura foi ativada com sucesso. Redirecionando..."
+              ? "Estamos processando seu pagamento e ativando sua assinatura. Suas credenciais de acesso serão enviadas por email."
+              : "Sua assinatura foi ativada com sucesso. Verifique seu email para as credenciais de acesso."
             }
           </CardDescription>
         </CardHeader>
