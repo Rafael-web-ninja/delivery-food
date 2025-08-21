@@ -90,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
       : resetLink;
 
     console.log('Token gerado com sucesso:', { originalLink: resetLink, correctedLink });
-    console.log('Enviando email...');
+    console.log('📤 Enviando email de recuperação via Resend', { email, resetLink: correctedLink });
 
     const emailResponse = await resend.emails.send({
       from: "Gera Cardápio <onboarding@resend.dev>",
@@ -153,7 +153,11 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email de redefinição enviado:", emailResponse);
+    console.log("✅ Email de redefinição enviado com sucesso!", {
+      emailId: emailResponse.data?.id,
+      email,
+      timestamp: new Date().toISOString()
+    });
 
     return new Response(JSON.stringify({ success: true, emailId: emailResponse.data?.id }), {
       status: 200,
