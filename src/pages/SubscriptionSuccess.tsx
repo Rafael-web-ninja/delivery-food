@@ -90,9 +90,10 @@ export default function SubscriptionSuccess() {
               ✅ Pagamento Confirmado!
             </CardTitle>
             <CardDescription className="text-lg">
-              Sua assinatura foi ativada com sucesso!
-              <br />
-              Enviamos o acesso em seu email.
+              {emailSent && userEmail ? 
+                "Sua assinatura foi ativada e suas credenciais foram enviadas por email." :
+                "Sua assinatura foi ativada com sucesso!"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-6">

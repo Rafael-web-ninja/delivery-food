@@ -174,43 +174,32 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      console.log('Enviando reset via edge function...');
-      
-      // SEMPRE usar nosso edge function primeiro
-      const { data, error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email: forgotPasswordEmail }
+      // Envia apenas o email personalizado via edge function
+      // que irá gerar o token internamente e enviar o email
+      const { data, error: emailError } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: forgotPasswordEmail
+        }
       });
 
-      console.log('Resposta do edge function:', { data, error });
-
-      if (error) {
-        console.error('Erro do edge function:', error);
-        // Se for erro de configuração ou chave API, mostrar erro específico
-        if (error.message?.includes('RESEND_API_KEY')) {
-          throw new Error('Serviço de email não configurado. Entre em contato com o suporte.');
-        }
-        throw error;
+      if (emailError) {
+        throw emailError;
       }
 
-      if (data?.success) {
-        setResetEmailSent(true);
-        toast({
-          title: "Email enviado!",
-          description: "Verifique sua caixa de entrada para redefinir sua senha. O email pode demorar alguns minutos para chegar.",
-        });
-      } else {
-        throw new Error('Falha ao enviar email via edge function');
-      }
+      setResetEmailSent(true);
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para redefinir sua senha",
+      });
     } catch (error: any) {
-      console.error('Erro completo ao enviar reset:', error);
       toast({
         title: "Erro na recuperação",
-        description: error?.message || 'Não foi possível enviar o email de recuperação. Tente novamente.',
+        description: error.message,
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   // Mostrar loading enquanto a auth não estiver inicializada

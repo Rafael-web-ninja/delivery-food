@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [isValidSession, setIsValidSession] = useState(false);
   const [searchParams] = useSearchParams();
@@ -28,23 +27,18 @@ const ResetPassword = () => {
       
       const token = searchParams.get('token') || hashParams.get('access_token');
       const refresh_token = searchParams.get('refresh_token') || hashParams.get('refresh_token');
-      const emailParam = searchParams.get('email');
+      const email = searchParams.get('email');
       const type = searchParams.get('type') || hashParams.get('type');
       const error = searchParams.get('error') || hashParams.get('error');
       
       console.log('Reset password params:', { 
         hasToken: !!token, 
         hasRefreshToken: !!refresh_token, 
-        email: emailParam || email, 
+        email, 
         type, 
         error,
         pathname: window.location.pathname 
       });
-
-      // Prefill email from URL or current user
-      if (emailParam || user?.email) {
-        setEmail(emailParam || user?.email || '');
-      }
 
       // Handle errors
       if (error) {
@@ -92,12 +86,12 @@ const ResetPassword = () => {
             navigate('/auth');
             return;
           }
-        } else if ((emailParam || email) && type === 'recovery') {
-          // Verify OTP for users coming via recovery link without refresh token
+        } else if (email && type === 'recovery') {
+          // Verify OTP for new subscription users
           const { error: otpError } = await supabase.auth.verifyOtp({
-            token: token!,
+            token: token,
             type: 'recovery',
-            email: (emailParam || email)!,
+            email: email
           });
 
           if (otpError) {
@@ -157,33 +151,12 @@ const ResetPassword = () => {
       return;
     }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    // Ensure session is valid in case user arrived via recovery link without established session
-    if (!isValidSession) {
-      const searchParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const token = searchParams.get('token') || hashParams.get('access_token') || '';
-      const type = searchParams.get('type') || hashParams.get('type') || 'recovery';
-      if (token && email) {
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          email,
-          token,
-          type: 'recovery',
-        });
-        if (otpError) {
-          throw otpError;
-        }
-        setIsValidSession(true);
-        // Clean URL after session established
-        window.history.replaceState({}, '', '/reset-password');
-      }
-    }
-
-    const { error } = await supabase.auth.updateUser({
-      password: password
-    });
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
 
       if (error) {
         throw error;
@@ -238,26 +211,13 @@ const ResetPassword = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Definir/Redefinir Senha</CardTitle>
+          <CardTitle className="text-2xl font-bold">Redefinir Senha</CardTitle>
           <CardDescription>
-            Informe seu email e defina uma nova senha
+            Digite sua nova senha
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@exemplo.com"
-                required
-                disabled={loading}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="password">Nova Senha</Label>
               <Input 

@@ -23,9 +23,3 @@ verify_jwt = true
 
 [functions.process-checkout-success]
 verify_jwt = false
-
-[functions.send-welcome-email]
-verify_jwt = false
-
-[functions.test-email]
-verify_jwt = false

@@ -32,7 +32,6 @@ import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TestCheckout from "./pages/TestCheckout";
-import EmailTest from "./pages/EmailTest";
 
 const queryClient = new QueryClient();
 
@@ -105,7 +104,6 @@ const App = () => (
               {/* Success after Stripe checkout */}
               <Route path="/test-notifications" element={<TestNotifications />} />
               <Route path="/test-checkout" element={<AuthGate requireAuth={false}><TestCheckout /></AuthGate>} />
-              <Route path="/test-email" element={<AuthGate requireAuth={false}><EmailTest /></AuthGate>} />
               <Route path="/subscription-success" element={<AuthGate requireAuth={false}><SubscriptionSuccess /></AuthGate>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
