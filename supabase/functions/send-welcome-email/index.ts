@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -75,7 +76,7 @@ serve(async (req) => {
           </p>
           
           <div style="margin: 30px 0;">
-            <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+            <a href="${req.headers.get("origin") || "https://app.geracardapio.com"}/auth" 
                style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
               Fazer Login
             </a>
