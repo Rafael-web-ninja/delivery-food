@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
+import { Resend } from "npm:resend@2.0.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -14,6 +14,16 @@ const logStep = (step: string, details?: any) => {
 
 // Small helper for retries (helps with eventual consistency on Auth APIs)
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Generate random password
+const generateRandomPassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -95,178 +105,174 @@ serve(async (req) => {
 
     logStep("Customer email found", { email: customerEmail });
 
-    // Check if user already exists
-    let userId;
-    let userExists = false;
+    // Try to create user directly (handles existing users via error handling)
+    let userId: string = '';
+    let isNewUser = false;
+    let emailSent = false;
     
     try {
-      const { data: existingUserData, error: userError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
+      const randomPassword = generateRandomPassword();
+      logStep("Attempting to create user", { email: customerEmail });
       
-      if (existingUserData?.user && !userError) {
-        userId = existingUserData.user.id;
-        userExists = true;
-        logStep("Existing user found", { userId });
-      }
-    } catch (checkError) {
-      logStep("Error checking existing user", { error: checkError });
-    }
-
-    if (!userExists) {
-      // Create new user for guest checkout
-      logStep("Creating new user for guest checkout", { email: customerEmail });
-      
-      const { data: newUserData, error: createError } = await supabaseClient.auth.admin.createUser({
+      const { data: newUserData, error: createUserError } = await supabaseClient.auth.admin.createUser({
         email: customerEmail,
-        email_confirm: true, // Auto-confirm email since they completed payment
-        user_metadata: {
-          subscription_created: true,
-          created_via_checkout: true
-        }
+        password: randomPassword,
+        email_confirm: true,
+        user_metadata: { subscription_created: true }
       });
 
-      if (createError || !newUserData?.user) {
-        logStep("Failed to create user", { error: createError });
-        throw new Error(`Failed to create user: ${createError?.message}`);
-      }
-
-      userId = newUserData.user.id;
-      logStep("New user created successfully", { userId, email: customerEmail });
-
-      // Verify the user is available via getUserByEmail (retry to avoid eventual consistency issues)
-      for (let attempt = 1; attempt <= 5; attempt++) {
-        await sleep(300);
-        try {
-          const { data: verifyData, error: verifyError } = await supabaseClient.auth.admin.getUserByEmail(customerEmail);
-          if (verifyData?.user && !verifyError) {
-            logStep("Verified user exists after creation", { attempt });
-            break;
-          }
-          logStep("Retrying user verification", { attempt });
-        } catch (verifyError) {
-          logStep("User verification attempt failed", { attempt, error: verifyError });
-        }
-      }
-    }
-
-    // Update subscription data in database
-    if (session.subscription) {
-      const subscription = typeof session.subscription === 'object' ? session.subscription : null;
-      if (subscription) {
-        const planType = session.metadata?.plan_type || 'mensal';
-        
-        logStep("Updating subscriber_plans", { userId, planType });
-        
-        // Upsert subscriber_plans record
-        const { error: upsertError } = await supabaseClient
-          .from('subscriber_plans')
-          .upsert({
-            user_id: userId,
-            email: customerEmail,
-            stripe_customer_id: session.customer as string,
-            stripe_subscription_id: subscription.id,
-            plan_type: planType,
-            subscription_status: subscription.status,
-            subscription_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'user_id'
-          });
-
-        if (upsertError) {
-          logStep("Failed to update subscription data", { error: upsertError });
-          throw new Error(`Failed to update subscription: ${upsertError.message}`);
-        }
-
-        logStep("Subscription data updated successfully", { userId, planType, status: subscription.status });
-      }
-    }
-
-    // Generate password reset link for new users
-    let authResponse = null;
-    if (!userExists) {
-      logStep("Generating password reset link for new user", { email: customerEmail });
-
-      // Build a reliable base URL
-      const originHeader = req.headers.get("origin");
-      let baseUrl = originHeader || null;
-      if (!baseUrl) {
-        const ref = req.headers.get("referer");
-        if (ref) {
+      if (createUserError) {
+        // Check if user already exists
+        if (createUserError.message?.includes('email_address_not_unique') || 
+            createUserError.message?.includes('email_exists') ||
+            createUserError.message?.includes('User already registered')) {
+          logStep("User already exists", { email: customerEmail });
+          isNewUser = false;
+          
+          // Try to get existing user ID via listUsers
           try {
-            const u = new URL(ref);
-            baseUrl = `${u.protocol}//${u.host}`;
-          } catch (_) {
-            logStep("Could not parse referer", { referer: ref });
-          }
-        }
-      }
-      if (!baseUrl) baseUrl = "http://localhost:3000";
-      
-      logStep("Using base URL", { baseUrl });
-
-      // Retry token generation to avoid race condition right after user creation
-      let tokenData = null as any;
-      let tokenError = null as any;
-      for (let attempt = 1; attempt <= 5; attempt++) {
-        await sleep(500);
-        
-        try {
-          const resp = await supabaseClient.auth.admin.generateLink({
-            type: 'recovery',
-            email: customerEmail,
-            options: {
-              redirectTo: `${baseUrl}/reset-password`
+            const { data: usersData } = await supabaseClient.auth.admin.listUsers();
+            const existingUser = usersData.users.find(u => u.email === customerEmail);
+            userId = existingUser?.id || '';
+            if (userId) {
+              logStep("Found existing user ID", { userId });
             }
-          });
-          tokenData = resp.data;
-          tokenError = resp.error;
-
-          if (!tokenError && tokenData?.properties?.action_link) {
-            logStep("Password reset link generated successfully", { attempt });
-            break;
+          } catch (listError) {
+            logStep("Could not retrieve existing user ID (non-critical)", { error: listError });
           }
-        } catch (linkError) {
-          tokenError = linkError;
+        } else {
+          logStep("Failed to create user", { error: createUserError.message });
+          throw new Error(`Failed to create user: ${createUserError.message}`);
         }
+      } else if (!newUserData?.user?.id) {
+        logStep("User creation returned no ID");
+        throw new Error("User creation returned no user ID");
+      } else {
+        userId = newUserData.user.id;
+        isNewUser = true;
+        logStep("New user created successfully", { userId, email: customerEmail });
 
-        logStep("Retrying password reset link generation", { attempt, error: tokenError?.message });
-      }
-
-      if (!tokenError && tokenData?.properties?.action_link) {
-        // Extract the token from the action_link
-        const url = new URL(tokenData.properties.action_link);
-        const token = url.searchParams.get('token');
-        const refresh_token = url.searchParams.get('refresh_token');
-        
-        if (token) {
-          const redirectUrl = `${baseUrl}/reset-password?token=${token}&refresh_token=${refresh_token}&email=${encodeURIComponent(customerEmail)}&type=recovery`;
-          authResponse = { 
-            token, 
-            refresh_token,
-            type: 'recovery',
-            redirectTo: redirectUrl
-          };
-          logStep("Password reset link prepared", { 
-            email: customerEmail, 
-            hasToken: !!token, 
-            redirectTo: redirectUrl 
+        // Send welcome email with password (non-blocking)
+        try {
+          const resendKey = Deno.env.get("RESEND_API_KEY");
+          if (!resendKey) {
+            logStep("RESEND_API_KEY missing - email not sent");
+          } else {
+            const resend = new Resend(resendKey);
+            logStep("Sending welcome email", { email: customerEmail });
+            
+            const emailResponse = await resend.emails.send({
+              from: "Gera Cardápio <onboarding@resend.dev>",
+              to: [customerEmail],
+              subject: "Bem-vindo! Sua assinatura foi ativada",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
+                  <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
+                    <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
+                    <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
+                  </div>
+                  <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
+                  </div>
+                  <div style="margin: 30px 0;">
+                    <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+                       style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                       Fazer Login Agora
+                    </a>
+                  </div>
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
+                </div>
+              `,
+            });
+            
+            if (emailResponse.data?.id) {
+              emailSent = true;
+              logStep("Welcome email sent successfully", { emailId: emailResponse.data.id });
+            } else {
+              logStep("Email send failed - no response ID");
+            }
+          }
+        } catch (emailError) {
+          logStep("Email sending error (non-critical)", { 
+            error: emailError instanceof Error ? emailError.message : String(emailError) 
           });
         }
-      } else {
-        logStep("Failed to generate password reset link after retries", { error: tokenError });
+
+        await sleep(500);
+        logStep("User creation process completed", { userId, emailSent });
+      }
+    } catch (error) {
+      logStep("Error in user management (continuing with subscription update)", { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      // Don't throw - continue with subscription update even if user creation fails
+    }
+
+    // Update subscription in Supabase (if session has subscription)
+    let subscriptionUpdated = false;
+    
+    if (session.subscription) {
+      try {
+        const subscription = typeof session.subscription === 'object' ? session.subscription : null;
+        if (subscription) {
+          const planType = session.metadata?.plan_type || 'mensal';
+          
+          logStep("Updating subscription in database", { 
+            userId, 
+            stripeSubscriptionId: subscription.id,
+            subscriptionStatus: subscription.status 
+          });
+
+          const { error: upsertError } = await supabaseClient
+            .from('subscriber_plans')
+            .upsert({
+              user_id: userId || null,
+              email: customerEmail,
+              stripe_customer_id: session.customer as string,
+              stripe_subscription_id: subscription.id,
+              plan_type: planType,
+              subscription_status: subscription.status,
+              subscription_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'email'
+            });
+
+          if (upsertError) {
+            logStep("Subscription update failed (non-critical)", { error: upsertError });
+          } else {
+            subscriptionUpdated = true;
+            logStep("Subscription updated successfully in database");
+          }
+        }
+      } catch (subscriptionError) {
+        logStep("Subscription update error (non-critical)", { 
+          error: subscriptionError instanceof Error ? subscriptionError.message : String(subscriptionError)
+        });
       }
     }
+
+    logStep("Process completed", { 
+      userId, 
+      email: customerEmail, 
+      isNewUser,
+      emailSent,
+      subscriptionUpdated,
+      hasSubscription: !!session.subscription 
+    });
 
     const response = { 
-      success: true, 
+      success: true,
       userId,
       email: customerEmail,
-      auth: authResponse,
-      subscription: session.subscription ? {
-        id: typeof session.subscription === 'string' ? session.subscription : session.subscription.id,
-        status: typeof session.subscription === 'object' ? session.subscription.status : 'active'
-      } : null
+      isNewUser,
+      emailSent,
+      subscriptionUpdated,
+      hasSubscription: !!session.subscription
     };
 
     logStep("Function completed successfully", response);

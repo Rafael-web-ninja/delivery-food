@@ -15,82 +15,128 @@ export default function SubscriptionSuccess() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [processing, setProcessing] = useState(true);
+  const [emailSent, setEmailSent] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     const processCheckout = async () => {
       const sessionId = searchParams.get('session_id');
-      
       if (!sessionId) {
         toast({
           title: "Erro",
           description: "ID da sessão não encontrado",
-          variant: "destructive"
+          variant: "destructive",
         });
         navigate('/');
         return;
       }
 
+      setProcessing(true);
       try {
-        setProcessing(true);
-        
-        console.log('Calling process-checkout-success with sessionId:', sessionId);
-
-        // Process the checkout success (for guest users, this will create account)
         const { data, error } = await supabase.functions.invoke('process-checkout-success', {
           body: { sessionId }
         });
 
-        console.log('Response from process-checkout-success:', { data, error });
+        if (error) throw error;
 
-        if (error) {
-          console.error('Edge function error:', error);
-          throw new Error(error.message);
-        }
-
-        // If password reset link was provided (guest checkout), redirect to set password
-        if (data.auth?.redirectTo && data.email) {
-          console.log('Redirecting new user to set password:', data.email);
-          
+        if (data?.isNewUser) {
+          setEmailSent(true);
+          setUserEmail(data.email);
+          if (data?.emailSent) {
+            toast({
+              title: "Conta criada!",
+              description: "Credenciais enviadas por email. Verifique sua caixa de entrada.",
+            });
+          } else {
+            toast({
+              title: "Conta criada!",
+              description: "Sua conta foi criada. Faça login para acessar.",
+              variant: "default",
+            });
+          }
+        } else {
           toast({
-            title: "Conta criada!",
-            description: `Sua assinatura foi ativada para ${data.email}. Defina sua senha para continuar.`,
+            title: "Assinatura ativada!",
+            description: "Seu pagamento foi processado com sucesso. Faça login para acessar.",
           });
-          
-          // Redirect to password setup after a brief delay
-          setTimeout(() => {
-            window.location.href = data.auth.redirectTo;
-          }, 2000);
-          
-          return;
+          await checkSubscription();
+          setProcessing(false);
+          // Don't auto-navigate, let user click login button
         }
-
-        toast({
-          title: "Assinatura ativada!",
-          description: "Sua assinatura foi processada com sucesso.",
-        });
-
-        // Check subscription status
-        await checkSubscription();
-        
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 2000);
-
       } catch (error: any) {
-        console.error('Error processing checkout:', error);
+        console.error('Erro ao processar checkout:', error);
         toast({
-          title: "Erro ao processar pagamento",
-          description: error.message || "Tente novamente em alguns instantes",
-          variant: "destructive"
+          title: "Erro no processamento",
+          description: "Houve um problema. Tente novamente em alguns minutos.",
+          variant: "destructive",
         });
-        navigate('/');
+        // Don't navigate away on error - show login button
+        setProcessing(false);
       } finally {
         setProcessing(false);
       }
     };
 
     processCheckout();
-  }, [searchParams, checkSubscription, navigate, toast, user]);
+  }, [searchParams, checkSubscription, navigate, toast]);
+
+  // Show success page for all cases (new user or existing user)
+  if (!processing && !loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-green-600 text-2xl">
+              ✅ Pagamento Confirmado!
+            </CardTitle>
+            <CardDescription className="text-lg">
+              {emailSent && userEmail ? 
+                "Sua assinatura foi ativada e suas credenciais foram enviadas por email." :
+                "Sua assinatura foi ativada com sucesso!"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-6">
+            <div className="text-green-600 text-6xl mb-4">
+              ✅
+            </div>
+            
+            {emailSent && userEmail && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-center text-blue-600 mb-2">
+                  ✉️
+                </div>
+                <p className="text-blue-800 font-medium">
+                  Enviamos sua senha temporária para:
+                </p>
+                <p className="text-blue-600 text-sm">
+                  <strong>{userEmail}</strong>
+                </p>
+                <p className="text-blue-600 text-sm">
+                  Verifique sua caixa de entrada e pasta de spam!
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-2">
+              <Button 
+                onClick={() => navigate('/auth')}
+                className="w-full"
+                size="lg"
+              >
+                Fazer Login
+              </Button>
+              {emailSent && (
+                <p className="text-xs text-muted-foreground">
+                  Lembre-se de alterar sua senha após o primeiro login por segurança
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
@@ -101,7 +147,7 @@ export default function SubscriptionSuccess() {
           </CardTitle>
           <CardDescription>
             {processing 
-              ? "Estamos processando seu pagamento e ativando sua assinatura."
+              ? "Estamos processando seu pagamento e ativando sua assinatura. Suas credenciais de acesso serão enviadas por email."
               : "Sua assinatura foi ativada com sucesso. Redirecionando..."
             }
           </CardDescription>
@@ -112,8 +158,8 @@ export default function SubscriptionSuccess() {
               <LoadingSpinner size="lg" />
             </div>
           ) : (
-            <Button onClick={() => navigate('/')}>
-              Ir para o Dashboard
+            <Button onClick={() => navigate('/auth')}>
+              Fazer Login
             </Button>
           )}
         </CardContent>
