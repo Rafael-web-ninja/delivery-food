@@ -15,6 +15,8 @@ export default function SubscriptionSuccess() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [processing, setProcessing] = useState(true);
+  const [emailSent, setEmailSent] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     const processCheckout = async () => {
@@ -48,21 +50,12 @@ export default function SubscriptionSuccess() {
         }
 
         // If new user was created (guest checkout), show email sent message
-        if (data.auth?.redirectTo && data.email) {
+        if (data.isNewUser && data.email) {
           console.log('New user created, password sent to email:', data.email);
-          
-          toast({
-            title: "Conta criada com sucesso!",
-            description: `Sua senha de acesso foi enviada para ${data.email}. Verifique sua caixa de entrada.`,
-            duration: 6000,
-          });
-          
-          // Redirect to login after showing the message
-          setTimeout(() => {
-            navigate('/auth', { replace: true });
-          }, 3000);
-          
-          return;
+          setEmailSent(true);
+          setUserEmail(data.email);
+          setProcessing(false);
+          return; // Stay on this page to show the success message
         }
 
         toast({
@@ -93,6 +86,45 @@ export default function SubscriptionSuccess() {
     processCheckout();
   }, [searchParams, checkSubscription, navigate, toast, user]);
 
+  if (emailSent) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full text-center">
+          <CardHeader>
+            <CardTitle className="text-green-600">
+              ✅ Conta criada com sucesso!
+            </CardTitle>
+            <CardDescription>
+              Sua assinatura foi ativada e suas credenciais foram enviadas por email.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800 mb-2">
+                📧 Verifique seu email: <strong>{userEmail}</strong>
+              </p>
+              <p className="text-sm text-blue-600">
+                Você recebeu suas credenciais de acesso por email. Use-as para fazer seu primeiro login.
+              </p>
+            </div>
+            
+            <Button 
+              onClick={() => navigate('/auth')} 
+              className="w-full"
+              size="lg"
+            >
+              Fazer Login
+            </Button>
+            
+            <p className="text-xs text-gray-500">
+              Após o login, você poderá alterar sua senha nas configurações da conta.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
       <Card className="max-w-md w-full text-center">
@@ -103,7 +135,7 @@ export default function SubscriptionSuccess() {
           <CardDescription>
             {processing 
               ? "Estamos processando seu pagamento e ativando sua assinatura. Suas credenciais de acesso serão enviadas por email."
-              : "Sua assinatura foi ativada com sucesso. Verifique seu email para as credenciais de acesso."
+              : "Sua assinatura foi ativada com sucesso. Redirecionando..."
             }
           </CardDescription>
         </CardHeader>

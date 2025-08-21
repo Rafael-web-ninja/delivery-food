@@ -217,87 +217,11 @@ serve(async (req) => {
       }
     }
 
-    // Generate password reset link for new users
-    let authResponse = null;
-    if (!userExists) {
-      logStep("Generating password reset link for new user", { email: customerEmail });
-
-      // Build a reliable base URL
-      const originHeader = req.headers.get("origin");
-      let baseUrl = originHeader || null;
-      if (!baseUrl) {
-        const ref = req.headers.get("referer");
-        if (ref) {
-          try {
-            const u = new URL(ref);
-            baseUrl = `${u.protocol}//${u.host}`;
-          } catch (_) {
-            logStep("Could not parse referer", { referer: ref });
-          }
-        }
-      }
-      if (!baseUrl) baseUrl = "http://localhost:3000";
-      
-      logStep("Using base URL", { baseUrl });
-
-      // Retry token generation to avoid race condition right after user creation
-      let tokenData = null as any;
-      let tokenError = null as any;
-      for (let attempt = 1; attempt <= 5; attempt++) {
-        await sleep(500);
-        
-        try {
-          const resp = await supabaseClient.auth.admin.generateLink({
-            type: 'recovery',
-            email: customerEmail,
-            options: {
-              redirectTo: `${baseUrl}/reset-password`
-            }
-          });
-          tokenData = resp.data;
-          tokenError = resp.error;
-
-          if (!tokenError && tokenData?.properties?.action_link) {
-            logStep("Password reset link generated successfully", { attempt });
-            break;
-          }
-        } catch (linkError) {
-          tokenError = linkError;
-        }
-
-        logStep("Retrying password reset link generation", { attempt, error: tokenError?.message });
-      }
-
-      if (!tokenError && tokenData?.properties?.action_link) {
-        // Extract the token from the action_link
-        const url = new URL(tokenData.properties.action_link);
-        const token = url.searchParams.get('token');
-        const refresh_token = url.searchParams.get('refresh_token');
-        
-        if (token) {
-          const redirectUrl = `${baseUrl}/reset-password?token=${token}&refresh_token=${refresh_token}&email=${encodeURIComponent(customerEmail)}&type=recovery`;
-          authResponse = { 
-            token, 
-            refresh_token,
-            type: 'recovery',
-            redirectTo: redirectUrl
-          };
-          logStep("Password reset link prepared", { 
-            email: customerEmail, 
-            hasToken: !!token, 
-            redirectTo: redirectUrl 
-          });
-        }
-      } else {
-        logStep("Failed to generate password reset link after retries", { error: tokenError });
-      }
-    }
-
     const response = { 
       success: true, 
       userId,
       email: customerEmail,
-      auth: authResponse,
+      isNewUser: !userExists,
       subscription: session.subscription ? {
         id: typeof session.subscription === 'string' ? session.subscription : session.subscription.id,
         status: typeof session.subscription === 'object' ? session.subscription.status : 'active'
