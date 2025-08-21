@@ -174,12 +174,9 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      // Envia apenas o email personalizado via edge function
-      // que irá gerar o token internamente e enviar o email
+      // Tenta enviar via Edge Function (email customizado)
       const { data, error: emailError } = await supabase.functions.invoke('send-password-reset', {
-        body: {
-          email: forgotPasswordEmail
-        }
+        body: { email: forgotPasswordEmail }
       });
 
       if (emailError) {
@@ -191,15 +188,31 @@ const Auth = () => {
         title: "Email enviado!",
         description: "Verifique sua caixa de entrada para redefinir sua senha",
       });
-    } catch (error: any) {
-      toast({
-        title: "Erro na recuperação",
-        description: error.message,
-        variant: "destructive"
-      });
+    } catch (edgeError: any) {
+      console.warn('Edge function falhou, tentando fallback nativo:', edgeError);
+      // Fallback: usa o fluxo nativo do Supabase
+      try {
+        const redirectTo = `${window.location.origin}/reset-password`;
+        const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+          redirectTo,
+        });
+        if (error) throw error;
+
+        setResetEmailSent(true);
+        toast({
+          title: "Email enviado!",
+          description: "Verifique sua caixa de entrada para redefinir sua senha",
+        });
+      } catch (fallbackError: any) {
+        toast({
+          title: "Erro na recuperação",
+          description: fallbackError?.message || edgeError?.message || 'Não foi possível enviar o email de recuperação.',
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   // Mostrar loading enquanto a auth não estiver inicializada

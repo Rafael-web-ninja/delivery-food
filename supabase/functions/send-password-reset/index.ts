@@ -67,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Enviando email...');
 
     const emailResponse = await resend.emails.send({
-      from: "Gera Cardápio <noreply@resend.dev>",
+      from: "Gera Cardápio <onboarding@resend.dev>",
       to: [email],
       subject: "Redefinir sua Senha - Gera Cardápio",
       html: `
