@@ -174,42 +174,40 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      // Tenta enviar via Edge Function (email customizado)
-      const { data, error: emailError } = await supabase.functions.invoke('send-password-reset', {
+      console.log('Enviando reset via edge function...');
+      
+      // SEMPRE usar nosso edge function primeiro
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
         body: { email: forgotPasswordEmail }
       });
 
-      if (emailError) {
-        throw emailError;
+      console.log('Resposta do edge function:', { data, error });
+
+      if (error) {
+        console.error('Erro do edge function:', error);
+        // Se for erro de configuração ou chave API, mostrar erro específico
+        if (error.message?.includes('RESEND_API_KEY')) {
+          throw new Error('Serviço de email não configurado. Entre em contato com o suporte.');
+        }
+        throw error;
       }
 
-      setResetEmailSent(true);
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha",
-      });
-    } catch (edgeError: any) {
-      console.warn('Edge function falhou, tentando fallback nativo:', edgeError);
-      // Fallback: usa o fluxo nativo do Supabase
-      try {
-        const redirectTo = `${window.location.origin}/reset-password`;
-        const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-          redirectTo,
-        });
-        if (error) throw error;
-
+      if (data?.success) {
         setResetEmailSent(true);
         toast({
           title: "Email enviado!",
-          description: "Verifique sua caixa de entrada para redefinir sua senha",
+          description: "Verifique sua caixa de entrada para redefinir sua senha. O email pode demorar alguns minutos para chegar.",
         });
-      } catch (fallbackError: any) {
-        toast({
-          title: "Erro na recuperação",
-          description: fallbackError?.message || edgeError?.message || 'Não foi possível enviar o email de recuperação.',
-          variant: "destructive"
-        });
+      } else {
+        throw new Error('Falha ao enviar email via edge function');
       }
+    } catch (error: any) {
+      console.error('Erro completo ao enviar reset:', error);
+      toast({
+        title: "Erro na recuperação",
+        description: error?.message || 'Não foi possível enviar o email de recuperação. Tente novamente.',
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
