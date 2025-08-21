@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "npm:resend@4.0.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -23,6 +23,76 @@ const generateRandomPassword = () => {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
+};
+
+// Robust email sending helper
+const sendEmail = async (emailPayload: any) => {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) {
+    throw new Error("RESEND_API_KEY not found");
+  }
+
+  logStep("Attempting Resend SDK v4", { to: emailPayload.to });
+  
+  try {
+    const resend = new Resend(resendKey);
+    const response = await resend.emails.send(emailPayload);
+    
+    logStep("Resend SDK response", { 
+      hasData: !!response.data, 
+      hasError: !!response.error,
+      dataId: response.data?.id,
+      errorMessage: response.error?.message 
+    });
+    
+    // Check both v4 format (response.data.id) and v2 format (response.id)
+    const emailId = response.data?.id || (response as any).id;
+    
+    if (emailId) {
+      logStep("SDK email sent successfully", { emailId });
+      return { success: true, id: emailId };
+    } else if (response.error) {
+      throw new Error(`SDK error: ${response.error.message}`);
+    } else {
+      throw new Error("SDK returned no ID");
+    }
+  } catch (sdkError) {
+    logStep("SDK failed, trying HTTP fallback", { 
+      error: sdkError instanceof Error ? sdkError.message : String(sdkError) 
+    });
+    
+    // Fallback: Direct HTTP call to Resend API
+    try {
+      const httpResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(emailPayload),
+      });
+      
+      const responseData = await httpResponse.json();
+      
+      logStep("HTTP fallback response", { 
+        status: httpResponse.status, 
+        hasId: !!responseData.id,
+        responseKeys: Object.keys(responseData)
+      });
+      
+      if (httpResponse.ok && responseData.id) {
+        logStep("HTTP fallback email sent successfully", { emailId: responseData.id });
+        return { success: true, id: responseData.id };
+      } else {
+        throw new Error(`HTTP fallback failed: ${JSON.stringify(responseData)}`);
+      }
+    } catch (httpError) {
+      logStep("HTTP fallback also failed", { 
+        error: httpError instanceof Error ? httpError.message : String(httpError) 
+      });
+      throw httpError;
+    }
+  }
 };
 
 serve(async (req) => {
@@ -149,48 +219,44 @@ serve(async (req) => {
 
           // Send recovery link for existing users
           try {
-            const resendKey = Deno.env.get("RESEND_API_KEY");
-            if (resendKey) {
-              const resend = new Resend(resendKey);
-              logStep("Sending recovery link for existing user", { email: customerEmail });
-              
-              const { data: recoveryData, error: recoveryError } = await supabaseClient.auth.admin.generateLink({
-                type: 'recovery',
-                email: customerEmail,
-                options: {
-                  redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth`
-                }
+            logStep("Sending recovery link for existing user", { email: customerEmail });
+            
+            const { data: recoveryData, error: recoveryError } = await supabaseClient.auth.admin.generateLink({
+              type: 'recovery',
+              email: customerEmail,
+              options: {
+                redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth`
+              }
+            });
+
+            if (recoveryError) {
+              logStep("Recovery link generation failed for existing user", { error: recoveryError.message });
+            } else if (recoveryData.properties?.action_link) {
+              const emailResult = await sendEmail({
+                from: "Gera Cardápio <onboarding@resend.dev>",
+                to: [customerEmail],
+                subject: "Sua assinatura foi ativada - Gera Cardápio",
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h1 style="color: #2563eb; margin-bottom: 20px;">Assinatura Ativada!</h1>
+                    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura do Gera Cardápio foi ativada com sucesso!</p>
+                    <p style="font-size: 14px; line-height: 1.5; margin-bottom: 20px;">Clique no link abaixo para acessar sua conta:</p>
+                    <div style="margin: 30px 0; text-align: center;">
+                      <a href="${recoveryData.properties.action_link}" 
+                         style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                         Acessar Minha Conta
+                      </a>
+                    </div>
+                    <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Este link expira em 24 horas.</p>
+                  </div>
+                `,
               });
 
-              if (recoveryError) {
-                logStep("Recovery link generation failed for existing user", { error: recoveryError.message });
-              } else if (recoveryData.properties?.action_link) {
-                const recoveryEmailResponse = await resend.emails.send({
-                  from: "Gera Cardápio <onboarding@resend.dev>",
-                  to: [customerEmail],
-                  subject: "Sua assinatura foi ativada - Gera Cardápio",
-                  html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                      <h1 style="color: #2563eb; margin-bottom: 20px;">Assinatura Ativada!</h1>
-                      <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura do Gera Cardápio foi ativada com sucesso!</p>
-                      <p style="font-size: 14px; line-height: 1.5; margin-bottom: 20px;">Clique no link abaixo para acessar sua conta:</p>
-                      <div style="margin: 30px 0; text-align: center;">
-                        <a href="${recoveryData.properties.action_link}" 
-                           style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-                           Acessar Minha Conta
-                        </a>
-                      </div>
-                      <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Este link expira em 24 horas.</p>
-                    </div>
-                  `,
-                });
-
-                if (recoveryEmailResponse.data?.id) {
-                  emailSent = true;
-                  logStep("Recovery email sent successfully for existing user", { emailId: recoveryEmailResponse.data.id });
-                } else {
-                  logStep("Recovery email send failed for existing user");
-                }
+              if (emailResult.success) {
+                emailSent = true;
+                logStep("Recovery email sent successfully for existing user", { emailId: emailResult.id });
+              } else {
+                logStep("Recovery email send failed for existing user");
               }
             }
           } catch (existingUserEmailError) {
@@ -212,100 +278,94 @@ serve(async (req) => {
 
         // Send welcome email with password (non-blocking)
         try {
-          const resendKey = Deno.env.get("RESEND_API_KEY");
-          if (!resendKey) {
-            logStep("RESEND_API_KEY missing - email not sent");
-          } else {
-            const resend = new Resend(resendKey);
-            logStep("Sending welcome email with password", { email: customerEmail });
-            
-            try {
-              const emailResponse = await resend.emails.send({
-                from: "Gera Cardápio <onboarding@resend.dev>",
-                to: [customerEmail],
-                subject: "Bem-vindo! Sua assinatura foi ativada",
-                html: `
-                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
-                    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
-                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                      <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
-                      <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
-                      <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
-                    </div>
-                    <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
-                      <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
-                    </div>
-                    <div style="margin: 30px 0;">
-                      <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
-                         style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-                         Fazer Login Agora
-                      </a>
-                    </div>
-                    <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
+          logStep("Sending welcome email with password", { email: customerEmail });
+          
+          try {
+            const emailResult = await sendEmail({
+              from: "Gera Cardápio <onboarding@resend.dev>",
+              to: [customerEmail],
+              subject: "Bem-vindo! Sua assinatura foi ativada",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
+                  <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
+                    <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
+                    <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
                   </div>
-                `,
-              });
-              
-              if (emailResponse.data?.id) {
-                emailSent = true;
-                logStep("Password email sent successfully", { emailId: emailResponse.data.id });
-              } else {
-                logStep("Password email send failed - no response ID, trying recovery link");
-                throw new Error("No email response ID");
-              }
-            } catch (passwordEmailError) {
-              logStep("Password email failed, sending recovery link", { 
-                error: passwordEmailError instanceof Error ? passwordEmailError.message : String(passwordEmailError)
-              });
-              
-              // Fallback: Send recovery link
-              try {
-                const { data: recoveryData, error: recoveryError } = await supabaseClient.auth.admin.generateLink({
-                  type: 'recovery',
-                  email: customerEmail,
-                  options: {
-                    redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth`
-                  }
-                });
-
-                if (recoveryError) {
-                  logStep("Recovery link generation failed", { error: recoveryError.message });
-                } else if (recoveryData.properties?.action_link) {
-                  logStep("Recovery link generated successfully, sending email");
-                  
-                  const recoveryEmailResponse = await resend.emails.send({
-                    from: "Gera Cardápio <onboarding@resend.dev>",
-                    to: [customerEmail],
-                    subject: "Defina sua senha - Gera Cardápio",
-                    html: `
-                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
-                        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
-                        <p style="font-size: 14px; line-height: 1.5; margin-bottom: 20px;">Clique no link abaixo para definir sua senha e acessar sua conta:</p>
-                        <div style="margin: 30px 0; text-align: center;">
-                          <a href="${recoveryData.properties.action_link}" 
-                             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-                             Definir Senha e Fazer Login
-                          </a>
-                        </div>
-                        <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Este link expira em 24 horas. Se você não solicitou esta assinatura, ignore este email.</p>
-                      </div>
-                    `,
-                  });
-
-                  if (recoveryEmailResponse.data?.id) {
-                    emailSent = true;
-                    logStep("Recovery email sent successfully", { emailId: recoveryEmailResponse.data.id });
-                  } else {
-                    logStep("Recovery email send failed - no response ID");
-                  }
+                  <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
+                  </div>
+                  <div style="margin: 30px 0;">
+                    <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+                       style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                       Fazer Login Agora
+                    </a>
+                  </div>
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
+                </div>
+              `,
+            });
+            
+            if (emailResult.success) {
+              emailSent = true;
+              logStep("Password email sent successfully", { emailId: emailResult.id });
+            } else {
+              logStep("Password email send failed - trying recovery link");
+              throw new Error("Email helper returned no success");
+            }
+          } catch (passwordEmailError) {
+            logStep("Password email failed, sending recovery link", { 
+              error: passwordEmailError instanceof Error ? passwordEmailError.message : String(passwordEmailError)
+            });
+            
+            // Fallback: Send recovery link
+            try {
+              const { data: recoveryData, error: recoveryError } = await supabaseClient.auth.admin.generateLink({
+                type: 'recovery',
+                email: customerEmail,
+                options: {
+                  redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth`
                 }
-              } catch (recoveryLinkError) {
-                logStep("Recovery link process failed", { 
-                  error: recoveryLinkError instanceof Error ? recoveryLinkError.message : String(recoveryLinkError)
+              });
+
+              if (recoveryError) {
+                logStep("Recovery link generation failed", { error: recoveryError.message });
+              } else if (recoveryData.properties?.action_link) {
+                logStep("Recovery link generated successfully, sending email");
+                
+                const fallbackEmailResult = await sendEmail({
+                  from: "Gera Cardápio <onboarding@resend.dev>",
+                  to: [customerEmail],
+                  subject: "Defina sua senha - Gera Cardápio",
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                      <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
+                      <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
+                      <p style="font-size: 14px; line-height: 1.5; margin-bottom: 20px;">Clique no link abaixo para definir sua senha e acessar sua conta:</p>
+                      <div style="margin: 30px 0; text-align: center;">
+                        <a href="${recoveryData.properties.action_link}" 
+                           style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                           Definir Senha e Fazer Login
+                        </a>
+                      </div>
+                      <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Este link expira em 24 horas. Se você não solicitou esta assinatura, ignore este email.</p>
+                    </div>
+                  `,
                 });
+
+                if (fallbackEmailResult.success) {
+                  emailSent = true;
+                  logStep("Recovery email sent successfully", { emailId: fallbackEmailResult.id });
+                } else {
+                  logStep("Recovery email send failed");
+                }
               }
+            } catch (recoveryLinkError) {
+              logStep("Recovery link process failed", { 
+                error: recoveryLinkError instanceof Error ? recoveryLinkError.message : String(recoveryLinkError)
+              });
             }
           }
         } catch (emailError) {
