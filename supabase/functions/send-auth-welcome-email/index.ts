@@ -44,8 +44,7 @@ serve(async (req) => {
     logStep("Generating welcome email link", { email });
 
     // Generate a password reset link for the new user with custom redirect
-    const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
-    const redirectUrl = `${origin}/reset-password?type=welcome&email=${encodeURIComponent(email)}&temp_password=${encodeURIComponent(temporaryPassword)}`;
+    const redirectUrl = `https://app.geracardapio.com/reset-password?type=welcome&email=${encodeURIComponent(email)}&temp_password=${encodeURIComponent(temporaryPassword)}`;
     
     const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
       type: 'recovery',

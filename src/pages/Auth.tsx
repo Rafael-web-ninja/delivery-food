@@ -176,7 +176,7 @@ const Auth = () => {
     try {
       // Usar Supabase Auth nativo para redefinição de senha
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: `${window.location.origin}/reset-password`
+        redirectTo: 'https://app.geracardapio.com/reset-password'
       });
 
       if (error) {

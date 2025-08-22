@@ -160,7 +160,7 @@ serve(async (req) => {
             type: 'recovery',
             email: customerEmail,
             options: {
-              redirectTo: `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/reset-password?type=welcome&email=${encodeURIComponent(customerEmail)}`
+              redirectTo: `https://app.geracardapio.com/reset-password?type=welcome&email=${encodeURIComponent(customerEmail)}`
             }
           });
 
