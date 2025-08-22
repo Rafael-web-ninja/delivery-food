@@ -15,11 +15,11 @@ verify_jwt = false
 [functions.check-business-subscription]
 verify_jwt = false
 
-[functions.send-password-reset]
-verify_jwt = false
-
 [functions.list-invoices]
 verify_jwt = true
 
 [functions.process-checkout-success]
+verify_jwt = false
+
+[functions.send-auth-welcome-email]
 verify_jwt = false
