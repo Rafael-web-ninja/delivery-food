@@ -2,9 +2,17 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://app.geracardapio.com",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Secure function by validating requests
+const ALLOWED_ORIGINS = [
+  "https://app.geracardapio.com",
+  "https://preview--app-gera-cardapio.lovable.app"
+];
+
+const EXPECTED_SECRET = "gera-cardapio-internal-secret-2024";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -23,6 +31,26 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
+
+    // Validate origin for security
+    const origin = req.headers.get("origin");
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+      logStep("ERROR: Unauthorized origin", { origin });
+      return new Response(JSON.stringify({ error: "Unauthorized origin" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+      });
+    }
+
+    // Validate internal secret to prevent abuse
+    const authHeader = req.headers.get("x-internal-secret");
+    if (authHeader !== EXPECTED_SECRET) {
+      logStep("ERROR: Invalid or missing internal secret");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
 
     // Use service role key for admin operations
     const supabaseClient = createClient(

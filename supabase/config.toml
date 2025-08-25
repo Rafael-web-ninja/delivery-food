@@ -4,16 +4,13 @@ project_id = "rpczvawjzjwytveboiqs"
 verify_jwt = true
 
 [functions.create-checkout]
-verify_jwt = false
-
-[functions.customer-portal]
 verify_jwt = true
 
 [functions.get-stripe-prices]
 verify_jwt = false
 
 [functions.check-business-subscription]
-verify_jwt = false
+verify_jwt = true
 
 [functions.list-invoices]
 verify_jwt = true

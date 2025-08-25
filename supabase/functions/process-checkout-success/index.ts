@@ -2,9 +2,15 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://app.geracardapio.com",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Secure function by validating origin and Stripe signature
+const ALLOWED_ORIGINS = [
+  "https://app.geracardapio.com",
+  "https://preview--app-gera-cardapio.lovable.app"
+];
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -31,6 +37,16 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
+
+    // Validate origin for security
+    const origin = req.headers.get("origin");
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+      logStep("ERROR: Unauthorized origin", { origin });
+      return new Response(JSON.stringify({ error: "Unauthorized origin" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+      });
+    }
 
     // Use SERVICE ROLE key for admin operations
     const supabaseClient = createClient(
@@ -151,30 +167,29 @@ serve(async (req) => {
         isNewUser = true;
         logStep("New user created successfully", { userId, email: customerEmail });
 
-        // Send welcome email with password using Supabase Auth (non-blocking)
+        // Send welcome email with password using secure internal call (non-blocking)
         try {
-          logStep("Sending welcome email via Supabase Auth", { email: customerEmail });
+          logStep("Sending welcome email via internal function", { email: customerEmail });
           
-          // Generate a password reset link for the new user
-          const { data: resetData, error: resetError } = await supabaseClient.auth.admin.generateLink({
-            type: 'recovery',
-            email: customerEmail,
-            options: {
-              redirectTo: `https://app.geracardapio.com/reset-password?type=welcome&email=${encodeURIComponent(customerEmail)}`
+          // Call our secure welcome email function
+          const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-auth-welcome-email', {
+            body: {
+              email: customerEmail,
+              temporaryPassword: randomPassword
+            },
+            headers: {
+              'x-internal-secret': 'gera-cardapio-internal-secret-2024'
             }
           });
 
-          if (resetError) {
-            logStep("Error generating reset link", { error: resetError });
-          } else if (resetData?.properties?.action_link) {
-            // The email will be sent automatically by Supabase Auth
-            emailSent = true;
-            logStep("Welcome email sent via Supabase Auth successfully", { 
-              email: customerEmail,
-              hasActionLink: !!resetData.properties.action_link 
-            });
+          if (emailError) {
+            logStep("Error calling welcome email function", { error: emailError });
           } else {
-            logStep("No action link generated");
+            emailSent = true;
+            logStep("Welcome email function called successfully", { 
+              email: customerEmail,
+              response: emailResponse 
+            });
           }
         } catch (emailError) {
           logStep("Email sending error (non-critical)", { 
