@@ -158,8 +158,8 @@ export const useNotifications = () => {
                 console.log('🔄 ORDER STATUS UPDATE received for customer:', payload);
                 const updatedOrder = payload.new as OrderNotification;
                 
-                // Update notification store
-                notificationStore.updateNotification(updatedOrder);
+                // IMPORTANT: Customers DON'T add to notification store (no bell icon)
+                // They only receive popup notifications
 
                 // Show status change toasts for customers
                 const statusMessages = {
@@ -193,8 +193,11 @@ export const useNotifications = () => {
               (payload) => {
                 console.log('🆕 NEW ORDER received for customer:', payload);
                 const newOrder = payload.new as OrderNotification;
-                notificationStore.addNotification(newOrder);
-                console.log('✅ Customer order notification added');
+                
+                // IMPORTANT: Customers DON'T add to notification store (no bell icon)
+                // They only receive real-time order updates for status changes
+                
+                console.log('✅ Customer order event processed (no store update needed)');
               }
             )
             .subscribe((status) => {

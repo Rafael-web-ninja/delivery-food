@@ -14,13 +14,40 @@ import { formatCurrency } from '@/lib/formatters';
 import { useState, useEffect } from 'react';
 import { notificationStore } from '@/stores/notificationStore';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export const NotificationBell = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState(notificationStore.getNotifications());
   const [hasUnread, setHasUnread] = useState(notificationStore.hasUnread());
+  const [isBusinessOwner, setIsBusinessOwner] = useState<boolean | null>(null);
 
   console.log('🔔 NotificationBell render - user:', user?.id || 'none', 'notifications:', notifications.length, 'hasUnread:', hasUnread);
+
+  // Check if user is business owner
+  useEffect(() => {
+    const checkBusinessOwner = async () => {
+      if (!user?.id) {
+        setIsBusinessOwner(null);
+        return;
+      }
+
+      try {
+        const { data: business, error } = await supabase
+          .from('delivery_businesses')
+          .select('id')
+          .eq('owner_id', user.id)
+          .single();
+
+        setIsBusinessOwner(!!business?.id);
+      } catch (error) {
+        console.error('Error checking business owner:', error);
+        setIsBusinessOwner(false);
+      }
+    };
+
+    checkBusinessOwner();
+  }, [user?.id]);
 
   // Subscribe to store changes with proper cleanup
   useEffect(() => {
@@ -57,9 +84,14 @@ export const NotificationBell = () => {
     }
   };
 
-  // Don't render if no user
-  if (!user) {
-    console.log('🔔 NotificationBell - No user, not rendering');
+  // Don't render if no user or not a business owner
+  if (!user || isBusinessOwner === false) {
+    console.log('🔔 NotificationBell - No user or not business owner, not rendering');
+    return null;
+  }
+
+  // Don't render while still checking
+  if (isBusinessOwner === null) {
     return null;
   }
 
