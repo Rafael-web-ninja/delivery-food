@@ -14,19 +14,17 @@ interface PasswordChangeFormProps {
 const PasswordChangeForm = ({ className }: PasswordChangeFormProps) => {
   const { toast } = useToast();
   const [passwords, setPasswords] = useState({
-    current: '',
     new: '',
     confirm: ''
   });
   const [loading, setLoading] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
-    current: false,
     new: false,
     confirm: false
   });
 
   const handlePasswordChange = async () => {
-    if (!passwords.current || !passwords.new || !passwords.confirm) {
+    if (!passwords.new || !passwords.confirm) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos",
@@ -68,7 +66,7 @@ const PasswordChangeForm = ({ className }: PasswordChangeFormProps) => {
         description: "Sua senha foi alterada com sucesso."
       });
 
-      setPasswords({ current: '', new: '', confirm: '' });
+      setPasswords({ new: '', confirm: '' });
     } catch (error: any) {
       console.error('Erro ao alterar senha:', error);
       toast({
@@ -100,32 +98,6 @@ const PasswordChangeForm = ({ className }: PasswordChangeFormProps) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="current-password">Senha Atual</Label>
-          <div className="relative">
-            <Input
-              id="current-password"
-              type={showPasswords.current ? "text" : "password"}
-              value={passwords.current}
-              onChange={(e) => setPasswords(prev => ({ ...prev, current: e.target.value }))}
-              placeholder="Digite sua senha atual"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-              onClick={() => togglePasswordVisibility('current')}
-            >
-              {showPasswords.current ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-
         <div className="space-y-2">
           <Label htmlFor="new-password">Nova Senha</Label>
           <div className="relative">

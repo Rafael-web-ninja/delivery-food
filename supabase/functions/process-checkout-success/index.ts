@@ -70,7 +70,7 @@ serve(async (req) => {
       subscription: session.subscription ? 'present' : 'null'
     });
 
-    if (session.payment_status !== 'paid') {
+    if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
       logStep("ERROR: Payment not completed", { payment_status: session.payment_status });
       throw new Error("Payment not completed");
     }
@@ -105,8 +105,8 @@ serve(async (req) => {
 
     logStep("Customer email found", { email: customerEmail });
 
-    // Try to create user directly (handles existing users via error handling)
-    let userId: string = '';
+    // Try to get user ID from Stripe metadata if available
+    let userId: string = session.metadata?.user_id || '';
     let isNewUser = false;
     let emailSent = false;
     

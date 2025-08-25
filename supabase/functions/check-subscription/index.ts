@@ -80,10 +80,11 @@ serve(async (req) => {
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
+      status: "all",
       limit: 1,
     });
-    const hasActiveSub = subscriptions.data.length > 0;
+    const hasActiveSub = subscriptions.data.length > 0 && 
+      ['active', 'trialing'].includes(subscriptions.data[0].status);
     let planType = "free";
     let subscriptionEnd = null;
     let subscriptionStart = null;
@@ -121,11 +122,15 @@ serve(async (req) => {
       logStep("No active subscription found");
     }
 
+    const subscriptionStatus = hasActiveSub ? 
+      (subscriptions.data.length > 0 ? subscriptions.data[0].status : "active") : 
+      "inactive";
+
     await supabaseClient.from("subscriber_plans").upsert({
       user_id: user.id,
       email: user.email,
       stripe_customer_id: customerId,
-      subscription_status: hasActiveSub ? "active" : "inactive",
+      subscription_status: subscriptionStatus,
       plan_type: planType,
       subscription_start: subscriptionStart,
       subscription_end: subscriptionEnd,
@@ -136,7 +141,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan_type: planType,
-      subscription_status: hasActiveSub ? "active" : "inactive",
+      subscription_status: subscriptionStatus,
       subscription_end: subscriptionEnd
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
