@@ -174,16 +174,13 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      // Envia apenas o email personalizado via edge function
-      // que irá gerar o token internamente e enviar o email
-      const { data, error: emailError } = await supabase.functions.invoke('send-password-reset', {
-        body: {
-          email: forgotPasswordEmail
-        }
+      // Usar Supabase Auth nativo para redefinição de senha
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: 'https://app.geracardapio.com/reset-password'
       });
 
-      if (emailError) {
-        throw emailError;
+      if (error) {
+        throw error;
       }
 
       setResetEmailSent(true);
