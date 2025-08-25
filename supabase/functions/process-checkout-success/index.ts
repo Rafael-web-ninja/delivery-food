@@ -1,16 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { Resend } from "npm:resend@2.0.0";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://app.geracardapio.com",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Secure function by validating origin and Stripe signature
-const ALLOWED_ORIGINS = [
-  "https://app.geracardapio.com",
-  "https://preview--app-gera-cardapio.lovable.app"
-];
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -37,16 +32,6 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
-
-    // Validate origin for security
-    const origin = req.headers.get("origin");
-    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-      logStep("ERROR: Unauthorized origin", { origin });
-      return new Response(JSON.stringify({ error: "Unauthorized origin" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 403,
-      });
-    }
 
     // Use SERVICE ROLE key for admin operations
     const supabaseClient = createClient(
@@ -167,29 +152,48 @@ serve(async (req) => {
         isNewUser = true;
         logStep("New user created successfully", { userId, email: customerEmail });
 
-        // Send welcome email with password using secure internal call (non-blocking)
+        // Send welcome email with password (non-blocking)
         try {
-          logStep("Sending welcome email via internal function", { email: customerEmail });
-          
-          // Call our secure welcome email function
-          const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-auth-welcome-email', {
-            body: {
-              email: customerEmail,
-              temporaryPassword: randomPassword
-            },
-            headers: {
-              'x-internal-secret': 'gera-cardapio-internal-secret-2024'
-            }
-          });
-
-          if (emailError) {
-            logStep("Error calling welcome email function", { error: emailError });
+          const resendKey = Deno.env.get("RESEND_API_KEY");
+          if (!resendKey) {
+            logStep("RESEND_API_KEY missing - email not sent");
           } else {
-            emailSent = true;
-            logStep("Welcome email function called successfully", { 
-              email: customerEmail,
-              response: emailResponse 
+            const resend = new Resend(resendKey);
+            logStep("Sending welcome email", { email: customerEmail });
+            
+            const emailResponse = await resend.emails.send({
+              from: "Gera Cardápio <onboarding@resend.dev>",
+              to: [customerEmail],
+              subject: "Bem-vindo! Sua assinatura foi ativada",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h1 style="color: #2563eb; margin-bottom: 20px;">Bem-vindo ao Gera Cardápio!</h1>
+                  <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">Sua assinatura foi ativada com sucesso!</p>
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h2 style="color: #1e293b; margin-bottom: 15px;">Dados de Acesso:</h2>
+                    <p style="margin: 10px 0;"><strong>Email:</strong> ${customerEmail}</p>
+                    <p style="margin: 10px 0;"><strong>Senha temporária:</strong> <code style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${randomPassword}</code></p>
+                  </div>
+                  <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #92400e;"><strong>Importante:</strong> Altere sua senha após o primeiro login por segurança.</p>
+                  </div>
+                  <div style="margin: 30px 0;">
+                    <a href="${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/auth" 
+                       style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                       Fazer Login Agora
+                    </a>
+                  </div>
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">Se você não solicitou esta assinatura, ignore este email.</p>
+                </div>
+              `,
             });
+            
+            if (emailResponse.data?.id) {
+              emailSent = true;
+              logStep("Welcome email sent successfully", { emailId: emailResponse.data.id });
+            } else {
+              logStep("Email send failed - no response ID");
+            }
           }
         } catch (emailError) {
           logStep("Email sending error (non-critical)", { 

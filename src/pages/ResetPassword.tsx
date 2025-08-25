@@ -19,8 +19,6 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [isWelcomeFlow, setIsWelcomeFlow] = useState(false);
-
   useEffect(() => {
     const handlePasswordReset = async () => {
       // Parse URL parameters
@@ -33,19 +31,12 @@ const ResetPassword = () => {
       const type = searchParams.get('type') || hashParams.get('type');
       const error = searchParams.get('error') || hashParams.get('error');
       
-      // Check if this is welcome flow
-      const welcomeType = searchParams.get('type');
-      if (welcomeType === 'welcome') {
-        setIsWelcomeFlow(true);
-      }
-      
       console.log('Reset password params:', { 
         hasToken: !!token, 
         hasRefreshToken: !!refresh_token, 
         email, 
         type, 
         error,
-        isWelcomeFlow: welcomeType === 'welcome',
         pathname: window.location.pathname 
       });
 
@@ -118,9 +109,8 @@ const ResetPassword = () => {
         setIsValidSession(true);
         console.log('Session established successfully for password reset');
         
-        // Clean URL but preserve welcome type
-        const cleanUrl = isWelcomeFlow ? '/reset-password?type=welcome' : '/reset-password';
-        window.history.replaceState({}, '', cleanUrl);
+        // Clean URL
+        window.history.replaceState({}, '', '/reset-password');
         
       } catch (error) {
         console.error('Error setting session:', error);
@@ -172,17 +162,21 @@ const ResetPassword = () => {
         throw error;
       }
 
+      // Check if this is a new subscription user
+      const searchParams = new URLSearchParams(window.location.search);
+      const isNewSubscriptionUser = searchParams.get('email') && window.location.pathname === '/reset-password';
+      
       toast({
-        title: isWelcomeFlow ? "Senha definida com sucesso!" : "Senha redefinida!",
-        description: isWelcomeFlow 
-          ? "Sua conta foi criada e senha definida. Bem-vindo ao Gera Cardápio!" 
+        title: isNewSubscriptionUser ? "Senha definida com sucesso!" : "Senha redefinida!",
+        description: isNewSubscriptionUser 
+          ? "Sua conta foi criada e senha definida. Bem-vindo!" 
           : "Sua senha foi alterada com sucesso. Redirecionando...",
       });
 
       // Redirect based on user type
       setTimeout(() => {
-        if (isWelcomeFlow) {
-          navigate('/dashboard', { replace: true }); // Welcome users go to dashboard
+        if (isNewSubscriptionUser) {
+          navigate('/', { replace: true }); // New subscription users go to dashboard
         } else {
           navigate('/meu-perfil', { replace: true }); // Existing users go to profile
         }
@@ -217,14 +211,9 @@ const ResetPassword = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            {isWelcomeFlow ? "Defina sua Senha" : "Redefinir Senha"}
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">Redefinir Senha</CardTitle>
           <CardDescription>
-            {isWelcomeFlow 
-              ? "Bem-vindo ao Gera Cardápio! Defina sua senha para acessar sua conta" 
-              : "Digite sua nova senha"
-            }
+            Digite sua nova senha
           </CardDescription>
         </CardHeader>
         <CardContent>
