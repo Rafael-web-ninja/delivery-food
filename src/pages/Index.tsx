@@ -367,8 +367,10 @@ const Index = () => {
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Junte-se a milhares de estabelecimentos que já aumentaram suas vendas com o Gera Cardápio
           </p>
-          <Button size="lg" className="text-lg px-12 gradient-primary" onClick={() => navigate('/auth')}>
-            Começar Gratuitamente
+          <Button size="lg" className="text-lg px-12 gradient-primary" onClick={() => document.getElementById('precos')?.scrollIntoView({
+            behavior: 'smooth'
+          })}>
+            Ver Planos
           </Button>
         </div>
       </section>
