@@ -203,15 +203,6 @@ const fetchPaymentMethods = async () => {
                   </select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="instructions">Instruções (opcional)</Label>
-                  <Input
-                    id="instructions"
-                    value={formData.instructions}
-                    onChange={(e) => setFormData({...formData, instructions: e.target.value})}
-                    placeholder="Ex: Chave PIX: (11) 99999-9999"
-                  />
-                </div>
 
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" disabled={loading} className="flex-1">

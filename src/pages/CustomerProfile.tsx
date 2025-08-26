@@ -179,15 +179,67 @@ const CustomerProfile = () => {
           </CardContent>
         </Card>
 
-        {/* Account Info */}
+        {/* Account Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Informações da Conta</CardTitle>
+            <CardTitle>Configurações da Conta</CardTitle>
+            <CardDescription>
+              Gerencie seu email e senha de acesso
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input value={user?.email || ''} disabled />
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-medium">Email atual</Label>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              </div>
+              
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Alterar Email</Label>
+                <div className="space-y-2">
+                  <Input
+                    type="email"
+                    placeholder="Novo email"
+                    id="new-email"
+                  />
+                  <Button 
+                    variant="outline" 
+                    onClick={async () => {
+                      const newEmail = (document.getElementById('new-email') as HTMLInputElement)?.value;
+                      if (!newEmail) {
+                        toast({
+                          title: "Erro",
+                          description: "Digite o novo email",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      
+                      try {
+                        const { error } = await supabase.auth.updateUser({ email: newEmail });
+                        if (error) throw error;
+                        
+                        toast({
+                          title: "Sucesso!",
+                          description: "Verifique seu novo email para confirmar a alteração",
+                        });
+                        (document.getElementById('new-email') as HTMLInputElement).value = '';
+                      } catch (error: any) {
+                        toast({
+                          title: "Erro",
+                          description: error.message,
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    Alterar Email
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Você receberá um email de confirmação no novo endereço
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
