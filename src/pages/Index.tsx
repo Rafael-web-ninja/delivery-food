@@ -376,7 +376,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-muted/50 border-t py-12">
         <div className="container">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <img src="/lovable-uploads/dfb072c7-087e-48ca-88a3-40430f88a2d4.png" alt="Gera Cardápio" className="h-6 w-6" />
