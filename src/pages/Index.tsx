@@ -103,11 +103,9 @@ const Index = () => {
             Tudo que você precisa para aumentar suas vendas em uma única plataforma.
           </p>
           <div className="flex flex-col items-center gap-6">
-            <Button 
-              size="lg" 
-              className="text-lg px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
-              onClick={() => document.getElementById('precos')?.scrollIntoView({ behavior: 'smooth' })}
-            >
+            <Button size="lg" className="text-lg px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg" onClick={() => document.getElementById('precos')?.scrollIntoView({
+            behavior: 'smooth'
+          })}>
               Ver Planos <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             
@@ -406,7 +404,7 @@ const Index = () => {
             </div>
           </div>
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 Gera Cardápio. Todos os direitos reservados.</p>
+            <p>© 2025 Gera Cardápio. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
