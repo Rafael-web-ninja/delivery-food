@@ -37,11 +37,16 @@ export const NotificationBell = () => {
           .from('delivery_businesses')
           .select('id')
           .eq('owner_id', user.id)
-          .single();
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking business owner:', error);
+        }
 
         setIsBusinessOwner(!!business?.id);
       } catch (error) {
-        console.error('Error checking business owner:', error);
+        console.error('Error checking business owner (exception):', error);
         setIsBusinessOwner(false);
       }
     };
