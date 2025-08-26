@@ -17,6 +17,7 @@ import { ArrowLeft, Save, Store } from 'lucide-react';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 import ImageUpload from '@/components/ImageUpload';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface BusinessData {
   id: string;
@@ -42,6 +43,95 @@ interface BusinessData {
   delivery_time_text_color: string;
   accept_orders_when_closed: boolean;
 }
+
+// Security Tab Component
+const SecurityTab = ({ user }: { user: any }) => {
+  const { toast } = useToast();
+  const { checkSubscription } = useSubscription();
+  const [newEmail, setNewEmail] = useState('');
+
+  const handleEmailChange = async () => {
+    if (!newEmail) {
+      toast({
+        title: "Erro",
+        description: "Digite o novo email",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email alterado!",
+        description: "Verifique seu email para confirmar a alteração"
+      });
+      
+      setNewEmail('');
+      
+      // Check subscription after email change to sync with Stripe
+      setTimeout(() => {
+        checkSubscription();
+      }, 1000);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  return (
+    <Card className="shadow-soft">
+      <CardHeader>
+        <CardTitle>Segurança</CardTitle>
+        <CardDescription>
+          Altere seu email ou senha
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Change Email Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Alterar Email</h3>
+          <div className="space-y-2">
+            <Label htmlFor="current-email">Email Atual</Label>
+            <Input
+              id="current-email"
+              value={user?.email || ''}
+              disabled
+              className="bg-muted"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-email">Novo Email</Label>
+            <Input
+              id="new-email"
+              type="email"
+              placeholder="novo@email.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleEmailChange}>
+            Alterar Email
+          </Button>
+        </div>
+
+        {/* Change Password Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Alterar Senha</h3>
+          <PasswordChangeForm />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const Settings = () => {
   const { user, loading: authLoading } = useAuth();
@@ -601,73 +691,7 @@ const { error } = await supabase
           </TabsContent>
 
           <TabsContent value="security">
-            <Card className="shadow-soft">
-              <CardHeader>
-                <CardTitle>Configurações de Segurança</CardTitle>
-                <CardDescription>
-                  Gerencie suas informações de login e segurança
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-base font-medium">Email atual</Label>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium">Alterar Email</Label>
-                    <div className="space-y-2">
-                      <Input
-                        type="email"
-                        placeholder="Novo email"
-                        id="new-email"
-                      />
-                      <Button 
-                        variant="outline" 
-                        onClick={async () => {
-                          const newEmail = (document.getElementById('new-email') as HTMLInputElement)?.value;
-                          if (!newEmail) {
-                            toast({
-                              title: "Erro",
-                              description: "Digite o novo email",
-                              variant: "destructive"
-                            });
-                            return;
-                          }
-                          
-                          try {
-                            const { error } = await supabase.auth.updateUser({ email: newEmail });
-                            if (error) throw error;
-                            
-                            toast({
-                              title: "Sucesso!",
-                              description: "Verifique seu novo email para confirmar a alteração",
-                            });
-                            (document.getElementById('new-email') as HTMLInputElement).value = '';
-                          } catch (error: any) {
-                            toast({
-                              title: "Erro",
-                              description: error.message,
-                              variant: "destructive"
-                            });
-                          }
-                        }}
-                      >
-                        Alterar Email
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Você receberá um email de confirmação no novo endereço
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-6">
-                  <PasswordChangeForm />
-                </div>
-              </CardContent>
-            </Card>
+            <SecurityTab user={user} />
           </TabsContent>
         </Tabs>
       </div>

@@ -34,12 +34,30 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     let localError: any = null;
     
     try {
-      // First check local database for subscription info
-      const localResult = await supabase
+      // First check local database for subscription info by user_id
+      let localResult = await supabase
         .from('subscriber_plans')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+      
+      // If not found by user_id, try by email and update with user_id
+      if (localResult.error || !localResult.data) {
+        localResult = await supabase
+          .from('subscriber_plans')
+          .select('*')
+          .eq('email', user.email)
+          .maybeSingle();
+          
+        // If found by email but missing user_id, update it
+        if (localResult.data && !localResult.data.user_id) {
+          await supabase
+            .from('subscriber_plans')
+            .update({ user_id: user.id })
+            .eq('email', user.email);
+          localResult.data.user_id = user.id;
+        }
+      }
       
       localSub = localResult.data;
       localError = localResult.error;

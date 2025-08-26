@@ -53,7 +53,8 @@ export const useNotifications = () => {
           .from('delivery_businesses')
           .select('id, name')
           .eq('owner_id', user.id)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (businessError && businessError.code !== 'PGRST116') {
           console.error('❌ Error checking business:', businessError);

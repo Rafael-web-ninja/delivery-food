@@ -51,9 +51,30 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
-    if (customers.data.length === 0) {
+    // First try to find existing subscription by user_id or email
+    const { data: existingSub } = await supabaseClient
+      .from("subscriber_plans")
+      .select("*")
+      .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+      .single();
+    
+    let customerId = null;
+    
+    // If we have an existing sub with stripe_customer_id, use it
+    if (existingSub?.stripe_customer_id) {
+      customerId = existingSub.stripe_customer_id;
+      logStep("Using existing customer ID", { customerId });
+    } else {
+      // Look up customer by email in Stripe
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Found Stripe customer by email", { customerId });
+      }
+    }
+    
+    if (!customerId) {
       logStep("No customer found, updating unsubscribed state");
       await supabaseClient.from("subscriber_plans").upsert({
         user_id: user.id,
@@ -64,7 +85,7 @@ serve(async (req) => {
         subscription_start: null,
         subscription_end: null,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'email' });
+      }, { onConflict: 'user_id' });
       return new Response(JSON.stringify({ 
         subscribed: false, 
         plan_type: "free",
@@ -75,8 +96,12 @@ serve(async (req) => {
       });
     }
 
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
+    // Update customer email in Stripe if it doesn't match
+    const stripeCustomer = await stripe.customers.retrieve(customerId);
+    if (stripeCustomer && !stripeCustomer.deleted && stripeCustomer.email !== user.email) {
+      await stripe.customers.update(customerId, { email: user.email });
+      logStep("Updated Stripe customer email", { customerId, newEmail: user.email });
+    }
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
@@ -130,7 +155,7 @@ serve(async (req) => {
       subscription_start: subscriptionStart,
       subscription_end: subscriptionEnd,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'email' });
+    }, { onConflict: 'user_id' });
 
     logStep("Updated database with subscription info", { subscribed: hasActiveSub, planType });
     return new Response(JSON.stringify({
