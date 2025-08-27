@@ -533,11 +533,12 @@ const itemData = {
               </div>
             </CardHeader>
             <CardContent>
-              {item.image_url && (
+            {item.image_url && (
                 <img
                   src={item.image_url}
                   alt={item.name}
                   className="w-full h-[250px] object-cover rounded-md mb-3"
+                  loading="lazy"
                 />
               )}
               <div className="flex justify-between items-center">

@@ -592,6 +592,7 @@ const getCartTotal = () =>
                           src={item.image_url}
                           alt={item.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       ) : (
                         <div className="text-gray-400">Sem imagem</div>
@@ -708,6 +709,7 @@ const getCartTotal = () =>
                       src={item.image_url}
                       alt={item.name}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="text-gray-400">Sem imagem</div>
