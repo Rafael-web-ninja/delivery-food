@@ -27,6 +27,7 @@ interface BusinessData {
   address: string;
   logo_url: string;
   slug?: string;
+  cnpj: string;
   delivery_fee: number;
   min_order_value: number;
   delivery_time_minutes: number;
@@ -145,6 +146,7 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   address: '',
   logo_url: '',
   slug: '',
+  cnpj: '',
   delivery_fee: 0,
   min_order_value: 0,
   delivery_time_minutes: 30,
@@ -248,6 +250,7 @@ const { error } = await supabase
     address: businessData.address,
     logo_url: businessData.logo_url,
     slug: normalizedSlug || null,
+    cnpj: businessData.cnpj,
     delivery_fee: businessData.delivery_fee,
     min_order_value: businessData.min_order_value,
     delivery_time_minutes: businessData.delivery_time_minutes,
@@ -314,6 +317,18 @@ const { error } = await supabase
                       placeholder="Ex: Pizza Express"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cnpj">CNPJ</Label>
+                    <Input
+                      id="cnpj"
+                      value={businessData.cnpj}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, cnpj: e.target.value }))}
+                      placeholder="00.000.000/0001-00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
                     <Input

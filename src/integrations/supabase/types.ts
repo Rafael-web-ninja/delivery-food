@@ -117,6 +117,7 @@ export type Database = {
           button_text_color: string | null
           cart_button_color: string | null
           cart_button_text_color: string | null
+          cnpj: string | null
           created_at: string
           delivery_fee: number | null
           delivery_time_bg_color: string | null
@@ -145,6 +146,7 @@ export type Database = {
           button_text_color?: string | null
           cart_button_color?: string | null
           cart_button_text_color?: string | null
+          cnpj?: string | null
           created_at?: string
           delivery_fee?: number | null
           delivery_time_bg_color?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           button_text_color?: string | null
           cart_button_color?: string | null
           cart_button_text_color?: string | null
+          cnpj?: string | null
           created_at?: string
           delivery_fee?: number | null
           delivery_time_bg_color?: string | null

@@ -64,6 +64,7 @@ interface Business {
   delivery_time_bg_color: string;
   delivery_time_text_color: string;
   delivery_time_minutes: number;
+  delivery_fee: number;
   min_order_value: number;
   accept_orders_when_closed: boolean;
 }
@@ -505,6 +506,32 @@ const getCartTotal = () =>
                     {business.description}
                   </p>
                 )}
+                
+                {/* Informações de Delivery */}
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  {business.delivery_time_minutes > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full" style={{
+                      backgroundColor: business.delivery_time_bg_color || '#000000',
+                      color: business.delivery_time_text_color || '#FFFFFF'
+                    }}>
+                      <Clock className="h-4 w-4" />
+                      <span>Entrega em {business.delivery_time_minutes}min</span>
+                    </div>
+                  )}
+                  
+                  {business.delivery_fee > 0 && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>Taxa de entrega: {formatCurrency(business.delivery_fee)}</span>
+                    </div>
+                  )}
+                  
+                  {business.min_order_value > 0 && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>Pedido mínimo: {formatCurrency(business.min_order_value)}</span>
+                    </div>
+                  )}
+                </div>
+                
                 <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 text-sm text-muted-foreground">
                   {business.phone && (
                     <div className="flex items-center gap-2">
@@ -610,22 +637,9 @@ const getCartTotal = () =>
                         <CardDescription>{item.description}</CardDescription>
                       )}
                       <div className="flex items-center justify-between">
-<span className="text-2xl font-bold text-primary">
-  {item.supports_fractional ? `A partir de ${formatCurrency(item.price)}` : formatCurrency(item.price)}
-</span>
-{business.delivery_time_minutes > 0 && (
-  <Badge
-    variant="secondary"
-    className="flex items-center gap-1"
-    style={{
-      backgroundColor: business.delivery_time_bg_color || '#000000',
-      color: business.delivery_time_text_color || '#FFFFFF'
-    }}
-  >
-    <Clock className="h-3 w-3" />
-    {business.delivery_time_minutes}min
-  </Badge>
-)}
+                      <span className="text-2xl font-bold text-primary">
+                        {item.supports_fractional ? `A partir de ${formatCurrency(item.price)}` : formatCurrency(item.price)}
+                      </span>
                       </div>
                     </CardHeader>
 
@@ -729,22 +743,9 @@ const getCartTotal = () =>
                     <CardDescription>{item.description}</CardDescription>
                   )}
                   <div className="flex items-center justify-between">
-<span className="text-2xl font-bold text-primary">
-  {item.supports_fractional ? `A partir de ${formatCurrency(item.price)}` : formatCurrency(item.price)}
-</span>
- {business.delivery_time_minutes > 0 && (
-   <Badge
-     variant="secondary"
-     className="flex items-center gap-1"
-     style={{
-       backgroundColor: business.delivery_time_bg_color || '#000000',
-       color: business.delivery_time_text_color || '#FFFFFF'
-     }}
-   >
-     <Clock className="h-3 w-3" />
-     {business.delivery_time_minutes}min
-   </Badge>
- )}
+                  <span className="text-2xl font-bold text-primary">
+                    {item.supports_fractional ? `A partir de ${formatCurrency(item.price)}` : formatCurrency(item.price)}
+                  </span>
                   </div>
                 </CardHeader>
 
