@@ -89,7 +89,7 @@ export const compressToWebpWithTargetSize = (
   canvas: HTMLCanvasElement,
   targetKB = 150,
   minQuality = 0.4,
-  maxQuality = 0.8
+  maxQuality = 0.9
 ): Promise<File> => {
   return new Promise((resolve, reject) => {
     const targetBytes = targetKB * 1024;
