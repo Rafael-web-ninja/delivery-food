@@ -19,9 +19,10 @@ export const statusTranslations = {
 // Payment method translations
 export const paymentTranslations = {
   cash: 'Dinheiro',
+  pix: 'PIX',
   credit_card: 'Cartão de Crédito',
   debit_card: 'Cartão de Débito',
-  pix: 'PIX',
+  vr: 'Vale Refeição',
   food_voucher: 'Vale Alimentação',
   // Suporte a valores antigos
   card: 'Cartão'

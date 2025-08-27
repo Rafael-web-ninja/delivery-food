@@ -24,6 +24,7 @@ const PAYMENT_ICONS = {
   pix: Smartphone,
   credit_card: CreditCard,
   debit_card: CreditCard,
+  vr: CreditCard,
   card: CreditCard, // legado
 } as const;
 
@@ -33,7 +34,7 @@ export default function PaymentMethodManagement() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<{ type: 'cash' | 'pix' | 'credit_card' | 'debit_card'; instructions: string }>({
+  const [formData, setFormData] = useState<{ type: 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'vr'; instructions: string }>({
     type: 'cash',
     instructions: ''
   });
@@ -200,6 +201,7 @@ const fetchPaymentMethods = async () => {
 <option value="pix">PIX</option>
 <option value="credit_card">Cartão de Crédito</option>
 <option value="debit_card">Cartão de Débito</option>
+<option value="vr">Vale Refeição</option>
                   </select>
                 </div>
 

@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Clock, Calendar } from 'lucide-react';
+import { ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Clock, Calendar, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { formatCurrency, statusTranslations } from '@/lib/formatters';
+import { formatCurrency, statusTranslations, paymentTranslations } from '@/lib/formatters';
 import DateRangePicker from '@/components/DateRangePicker';
+import Papa from 'papaparse';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -26,6 +27,7 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
   const [customDateRange, setCustomDateRange] = useState<{start: string, end: string} | null>(null);
+  const [ordersData, setOrdersData] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -77,9 +79,12 @@ const Analytics = () => {
         `)
         .eq('business_id', business.id)
         .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
+         .lte('created_at', endDate.toISOString());
 
-      if (!orders) return;
+       if (!orders) return;
+       
+       // Salvar dados dos pedidos para exportação
+       setOrdersData(orders);
 
       // Calculate analytics
       const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total_amount), 0);
@@ -148,6 +153,45 @@ const Analytics = () => {
   const handleDateRangeChange = (startDate: string, endDate: string) => {
     setCustomDateRange({ start: startDate, end: endDate });
     setTimeRange('custom');
+  };
+
+  const exportToCSV = () => {
+    if (!ordersData.length) {
+      return;
+    }
+
+    const csvData = ordersData.map(order => ({
+      'Código do Pedido': order.order_code || 'N/A',
+      'Data': new Date(order.created_at).toLocaleDateString('pt-BR'),
+      'Hora': new Date(order.created_at).toLocaleTimeString('pt-BR'),
+      'Cliente': order.customer_name,
+      'Telefone': order.customer_phone,
+      'Endereço': order.customer_address || 'N/A',
+      'Status': statusTranslations[order.status as keyof typeof statusTranslations] || order.status,
+      'Forma de Pagamento': paymentTranslations[order.payment_method as keyof typeof paymentTranslations] || order.payment_method,
+      'Total': `R$ ${Number(order.total_amount).toFixed(2).replace('.', ',')}`,
+      'Taxa de Entrega': `R$ ${Number(order.delivery_fee || 0).toFixed(2).replace('.', ',')}`,
+      'Observações': order.notes || 'N/A'
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    const startDateFormatted = customDateRange?.start 
+      ? new Date(customDateRange.start).toLocaleDateString('pt-BR')
+      : new Date(Date.now() - (parseInt(timeRange) || 7) * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR');
+    const endDateFormatted = customDateRange?.end 
+      ? new Date(customDateRange.end).toLocaleDateString('pt-BR')
+      : new Date().toLocaleDateString('pt-BR');
+    
+    link.setAttribute('download', `relatorio-pedidos-${startDateFormatted}-${endDateFormatted}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -226,6 +270,17 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
                 <DateRangePicker onDateRangeChange={handleDateRangeChange} />
               </PopoverContent>
             </Popover>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportToCSV}
+              disabled={!ordersData.length}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </Button>
           </div>
         </div>
       </header>

@@ -66,7 +66,7 @@ const [minOrderValue, setMinOrderValue] = useState(0);
   });
 
 // Métodos de pagamento
-type PaymentOption = 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'card'; // 'card' legado
+type PaymentOption = 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'vr' | 'card'; // 'card' legado
 const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; type: PaymentOption; name: string }>>([]);
 const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentOption>('cash');
 const handleInputChange = (field: string, value: string) => {
@@ -412,6 +412,11 @@ const handleFinishOrder = async () => {
       setCompletedOrderId(order.id);
       setShowSuccessModal(true);
       onOrderComplete();
+      
+      // Redirecionar para aba "Meus Pedidos" após 2 segundos
+      setTimeout(() => {
+        navigate('?tab=orders');
+      }, 2000);
       
     } catch (error: any) {
       console.error('Erro ao finalizar pedido:', error);
