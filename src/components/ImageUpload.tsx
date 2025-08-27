@@ -44,8 +44,8 @@ export default function ImageUpload({
     return null;
   };
 
-  const resizeImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
+  const resizeAndOptimizeImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d')!;
       const img = new Image();
@@ -74,13 +74,19 @@ export default function ImageUpload({
         
         canvas.toBlob((blob) => {
           if (blob) {
-            const resizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+            const optimizedFile = new File([blob], `optimized_${Date.now()}.webp`, {
               type: 'image/webp',
               lastModified: Date.now(),
             });
-            resolve(resizedFile);
+            resolve(optimizedFile);
+          } else {
+            reject(new Error('Falha ao otimizar imagem'));
           }
         }, 'image/webp', 0.7);
+      };
+
+      img.onerror = () => {
+        reject(new Error('Erro ao carregar imagem'));
       };
 
       img.src = URL.createObjectURL(file);
@@ -90,14 +96,17 @@ export default function ImageUpload({
   const uploadImage = async (file: File) => {
     setUploading(true);
     try {
-      // Validar arquivo
-      const validationError = validateFile(file);
-      if (validationError) {
-        throw new Error(validationError);
-      }
-
+      // Sempre otimizar a imagem, independente do tamanho
+      console.log('Iniciando otimização da imagem...', file.name, file.size);
+      
       // Redimensionar e otimizar imagem
-      const optimizedFile = await resizeImage(file);
+      const optimizedFile = await resizeAndOptimizeImage(file);
+      console.log('Imagem otimizada:', optimizedFile.name, optimizedFile.size);
+      
+      // Validar arquivo otimizado (verificar se ficou dentro do limite)
+      if (optimizedFile.size > 1024 * 1024) {
+        throw new Error('Imagem muito grande mesmo após otimização. Tente uma imagem menor.');
+      }
       
       // Gerar preview
       const previewUrl = URL.createObjectURL(optimizedFile);
@@ -119,7 +128,7 @@ export default function ImageUpload({
       
       toast({
         title: "Upload realizado!",
-        description: "Imagem otimizada e enviada com sucesso",
+        description: `Imagem otimizada para ${Math.round(optimizedFile.size / 1024)}KB e enviada com sucesso`,
       });
     } catch (error: any) {
       console.error('Erro no upload:', error);
@@ -174,11 +183,11 @@ export default function ImageUpload({
     <div className="space-y-2">
       <Label>{label}</Label>
       
-      {/* Recomendações */}
+      {/* Recomendações - Atualizada */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          Recomendamos imagens em 600x427px até 1MB para melhor desempenho do cardápio.
+          Todas as imagens são automaticamente otimizadas para 600x427px e convertidas para WEBP (~150KB) para melhor desempenho.
         </AlertDescription>
       </Alert>
       
