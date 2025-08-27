@@ -487,6 +487,9 @@ const getCartTotal = () =>
                     src={business.logo_url}
                     alt={`${business?.name || 'Estabelecimento'} logo`}
                     className="h-20 lg:h-24 w-auto max-w-[200px] object-contain rounded-lg"
+                    loading="lazy"
+                    width="200"
+                    height="96"
                     onError={e => {
                       e.currentTarget.style.display = 'none';
                     }}
@@ -593,6 +596,8 @@ const getCartTotal = () =>
                           alt={item.name}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          width="600"
+                          height="427"
                         />
                       ) : (
                         <div className="text-gray-400">Sem imagem</div>
@@ -710,6 +715,8 @@ const getCartTotal = () =>
                       alt={item.name}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      width="600"
+                      height="427"
                     />
                   ) : (
                     <div className="text-gray-400">Sem imagem</div>

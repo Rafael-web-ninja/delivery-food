@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, ImageIcon, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { optimizeImage } from '@/lib/imageOptimizer';
 
 interface ImageUploadProps {
   currentUrl: string;
@@ -28,95 +29,22 @@ export default function ImageUpload({
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateFile = (file: File): string | null => {
-    // Validar formato
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return 'Formato não permitido. Use apenas JPG, PNG ou WEBP.';
-    }
-
-    // Validar tamanho (1MB)
-    const maxSize = 1 * 1024 * 1024; // 1MB
-    if (file.size > maxSize) {
-      return 'Arquivo muito grande. Máximo permitido: 1MB.';
-    }
-
-    return null;
-  };
-
-  const resizeAndOptimizeImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      const img = new Image();
-
-      img.onload = () => {
-        const targetWidth = 600;
-        const targetHeight = 427;
-        
-        // Calcular dimensões mantendo proporção
-        const aspectRatio = img.width / img.height;
-        const targetRatio = targetWidth / targetHeight;
-        
-        let finalWidth = targetWidth;
-        let finalHeight = targetHeight;
-        
-        if (aspectRatio > targetRatio) {
-          finalHeight = targetWidth / aspectRatio;
-        } else {
-          finalWidth = targetHeight * aspectRatio;
-        }
-
-        canvas.width = finalWidth;
-        canvas.height = finalHeight;
-        
-        ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const optimizedFile = new File([blob], `optimized_${Date.now()}.webp`, {
-              type: 'image/webp',
-              lastModified: Date.now(),
-            });
-            resolve(optimizedFile);
-          } else {
-            reject(new Error('Falha ao otimizar imagem'));
-          }
-        }, 'image/webp', 0.7);
-      };
-
-      img.onerror = () => {
-        reject(new Error('Erro ao carregar imagem'));
-      };
-
-      img.src = URL.createObjectURL(file);
-    });
-  };
 
   const uploadImage = async (file: File) => {
     setUploading(true);
     try {
-      // Sempre otimizar a imagem, independente do tamanho
-      console.log('Iniciando otimização da imagem...', file.name, file.size);
-      
-      // Redimensionar e otimizar imagem
-      const optimizedFile = await resizeAndOptimizeImage(file);
-      console.log('Imagem otimizada:', optimizedFile.name, optimizedFile.size);
-      
-      // Validar arquivo otimizado (verificar se ficou dentro do limite)
-      if (optimizedFile.size > 1024 * 1024) {
-        throw new Error('Imagem muito grande mesmo após otimização. Tente uma imagem menor.');
-      }
+      // Usar o utilitário centralizado de otimização
+      const result = await optimizeImage(file);
       
       // Gerar preview
-      const previewUrl = URL.createObjectURL(optimizedFile);
+      const previewUrl = URL.createObjectURL(result.file);
       setPreviewUrl(previewUrl);
 
       const fileName = `${folder}/${Date.now()}.webp`;
       
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(fileName, optimizedFile);
+        .upload(fileName, result.file);
 
       if (uploadError) throw uploadError;
 
@@ -128,7 +56,7 @@ export default function ImageUpload({
       
       toast({
         title: "Upload realizado!",
-        description: `Imagem otimizada para ${Math.round(optimizedFile.size / 1024)}KB e enviada com sucesso`,
+        description: `Imagem otimizada: ${Math.round(result.originalSize / 1024)}KB → ${Math.round(result.finalSize / 1024)}KB (${result.compressionRatio.toFixed(1)}% redução)`,
       });
     } catch (error: any) {
       console.error('Erro no upload:', error);
@@ -183,11 +111,11 @@ export default function ImageUpload({
     <div className="space-y-2">
       <Label>{label}</Label>
       
-      {/* Recomendações - Atualizada */}
+      {/* Recomendações */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          Todas as imagens são automaticamente otimizadas para 600x427px e convertidas para WEBP (~150KB) para melhor desempenho.
+          Recomendamos imagens em 600x427px até 1MB para melhor desempenho do cardápio. Todas as imagens são automaticamente otimizadas para WEBP (~150KB).
         </AlertDescription>
       </Alert>
       

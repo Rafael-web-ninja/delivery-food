@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CategoryManagement from '@/components/CategoryManagement';
 import FlavorManagement from '@/components/FlavorManagement';
 import SubscriptionGate from '@/components/SubscriptionGate';
+import ImageUpload from '@/components/ImageUpload';
 
 interface MenuItem {
   id: string;
@@ -55,7 +56,7 @@ const [formData, setFormData] = useState({
     category_id: '',
     preparation_time: '',
     supports_fractional: false,
-    image: null as File | null
+    image_url: ''
   });
 
   useEffect(() => {
@@ -155,34 +156,14 @@ const [formData, setFormData] = useState({
     setLoading(true);
 
     try {
-      let image_url = '';
-      
-      // Upload da imagem se houver
-      if (formData.image) {
-        const fileExt = formData.image.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('menu-images')
-          .upload(fileName, formData.image);
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('menu-images')
-          .getPublicUrl(fileName);
-        
-        image_url = urlData.publicUrl;
-      }
-
-const itemData = {
+      const itemData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
         category_id: formData.category_id || null,
         preparation_time: parseInt(formData.preparation_time) || 0,
         supports_fractional: !!formData.supports_fractional,
-        ...(image_url && { image_url })
+        ...(formData.image_url && { image_url: formData.image_url })
       };
 
       let itemId: string | null = null;
@@ -243,7 +224,7 @@ const itemData = {
         category_id: '',
         preparation_time: '',
         supports_fractional: false,
-        image: null
+        image_url: ''
       });
       setSelectedFlavorIds([]);
       fetchItems();
@@ -268,7 +249,7 @@ const itemData = {
       category_id: item.category_id || '',
       preparation_time: item.preparation_time?.toString() || '',
       supports_fractional: !!item.supports_fractional,
-      image: null
+      image_url: item.image_url || ''
     });
 
     try {
@@ -476,15 +457,13 @@ const itemData = {
                 </>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="image">Imagem</Label>
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({...formData, image: e.target.files?.[0] || null})}
-                />
-              </div>
+              <ImageUpload
+                currentUrl={formData.image_url}
+                onUrlChange={(url) => setFormData({...formData, image_url: url})}
+                label="Imagem do Item"
+                bucketName="menu-images"
+                folder="items"
+              />
 
               <div className="flex gap-2 pt-4">
                 <Button type="submit" disabled={loading} className="flex-1">
