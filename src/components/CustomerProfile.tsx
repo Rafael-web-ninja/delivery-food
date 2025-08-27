@@ -6,13 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Phone, MapPin } from 'lucide-react';
+import { User, Phone, MapPin, Mail } from 'lucide-react';
 import PasswordChangeForm from './PasswordChangeForm';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface CustomerProfileData {
   name: string;
   phone: string;
   address: string;
+}
+
+interface EmailChangeData {
+  newEmail: string;
+  password: string;
 }
 
 export default function CustomerProfile() {
@@ -24,6 +30,11 @@ export default function CustomerProfile() {
     phone: '',
     address: ''
   });
+  const [emailData, setEmailData] = useState<EmailChangeData>({
+    newEmail: '',
+    password: ''
+  });
+  const [emailLoading, setEmailLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -96,6 +107,43 @@ export default function CustomerProfile() {
     }
   };
 
+  const handleEmailChange = async () => {
+    if (!emailData.newEmail || !emailData.password) {
+      toast({
+        title: "Dados incompletos",
+        description: "Preencha o novo e-mail e sua senha atual.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: emailData.newEmail,
+        password: emailData.password
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "E-mail atualizado!",
+        description: "Verifique seu novo e-mail para confirmar a alteração.",
+      });
+
+      setEmailData({ newEmail: '', password: '' });
+    } catch (error: any) {
+      console.error('Erro ao alterar e-mail:', error);
+      toast({
+        title: "Erro ao alterar e-mail",
+        description: error.message || "Não foi possível alterar o e-mail.",
+        variant: "destructive"
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   return (
     <div>
       <Card>
@@ -148,6 +196,69 @@ export default function CustomerProfile() {
           <Button onClick={saveProfile} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : 'Salvar Perfil'}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Email Change Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Alterar E-mail</CardTitle>
+          <CardDescription>
+            E-mail atual: {user?.email}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="newEmail" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Novo e-mail
+            </Label>
+            <Input
+              id="newEmail"
+              type="email"
+              value={emailData.newEmail}
+              onChange={(e) => setEmailData(prev => ({ ...prev, newEmail: e.target.value }))}
+              placeholder="novo@email.com"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="confirmPassword">Senha atual para confirmar</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={emailData.password}
+              onChange={(e) => setEmailData(prev => ({ ...prev, password: e.target.value }))}
+              placeholder="Digite sua senha atual"
+            />
+          </div>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                disabled={!emailData.newEmail || !emailData.password || emailLoading} 
+                className="w-full"
+                variant="outline"
+              >
+                {emailLoading ? 'Alterando...' : 'Alterar E-mail'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar alteração de e-mail</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Você está prestes a alterar seu e-mail de <strong>{user?.email}</strong> para <strong>{emailData.newEmail}</strong>. 
+                  Um e-mail de confirmação será enviado para o novo endereço. Esta ação não pode ser desfeita automaticamente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleEmailChange}>
+                  Confirmar Alteração
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 

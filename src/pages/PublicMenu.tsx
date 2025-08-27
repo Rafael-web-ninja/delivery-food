@@ -404,9 +404,13 @@ const getCartTotal = () =>
     
     setCart([]);
     setShowCheckout(false);
+    
+    // Redirecionar para aba "Meus Pedidos"
+    setActiveTab('orders');
+    
     toast({
       title: 'Pedido realizado!',
-      description: 'Obrigado pelo seu pedido!'
+      description: 'Obrigado pelo seu pedido! Você pode acompanhar o status na aba "Meus Pedidos".'
     });
   };
 

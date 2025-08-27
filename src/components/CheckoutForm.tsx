@@ -413,11 +413,6 @@ const handleFinishOrder = async () => {
       setShowSuccessModal(true);
       onOrderComplete();
       
-      // Redirecionar para aba "Meus Pedidos" após 2 segundos
-      setTimeout(() => {
-        navigate('?tab=orders');
-      }, 2000);
-      
     } catch (error: any) {
       console.error('Erro ao finalizar pedido:', error);
       toast({
