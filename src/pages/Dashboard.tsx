@@ -8,13 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { CardSkeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
-import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle, Menu, AlertCircle } from 'lucide-react';
+import { Plus, Store, Package, ShoppingCart, Copy, Link, BarChart3, TrendingUp, Clock, CheckCircle, Menu, AlertCircle, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 import { Sidebar } from '@/components/Sidebar';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import QRCodeDialog from '@/components/QRCodeDialog';
 
 interface Business {
   id: string;
@@ -40,6 +41,7 @@ const Dashboard = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingBusiness, setLoadingBusiness] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
   
   const { execute: executeCopyLink, loading: copyingLink } = useAsyncOperation({
     successMessage: "Link copiado com sucesso!"
@@ -320,7 +322,7 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-3">
                 <div className="flex-1 p-3 bg-muted rounded-md font-mono text-sm">
                   {menuLink}
                 </div>
@@ -333,6 +335,13 @@ const Dashboard = () => {
                   <Copy className="h-4 w-4 mr-2" />
                   Copiar
                 </LoadingButton>
+                <Button 
+                  onClick={() => setQrDialogOpen(true)} 
+                  variant="outline"
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  QR Code
+                </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 Cole este link no WhatsApp, Instagram, Facebook ou onde preferir!
@@ -340,6 +349,14 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* QR Code Dialog */}
+        <QRCodeDialog
+          open={qrDialogOpen}
+          onOpenChange={setQrDialogOpen}
+          url={menuLink}
+          businessName={business?.name || 'Cardápio'}
+        />
       </div>
     </div>
   );

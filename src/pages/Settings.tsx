@@ -13,11 +13,12 @@ import BusinessHours from '@/components/BusinessHours';
 import PaymentMethodManagement from '@/components/PaymentMethodManagement';
 import { useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@/components/ui/loading-button';
-import { ArrowLeft, Save, Store } from 'lucide-react';
+import { ArrowLeft, Save, Store, QrCode } from 'lucide-react';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
 import ImageUpload from '@/components/ImageUpload';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
 import { useSubscription } from '@/hooks/useSubscription';
+import QRCodeDialog from '@/components/QRCodeDialog';
 
 interface BusinessData {
   id: string;
@@ -164,6 +165,7 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   accept_orders_when_closed: false
 });
   const [loading, setLoading] = useState(true);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
 
   const { execute: saveSettings, loading: saving } = useAsyncOperation({
     successMessage: "Configurações salvas com sucesso!",
@@ -360,9 +362,20 @@ const { error } = await supabase
                       placeholder="pizzariapedro"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Também acessível por: {window.location.origin}/{businessData.slug || 'seu-slug'}
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <p className="text-xs text-muted-foreground flex-1">
+                      Também acessível por: {window.location.origin}/{businessData.slug || 'seu-slug'}
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setQrDialogOpen(true)}
+                      disabled={!businessData.id}
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      QR Code do Cardápio
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -709,6 +722,14 @@ const { error } = await supabase
             <SecurityTab user={user} />
           </TabsContent>
         </Tabs>
+
+        {/* QR Code Dialog */}
+        <QRCodeDialog
+          open={qrDialogOpen}
+          onOpenChange={setQrDialogOpen}
+          url={`${window.location.origin}/menu/${businessData.slug || businessData.id}`}
+          businessName={businessData.name || 'Cardápio'}
+        />
       </div>
     </div>
   );
