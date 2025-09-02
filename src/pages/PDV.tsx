@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
-import { Plus, Minus, Search } from "lucide-react";
+import { useCoupon } from '@/hooks/useCoupon';
+import { useScheduling } from '@/hooks/useScheduling';
+import { Plus, Minus, Search, X } from "lucide-react";
 import FractionalPizzaDialog from "@/components/FractionalPizzaDialog";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface MenuItem {
   id: string;
@@ -54,6 +57,10 @@ export default function PDV() {
   const [fractionalBaseItem, setFractionalBaseItem] = useState<MenuItem | null>(null);
   const [fractionalQuantity, setFractionalQuantity] = useState<number>(1);
   const [isPickup, setIsPickup] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const { appliedCoupon, loading: couponLoading, validateAndApplyCoupon, removeCoupon } = useCoupon();
+  const { allowScheduling, getMinScheduleDateTime, formatScheduleDateTime } = useScheduling(businessId);
+  const [scheduledAt, setScheduledAt] = useState('');
 
   // Buscar business do dono logado
   useEffect(() => {
@@ -145,6 +152,11 @@ export default function PDV() {
   const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.quantity, 0), [cart]);
   const appliedDeliveryFee = useMemo(() => (isPickup ? 0 : Number(deliveryFee || 0)), [isPickup, deliveryFee]);
   const total = subtotal + appliedDeliveryFee;
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    await validateAndApplyCoupon(couponCode, businessId, subtotal, null);
+  };
 
   const finalize = async () => {
     if (!businessId) return;
@@ -299,10 +311,51 @@ export default function PDV() {
                   <span>Taxa de entrega</span>
                   <span>{formatCurrency(appliedDeliveryFee)}</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span>Desconto ({appliedCoupon.code})</span>
+                    <span>-{formatCurrency(appliedCoupon.discount_amount)}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between font-semibold">
                   <span>Total</span>
-                  <span>{formatCurrency(total)}</span>
+                  <span>{formatCurrency(total - (appliedCoupon?.discount_amount || 0))}</span>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Seção de cupom */}
+              <div className="space-y-2">
+                <h4 className="font-medium">Cupom de Desconto</h4>
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Código do cupom"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                    >
+                      {couponLoading ? 'Verificando...' : 'Aplicar'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 font-medium">{appliedCoupon.code}</span>
+                      <span className="text-green-600">-{formatCurrency(appliedCoupon.discount_amount)}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={removeCoupon}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Separator />
@@ -314,6 +367,24 @@ export default function PDV() {
                   <Input placeholder="Endereço (opcional)" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} />
                   <Input placeholder="Observações (opcional)" value={customer.notes} onChange={e => setCustomer({ ...customer, notes: e.target.value })} />
                 </div>
+
+                {/* Agendamento de pedidos */}
+                {allowScheduling && (
+                  <div className="grid grid-cols-1 gap-2">
+                    <Label>Agendar pedido (opcional)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={scheduledAt}
+                      min={getMinScheduleDateTime()}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                    />
+                    {scheduledAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Agendado para: {formatScheduleDateTime(scheduledAt)}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2">
                   {paymentMethods.length > 0 ? paymentMethods.map(pm => (

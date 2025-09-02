@@ -19,6 +19,7 @@ import ImageUpload from '@/components/ImageUpload';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
 import { useSubscription } from '@/hooks/useSubscription';
 import QRCodeDialog from '@/components/QRCodeDialog';
+import CouponManagement from '@/components/CouponManagement';
 
 interface BusinessData {
   id: string;
@@ -44,6 +45,7 @@ interface BusinessData {
   delivery_time_bg_color: string;
   delivery_time_text_color: string;
   accept_orders_when_closed: boolean;
+  allow_scheduling: boolean;
 }
 
 // Security Tab Component
@@ -162,7 +164,8 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   cart_button_text_color: '#FFFFFF',
   delivery_time_bg_color: '#000000',
   delivery_time_text_color: '#FFFFFF',
-  accept_orders_when_closed: false
+  accept_orders_when_closed: false,
+  allow_scheduling: false
 });
   const [loading, setLoading] = useState(true);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -267,7 +270,8 @@ const { error } = await supabase
     cart_button_text_color: businessData.cart_button_text_color,
     delivery_time_bg_color: businessData.delivery_time_bg_color,
     delivery_time_text_color: businessData.delivery_time_text_color,
-    accept_orders_when_closed: businessData.accept_orders_when_closed
+    accept_orders_when_closed: businessData.accept_orders_when_closed,
+    allow_scheduling: businessData.allow_scheduling
   })
   .eq('id', currentBusinessId);
 
@@ -296,6 +300,7 @@ const { error } = await supabase
             <TabsTrigger value="business">Dados do Negócio</TabsTrigger>
             <TabsTrigger value="hours">Horários</TabsTrigger>
             <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+            <TabsTrigger value="coupons">Cupons</TabsTrigger>
             <TabsTrigger value="colors">Personalização</TabsTrigger>
             <TabsTrigger value="security">Segurança</TabsTrigger>
           </TabsList>
@@ -464,6 +469,23 @@ const { error } = await supabase
   </div>
 </div>
 
+{/* Permitir agendamento de pedidos */}
+<div className="space-y-2">
+  <div className="flex items-center justify-between">
+    <div className="space-y-0.5">
+      <Label htmlFor="allow_scheduling">Permitir agendamento de pedidos</Label>
+      <p className="text-sm text-muted-foreground">
+        Permite que clientes agendem pedidos para data e horário específicos
+      </p>
+    </div>
+    <Switch
+      id="allow_scheduling"
+      checked={businessData.allow_scheduling}
+      onCheckedChange={(checked) => setBusinessData(prev => ({ ...prev, allow_scheduling: checked }))}
+    />
+  </div>
+</div>
+
                 <div className="flex gap-2 pt-4">
                   <LoadingButton
                     onClick={handleSave}
@@ -488,6 +510,10 @@ const { error } = await supabase
 
           <TabsContent value="payments">
             <PaymentMethodManagement />
+          </TabsContent>
+
+          <TabsContent value="coupons">
+            <CouponManagement />
           </TabsContent>
 
           <TabsContent value="colors">

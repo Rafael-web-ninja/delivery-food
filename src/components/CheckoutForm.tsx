@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, paymentTranslations } from '@/lib/formatters';
+import { useCoupon } from '@/hooks/useCoupon';
+import { useScheduling } from '@/hooks/useScheduling';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, X } from 'lucide-react';
@@ -47,6 +49,10 @@ const [loading, setLoading] = useState(false);
 const [showSuccessModal, setShowSuccessModal] = useState(false);
 const [completedOrderId, setCompletedOrderId] = useState('');
 const [minOrderValue, setMinOrderValue] = useState(0);
+  const [couponCode, setCouponCode] = useState('');
+  const { appliedCoupon, loading: couponLoading, validateAndApplyCoupon, removeCoupon } = useCoupon();
+  const { allowScheduling, getMinScheduleDateTime, formatScheduleDateTime } = useScheduling(business.id);
+  const [scheduledAt, setScheduledAt] = useState('');
   
   // Formulário de dados do cliente
   const [customerData, setCustomerData] = useState({
@@ -330,6 +336,9 @@ useEffect(() => {
         customer_address: customerData.address || '',
         total_amount: totalWithDelivery,
         delivery_fee: deliveryFee,
+        discount_amount: appliedCoupon?.discount_amount || 0,
+        coupon_code: appliedCoupon?.code || null,
+        scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         payment_method: selectedPaymentMethod as any,
         notes: customerData.notes || '',
         status: 'pending' as const
@@ -372,6 +381,24 @@ useEffect(() => {
         throw new Error('Erro ao adicionar itens do pedido.');
       }
 
+      // 4. Criar redemption do cupom se aplicado
+      if (appliedCoupon) {
+        const { error: redemptionError } = await supabase
+          .from('coupon_redemptions')
+          .insert({
+            coupon_id: appliedCoupon.id,
+            order_id: order.id,
+            customer_id: customerProfile.id,
+            discount_amount: appliedCoupon.discount_amount
+          });
+
+        if (redemptionError) {
+          console.error('Coupon redemption error:', redemptionError);
+          // Não falhar o pedido por causa do cupom, apenas logar o erro
+          console.warn('Falha ao registrar uso do cupom, mas pedido foi criado');
+        }
+      }
+
       return order;
     } catch (error) {
       console.error('Erro ao salvar pedido:', error);
@@ -389,10 +416,12 @@ const handleFinishOrder = async () => {
     return;
   }
 
-  if (total < minOrderValue) {
+  const effectiveTotal = total - (appliedCoupon?.discount_amount || 0);
+  
+  if (effectiveTotal < minOrderValue) {
     toast({
       title: "Pedido mínimo não atingido",
-      description: `Faltam ${formatCurrency(minOrderValue - total)} para atingir o pedido mínimo`,
+      description: `Faltam ${formatCurrency(minOrderValue - effectiveTotal)} para atingir o pedido mínimo`,
       variant: "destructive"
     });
     return;
@@ -423,6 +452,23 @@ const handleFinishOrder = async () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    
+    // Get customer profile ID if user is logged in
+    let customerId: string | undefined;
+    if (user) {
+      const { data: profile } = await supabase
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      customerId = profile?.id;
+    }
+
+    await validateAndApplyCoupon(couponCode, business.id, total, customerId);
   };
 
   return (
@@ -461,15 +507,55 @@ const handleFinishOrder = async () => {
                   <span>{formatCurrency(total)}</span>
                 </div>
                 <DeliveryFeeDisplay businessId={business.id} />
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm py-1 text-green-600">
+                    <span>Desconto ({appliedCoupon.code})</span>
+                    <span>-{formatCurrency(appliedCoupon.discount_amount)}</span>
+                  </div>
+                )}
                 <div className="border-t mt-2 pt-2 font-semibold flex justify-between">
                   <span>Total</span>
-                  <TotalWithDelivery businessId={business.id} subtotal={total} />
+                  <TotalWithDelivery businessId={business.id} subtotal={total - (appliedCoupon?.discount_amount || 0)} />
                 </div>
 </div>
 
-{minOrderValue > total && (
+{/* Seção de cupom */}
+<div className="mt-4 p-3 border rounded-lg bg-muted/30">
+  <h4 className="font-medium mb-2">Cupom de Desconto</h4>
+  {!appliedCoupon ? (
+    <div className="flex gap-2">
+      <Input
+        placeholder="Digite o código do cupom"
+        value={couponCode}
+        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+        className="flex-1"
+      />
+      <Button
+        variant="outline"
+        onClick={handleApplyCoupon}
+        disabled={couponLoading || !couponCode.trim()}
+      >
+        {couponLoading ? 'Verificando...' : 'Aplicar'}
+      </Button>
+    </div>
+  ) : (
+    <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
+      <div className="flex items-center gap-2">
+        <span className="text-green-600 font-medium">{appliedCoupon.code}</span>
+        <span className="text-sm text-green-600">
+          -{formatCurrency(appliedCoupon.discount_amount)}
+        </span>
+      </div>
+      <Button variant="ghost" size="sm" onClick={removeCoupon}>
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  )}
+</div>
+
+{minOrderValue > (total - (appliedCoupon?.discount_amount || 0)) && (
   <div className="mt-3 p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200 text-sm">
-    Pedido mínimo de {formatCurrency(minOrderValue)}. Faltam {formatCurrency(minOrderValue - total)} para finalizar.
+    Pedido mínimo de {formatCurrency(minOrderValue)}. Faltam {formatCurrency(minOrderValue - (total - (appliedCoupon?.discount_amount || 0)))} para finalizar.
   </div>
 )}
 
@@ -626,6 +712,27 @@ const handleFinishOrder = async () => {
                       placeholder="Observações sobre o pedido (opcional)"
                     />
                   </div>
+
+                  {/* Agendamento de pedidos */}
+                  {allowScheduling && (
+                    <div>
+                      <Label htmlFor="scheduled_at" className="flex items-center gap-2">
+                        Agendar pedido (opcional)
+                      </Label>
+                      <Input
+                        id="scheduled_at"
+                        type="datetime-local"
+                        value={scheduledAt}
+                        min={getMinScheduleDateTime()}
+                        onChange={(e) => setScheduledAt(e.target.value)}
+                      />
+                      {scheduledAt && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Agendado para: {formatScheduleDateTime(scheduledAt)}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

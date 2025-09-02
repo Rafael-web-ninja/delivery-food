@@ -77,6 +77,106 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          customer_id: string | null
+          discount_amount: number
+          id: string
+          order_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          customer_id?: string | null
+          discount_amount: number
+          id?: string
+          order_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          customer_id?: string | null
+          discount_amount?: number
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          business_id: string
+          code: string
+          created_at: string
+          end_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          max_uses_per_customer: number | null
+          min_order_value: number
+          start_at: string | null
+          type: Database["public"]["Enums"]["coupon_type"]
+          updated_at: string
+          uses_count: number
+          value: number
+        }
+        Insert: {
+          business_id: string
+          code: string
+          created_at?: string
+          end_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          max_uses_per_customer?: number | null
+          min_order_value?: number
+          start_at?: string | null
+          type: Database["public"]["Enums"]["coupon_type"]
+          updated_at?: string
+          uses_count?: number
+          value: number
+        }
+        Update: {
+          business_id?: string
+          code?: string
+          created_at?: string
+          end_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          max_uses_per_customer?: number | null
+          min_order_value?: number
+          start_at?: string | null
+          type?: Database["public"]["Enums"]["coupon_type"]
+          updated_at?: string
+          uses_count?: number
+          value?: number
+        }
+        Relationships: []
+      }
       customer_profiles: {
         Row: {
           address: string | null
@@ -112,6 +212,7 @@ export type Database = {
           accent_color: string | null
           accept_orders_when_closed: boolean
           address: string | null
+          allow_scheduling: boolean
           background_color: string | null
           button_color: string | null
           button_text_color: string | null
@@ -141,6 +242,7 @@ export type Database = {
           accent_color?: string | null
           accept_orders_when_closed?: boolean
           address?: string | null
+          allow_scheduling?: boolean
           background_color?: string | null
           button_color?: string | null
           button_text_color?: string | null
@@ -170,6 +272,7 @@ export type Database = {
           accent_color?: string | null
           accept_orders_when_closed?: boolean
           address?: string | null
+          allow_scheduling?: boolean
           background_color?: string | null
           button_color?: string | null
           button_text_color?: string | null
@@ -456,6 +559,7 @@ export type Database = {
       orders: {
         Row: {
           business_id: string
+          coupon_code: string | null
           created_at: string
           customer_address: string | null
           customer_id: string | null
@@ -463,10 +567,12 @@ export type Database = {
           customer_phone: string
           delivery_fee: number | null
           delivery_id: string | null
+          discount_amount: number
           id: string
           notes: string | null
           order_code: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
+          scheduled_at: string | null
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
           updated_at: string
@@ -474,6 +580,7 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          coupon_code?: string | null
           created_at?: string
           customer_address?: string | null
           customer_id?: string | null
@@ -481,10 +588,12 @@ export type Database = {
           customer_phone: string
           delivery_fee?: number | null
           delivery_id?: string | null
+          discount_amount?: number
           id?: string
           notes?: string | null
           order_code?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
+          scheduled_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_amount: number
           updated_at?: string
@@ -492,6 +601,7 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          coupon_code?: string | null
           created_at?: string
           customer_address?: string | null
           customer_id?: string | null
@@ -499,10 +609,12 @@ export type Database = {
           customer_phone?: string
           delivery_fee?: number | null
           delivery_id?: string | null
+          discount_amount?: number
           id?: string
           notes?: string | null
           order_code?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          scheduled_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
           updated_at?: string
@@ -712,6 +824,7 @@ export type Database = {
       }
     }
     Enums: {
+      coupon_type: "percent" | "fixed"
       order_status:
         | "pending"
         | "preparing"
@@ -853,6 +966,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      coupon_type: ["percent", "fixed"],
       order_status: [
         "pending",
         "preparing",
