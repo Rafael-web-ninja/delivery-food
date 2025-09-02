@@ -172,6 +172,8 @@ export default function PDV() {
     try {
       const order_code = crypto.randomUUID().slice(0, 8);
       const finalNotes = [customer.notes || "", isPickup ? "Retirada no balcão" : ""].filter(Boolean).join(" — ");
+      const finalTotal = total - (appliedCoupon?.discount_amount || 0);
+      
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
@@ -183,8 +185,11 @@ export default function PDV() {
           customer_name: customer.name,
           customer_phone: customer.phone,
           customer_address: customer.address || "",
-          total_amount: total,
+          total_amount: finalTotal,
           delivery_fee: appliedDeliveryFee,
+          discount_amount: appliedCoupon?.discount_amount || 0,
+          coupon_code: appliedCoupon?.code || null,
+          scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
           payment_method: selectedPayment as any,
           notes: finalNotes,
           status: "pending"
@@ -213,9 +218,29 @@ export default function PDV() {
       const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
       if (itemsError) throw itemsError;
 
+      // Criar redemption do cupom se aplicado
+      if (appliedCoupon) {
+        const { error: redemptionError } = await supabase
+          .from('coupon_redemptions')
+          .insert({
+            coupon_id: appliedCoupon.id,
+            order_id: order.id,
+            customer_id: null, // PDV não tem customer_id
+            discount_amount: appliedCoupon.discount_amount
+          });
+
+        if (redemptionError) {
+          console.error('Coupon redemption error:', redemptionError);
+          // Não falhar o pedido por causa do cupom, apenas logar o erro
+        }
+      }
+
       toast({ title: "Pedido criado!", description: `#${order.order_code}` });
       setCart([]);
       setCustomer({ name: "", phone: "", address: "", notes: "" });
+      setCouponCode('');
+      removeCoupon();
+      setScheduledAt('');
     } catch (e: any) {
       console.error(e);
       toast({ title: "Erro ao criar pedido", description: e.message || "Tente novamente", variant: "destructive" });
