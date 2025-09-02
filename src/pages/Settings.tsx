@@ -46,6 +46,7 @@ interface BusinessData {
   delivery_time_text_color: string;
   accept_orders_when_closed: boolean;
   allow_scheduling: boolean;
+  allow_pickup: boolean;
 }
 
 // Security Tab Component
@@ -165,7 +166,8 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   delivery_time_bg_color: '#000000',
   delivery_time_text_color: '#FFFFFF',
   accept_orders_when_closed: false,
-  allow_scheduling: false
+  allow_scheduling: false,
+  allow_pickup: false
 });
   const [loading, setLoading] = useState(true);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -271,7 +273,8 @@ const { error } = await supabase
     delivery_time_bg_color: businessData.delivery_time_bg_color,
     delivery_time_text_color: businessData.delivery_time_text_color,
     accept_orders_when_closed: businessData.accept_orders_when_closed,
-    allow_scheduling: businessData.allow_scheduling
+    allow_scheduling: businessData.allow_scheduling,
+    allow_pickup: businessData.allow_pickup
   })
   .eq('id', currentBusinessId);
 
@@ -482,6 +485,23 @@ const { error } = await supabase
       id="allow_scheduling"
       checked={businessData.allow_scheduling}
       onCheckedChange={(checked) => setBusinessData(prev => ({ ...prev, allow_scheduling: checked }))}
+    />
+  </div>
+</div>
+
+{/* Permitir retirada de pedidos */}
+<div className="space-y-2">
+  <div className="flex items-center justify-between">
+    <div className="space-y-0.5">
+      <Label htmlFor="allow_pickup">Permitir retirada de pedidos</Label>
+      <p className="text-sm text-muted-foreground">
+        Permite que clientes escolham retirar o pedido no local ao invés de delivery
+      </p>
+    </div>
+    <Switch
+      id="allow_pickup"
+      checked={businessData.allow_pickup}
+      onCheckedChange={(checked) => setBusinessData(prev => ({ ...prev, allow_pickup: checked }))}
     />
   </div>
 </div>

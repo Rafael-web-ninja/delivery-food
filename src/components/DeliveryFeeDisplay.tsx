@@ -38,9 +38,10 @@ export const DeliveryFeeDisplay = ({ businessId }: DeliveryFeeDisplayProps) => {
 interface TotalWithDeliveryProps {
   businessId: string;
   subtotal: number;
+  isPickup?: boolean;
 }
 
-export const TotalWithDelivery = ({ businessId, subtotal }: TotalWithDeliveryProps) => {
+export const TotalWithDelivery = ({ businessId, subtotal, isPickup = false }: TotalWithDeliveryProps) => {
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
 
   useEffect(() => {
@@ -51,13 +52,15 @@ export const TotalWithDelivery = ({ businessId, subtotal }: TotalWithDeliveryPro
         .eq('id', businessId)
         .single();
       
-      if (data?.delivery_fee) {
+      if (data?.delivery_fee && !isPickup) {
         setDeliveryFee(Number(data.delivery_fee));
+      } else {
+        setDeliveryFee(0);
       }
     };
 
     fetchDeliveryFee();
-  }, [businessId]);
+  }, [businessId, isPickup]);
 
   return <span>{formatCurrency(subtotal + deliveryFee)}</span>;
 };

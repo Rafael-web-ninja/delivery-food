@@ -11,7 +11,7 @@ import { useCoupon } from '@/hooks/useCoupon';
 import { useScheduling } from '@/hooks/useScheduling';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { User, MapPin, Phone, Mail, X } from 'lucide-react';
+import { User, MapPin, Phone, Mail, X, Truck, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import OrderSuccessModal from './OrderSuccessModal';
 import { DeliveryFeeDisplay, TotalWithDelivery } from './DeliveryFeeDisplay';
@@ -53,6 +53,8 @@ const [minOrderValue, setMinOrderValue] = useState(0);
   const { appliedCoupon, loading: couponLoading, validateAndApplyCoupon, removeCoupon } = useCoupon();
   const { allowScheduling, getMinScheduleDateTime, formatScheduleDateTime } = useScheduling(business.id);
   const [scheduledAt, setScheduledAt] = useState('');
+  const [allowPickup, setAllowPickup] = useState(false);
+  const [isPickup, setIsPickup] = useState(false);
   
   // Formulário de dados do cliente
   const [customerData, setCustomerData] = useState({
@@ -123,21 +125,23 @@ useEffect(() => {
   loadUserProfile();
 }, [user]);
 
-// Carregar valor mínimo do pedido
+// Carregar valor mínimo do pedido e configurações do negócio
 useEffect(() => {
-  const loadMinOrder = async () => {
+  const loadBusinessSettings = async () => {
     try {
       const { data } = await supabase
         .from('delivery_businesses')
-        .select('min_order_value')
+        .select('min_order_value, allow_pickup')
         .eq('id', business.id)
         .single();
       setMinOrderValue(Number(data?.min_order_value || 0));
+      setAllowPickup(data?.allow_pickup || false);
     } catch (e) {
       setMinOrderValue(0);
+      setAllowPickup(false);
     }
   };
-  if (business?.id) loadMinOrder();
+  if (business?.id) loadBusinessSettings();
 }, [business?.id]);
 
 // Carrega métodos de pagamento ativos do delivery
@@ -314,7 +318,7 @@ useEffect(() => {
         .eq('id', business.id)
         .single();
       
-      const deliveryFee = businessData?.delivery_fee || 0;
+      const deliveryFee = isPickup ? 0 : (businessData?.delivery_fee || 0);
       const totalWithDelivery = total + Number(deliveryFee);
 
       // 2. Validar IDs obrigatórios
@@ -325,6 +329,11 @@ useEffect(() => {
       // 3. Criar pedido com customer_id, delivery_id e user_id
       const generatedOrderCode = crypto.randomUUID().slice(0, 8);
       
+      const finalNotes = [
+        customerData.notes || "",
+        isPickup ? "Retirada no balcão" : ""
+      ].filter(Boolean).join(" — ");
+      
       const orderData = {
         order_code: generatedOrderCode,
         customer_id: customerProfile.id,
@@ -333,14 +342,14 @@ useEffect(() => {
         user_id: user.id, // Adicionar user_id para compatibilidade
         customer_name: customerData.name,
         customer_phone: customerData.phone,
-        customer_address: customerData.address || '',
+        customer_address: isPickup ? '' : (customerData.address || ''),
         total_amount: totalWithDelivery,
         delivery_fee: deliveryFee,
         discount_amount: appliedCoupon?.discount_amount || 0,
         coupon_code: appliedCoupon?.code || null,
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         payment_method: selectedPaymentMethod as any,
-        notes: customerData.notes || '',
+        notes: finalNotes,
         status: 'pending' as const
       };
 
@@ -407,10 +416,23 @@ useEffect(() => {
   };
 
 const handleFinishOrder = async () => {
-  if (!customerData.name || !customerData.phone || !customerData.address) {
+  // Validar campos obrigatórios baseado no tipo de pedido
+  const requiredFields = [
+    { field: customerData.name, name: 'nome' },
+    { field: customerData.phone, name: 'telefone' }
+  ];
+
+  // Endereço só é obrigatório para delivery
+  if (!isPickup) {
+    requiredFields.push({ field: customerData.address, name: 'endereço' });
+  }
+
+  const missingFields = requiredFields.filter(({ field }) => !field).map(({ name }) => name);
+
+  if (missingFields.length > 0) {
     toast({
       title: "Dados incompletos",
-      description: "Preencha todos os campos obrigatórios",
+      description: `Preencha: ${missingFields.join(', ')}`,
       variant: "destructive"
     });
     return;
@@ -506,7 +528,7 @@ const handleFinishOrder = async () => {
                   <span>Subtotal</span>
                   <span>{formatCurrency(total)}</span>
                 </div>
-                <DeliveryFeeDisplay businessId={business.id} />
+                {!isPickup && <DeliveryFeeDisplay businessId={business.id} />}
                 {appliedCoupon && (
                   <div className="flex justify-between text-sm py-1 text-green-600">
                     <span>Desconto ({appliedCoupon.code})</span>
@@ -515,7 +537,11 @@ const handleFinishOrder = async () => {
                 )}
                 <div className="border-t mt-2 pt-2 font-semibold flex justify-between">
                   <span>Total</span>
-                  <TotalWithDelivery businessId={business.id} subtotal={total - (appliedCoupon?.discount_amount || 0)} />
+                  <TotalWithDelivery 
+                    businessId={business.id} 
+                    subtotal={total - (appliedCoupon?.discount_amount || 0)} 
+                    isPickup={isPickup}
+                  />
                 </div>
 </div>
 
@@ -662,6 +688,36 @@ const handleFinishOrder = async () => {
             ) : (
               <div className="space-y-4">
                 <p className="text-green-600">✓ Logado como {user.email}</p>
+                
+                {/* Opção de tipo de pedido */}
+                {allowPickup && (
+                  <div>
+                    <Label className="flex items-center gap-2 mb-3">
+                      Tipo de Pedido
+                    </Label>
+                    <RadioGroup
+                      value={isPickup ? "pickup" : "delivery"}
+                      onValueChange={(value) => setIsPickup(value === "pickup")}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="delivery" />
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4" />
+                          <span>Delivery</span>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="pickup" />
+                        <div className="flex items-center gap-2">
+                          <Store className="h-4 w-4" />
+                          <span>Retirar no Local</span>
+                        </div>
+                      </label>
+                    </RadioGroup>
+                  </div>
+                )}
+
                 {/* Dados do cliente para usuários logados */}
                 <div className="space-y-4">
                   <div>
@@ -693,14 +749,20 @@ const handleFinishOrder = async () => {
                   <div>
                     <Label htmlFor="address" className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      Endereço de entrega *
+                      {isPickup ? "Endereço (opcional)" : "Endereço de entrega *"}
                     </Label>
                     <Input
                       id="address"
                       value={customerData.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
-                      placeholder="Rua, número, bairro, cidade"
+                      placeholder={isPickup ? "Endereço (opcional)" : "Rua, número, bairro, cidade"}
+                      disabled={isPickup}
                     />
+                    {isPickup && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Para retirada no local, o endereço não é necessário
+                      </p>
+                    )}
                   </div>
                   
                   <div>
