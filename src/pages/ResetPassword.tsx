@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,153 +9,62 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { supabase } from '@/integrations/supabase/client';
 
 const ResetPassword = () => {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(false);
-  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  const [isWelcomeFlow, setIsWelcomeFlow] = useState(false);
+  // Campos do formulário
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Estados de UI
+  const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+
+  // Identifica se veio do fluxo de boas-vindas (opcional, apenas para mensagens)
+  const isWelcomeFlow = (searchParams.get('type') === 'welcome');
 
   useEffect(() => {
-    const handlePasswordReset = async () => {
-      // Parse URL parameters
-      const searchParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      
-      const token = searchParams.get('token') || hashParams.get('access_token');
-      const refresh_token = searchParams.get('refresh_token') || hashParams.get('refresh_token');
-      const email = searchParams.get('email');
-      const type = searchParams.get('type') || hashParams.get('type');
-      const error = searchParams.get('error') || hashParams.get('error');
-      
-      // Check if this is welcome flow
-      const welcomeType = searchParams.get('type');
-      if (welcomeType === 'welcome') {
-        setIsWelcomeFlow(true);
-      }
-      
-      console.log('Reset password params:', { 
-        hasToken: !!token, 
-        hasRefreshToken: !!refresh_token, 
-        email, 
-        type, 
-        error,
-        isWelcomeFlow: welcomeType === 'welcome',
-        pathname: window.location.pathname 
-      });
-
-      // Handle errors
-      if (error) {
-        toast({
-          title: "Link inválido",
-          description: "O link de recuperação expirou ou é inválido.",
-          variant: "destructive"
-        });
-        navigate('/auth');
-        return;
-      }
-
-      // If no tokens but user is logged in, redirect to profile
-      if (!token && user) {
-        navigate('/meu-perfil');
-        return;
-      }
-
-      // If no tokens and no user, redirect to auth
-      if (!token) {
-        toast({
-          title: "Link necessário",
-          description: "Acesse através do link enviado por email.",
-          variant: "destructive"
-        });
-        navigate('/auth');
-        return;
-      }
-
-      // Set session with tokens
+    // Garante que ninguém fique logado nessa tela
+    // (sua exigência: ao clicar no e-mail, não pode logar no app)
+    (async () => {
       try {
-        if (token && refresh_token) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: token,
-            refresh_token: refresh_token
-          });
-
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            toast({
-              title: "Link inválido",
-              description: "O link de recuperação é inválido ou expirou.",
-              variant: "destructive"
-            });
-            navigate('/auth');
-            return;
-          }
-        } else if (email && type === 'recovery') {
-          // Verify OTP for new subscription users
-          const { error: otpError } = await supabase.auth.verifyOtp({
-            token: token,
-            type: 'recovery',
-            email: email
-          });
-
-          if (otpError) {
-            console.error('OTP error:', otpError);
-            toast({
-              title: "Link inválido",
-              description: "Não foi possível verificar o link.",
-              variant: "destructive"
-            });
-            navigate('/auth');
-            return;
-          }
-        }
-
-        setIsValidSession(true);
-        console.log('Session established successfully for password reset');
-        
-        // Clean URL but preserve welcome type
-        const cleanUrl = isWelcomeFlow ? '/reset-password?type=welcome' : '/reset-password';
-        window.history.replaceState({}, '', cleanUrl);
-        
-      } catch (error) {
-        console.error('Error setting session:', error);
-        navigate('/auth');
+        await supabase.auth.signOut();
+      } catch (e) {
+        // ignore
+      } finally {
+        setInitializing(false);
       }
-    };
+    })();
+  }, []);
 
-    handlePasswordReset();
-  }, [navigate, user, toast]);
-
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!password || !confirmPassword) {
+
+    if (!email || !password || !confirmPassword) {
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'Preencha todos os campos.',
+        variant: 'destructive',
       });
       return;
     }
 
     if (password !== confirmPassword) {
       toast({
-        title: "Erro",
-        description: "As senhas não coincidem",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'As senhas não coincidem.',
+        variant: 'destructive',
       });
       return;
     }
 
     if (password.length < 6) {
       toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'A senha deve ter pelo menos 6 caracteres.',
+        variant: 'destructive',
       });
       return;
     }
@@ -164,49 +72,52 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      // Chama sua Edge Function ADMIN que atualiza a senha por e-mail (sem token/sessão)
+      // Ajuste a URL caso use proxy diferente. No Supabase padrão:
+      // POST {PROJECT_URL}/functions/v1/admin-reset-password
+      const res = await fetch('/functions/v1/admin-reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          newPassword: password,
+        }),
       });
 
-      if (error) {
-        throw error;
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error || 'Não foi possível redefinir a senha.');
       }
 
       toast({
-        title: isWelcomeFlow ? "Senha definida com sucesso!" : "Senha redefinida!",
-        description: isWelcomeFlow 
-          ? "Sua conta foi criada e senha definida. Bem-vindo ao Gera Cardápio!" 
-          : "Sua senha foi alterada com sucesso. Redirecionando...",
+        title: isWelcomeFlow ? 'Senha definida com sucesso!' : 'Senha redefinida!',
+        description: isWelcomeFlow
+          ? 'Bem-vindo ao Gera Cardápio. Faça login para começar.'
+          : 'Sua senha foi alterada. Faça login para continuar.',
       });
 
-      // Redirect based on user type
+      // Redireciona para login; não mantém sessão ativa
       setTimeout(() => {
-        if (isWelcomeFlow) {
-          navigate('/dashboard', { replace: true }); // Welcome users go to dashboard
-        } else {
-          navigate('/meu-perfil', { replace: true }); // Existing users go to profile
-        }
-      }, 2000);
-
-    } catch (error: any) {
+        navigate('/auth', { replace: true });
+      }, 1200);
+    } catch (err: any) {
       toast({
-        title: "Erro ao redefinir senha",
-        description: error.message,
-        variant: "destructive"
+        title: 'Erro ao redefinir senha',
+        description: err?.message || 'Tente novamente em instantes.',
+        variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Mostra loading enquanto verifica a sessão
-  if (!isValidSession && !user) {
+  if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center space-y-4 p-6">
             <LoadingSpinner />
-            <p className="text-sm text-muted-foreground">Verificando link de recuperação...</p>
+            <p className="text-sm text-muted-foreground">Preparando a tela de redefinição...</p>
           </CardContent>
         </Card>
       </div>
@@ -218,45 +129,61 @@ const ResetPassword = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            {isWelcomeFlow ? "Defina sua Senha" : "Redefinir Senha"}
+            {isWelcomeFlow ? 'Defina sua Senha' : 'Redefinir Senha'}
           </CardTitle>
           <CardDescription>
-            {isWelcomeFlow 
-              ? "Bem-vindo ao Gera Cardápio! Defina sua senha para acessar sua conta" 
-              : "Digite sua nova senha"
-            }
+            {isWelcomeFlow
+              ? 'Bem-vindo! Informe seu e-mail e defina a senha para acessar sua conta.'
+              : 'Informe seu e-mail e crie uma nova senha.'}
           </CardDescription>
         </CardHeader>
+
         <CardContent>
-          <form onSubmit={handleResetPassword} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="voce@exemplo.com"
+                required
+                disabled={loading}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Nova Senha</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                placeholder="Mínimo 6 caracteres" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                required
                 minLength={6}
-                disabled={loading} 
+                disabled={loading}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
-              <Input 
-                id="confirmPassword" 
-                type="password" 
-                value={confirmPassword} 
-                onChange={e => setConfirmPassword(e.target.value)} 
-                placeholder="Digite a senha novamente" 
-                required 
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Digite a senha novamente"
+                required
                 minLength={6}
-                disabled={loading} 
+                disabled={loading}
               />
             </div>
-            
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
@@ -268,10 +195,10 @@ const ResetPassword = () => {
               )}
             </Button>
           </form>
-          
+
           <div className="text-center mt-4">
-            <Button 
-              variant="link" 
+            <Button
+              variant="link"
               onClick={() => navigate('/auth')}
               className="text-sm text-muted-foreground hover:text-primary"
             >
