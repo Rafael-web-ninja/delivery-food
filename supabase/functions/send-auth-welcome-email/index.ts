@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,59 +7,30 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const logStep = (step: string, details?: unknown) => {
-  console.log(`[SEND-AUTH-WELCOME-EMAIL] ${step}${details ? " - " + JSON.stringify(details) : ""}`);
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
+function ok(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-interface WelcomeEmailRequest {
-  email: string;
-  temporaryPassword?: string; // opcional aqui; não usamos no e-mail
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    logStep("Function started");
-
-    const { email }: WelcomeEmailRequest = await req.json();
-    if (!email) return json({ error: "Email is required" }, 400);
-
-    // Client admin (service role) para validações internas, se quiser
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
-    // (Opcional) Gera um link de recuperação só para auditar/validar que o email existe
-    // OBS: generateLink NÃO envia e-mail.
-    const { error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-    });
-    if (linkError) {
-      logStep("ERROR generating recovery link", { error: linkError.message });
-      // Podemos seguir mesmo assim, mas é útil retornar erro claro:
-      return json({ error: `Failed to generate recovery link: ${linkError.message}` }, 400);
+    const { email } = await req.json();
+    if (!email || typeof email !== "string") {
+      return ok({ sent: false, error: "Email is required" });
     }
 
-    // Link fixo SEM token – leva o usuário à tela do app
-    const resetLink = "https://app.geracardapio.com/reset-password";
+    const resetLink = "https://app.geracardapio.com/reset-password?type=welcome";
 
-    // ===== Envio do e-mail via Resend =====
+    // ===== Envio via Resend (opcional) =====
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const MAIL_FROM = Deno.env.get("MAIL_FROM") || "noreply@geracardapio.com";
-    
+    const MAIL_FROM = Deno.env.get("MAIL_FROM") || "onboarding@resend.dev";
     if (!RESEND_API_KEY) {
-      logStep("ERROR: Missing RESEND_API_KEY");
-      return json({ error: "Missing RESEND_API_KEY" }, 500);
+      // Sem provider configurado: retorne 200 com erro claro
+      return ok({ sent: false, error: "Missing RESEND_API_KEY (email not sent)", resetLink });
     }
 
     const subject = "Redefinição de senha - Gera Cardápio";
@@ -74,14 +45,10 @@ serve(async (req) => {
           </a>
         </p>
         <p>Se você não solicitou, ignore este e-mail.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
-        <p style="color:#666;font-size:12px">Esse link direciona para a página de redefinição no app.</p>
       </div>
     `;
 
-    logStep("Attempting to send email", { to: email, from: MAIL_FROM });
-
-    const r = await fetch("https://api.resend.com/emails", {
+    const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -89,25 +56,25 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: MAIL_FROM,
-        to: [email],
+        to: [email.trim().toLowerCase()],
         subject,
         html,
       }),
     });
 
-    const respText = await r.text();
-    if (!r.ok) {
-      logStep("Resend error", { status: r.status, respText });
-      return json({ error: `Email provider error: ${respText}` }, 502);
+    const text = await resp.text();
+
+    if (!resp.ok) {
+      // Ainda 200, mas com erro detalhado
+      return ok({ sent: false, error: `Email provider error: ${text}` });
     }
 
-    const sent = JSON.parse(respText);
-    logStep("Email sent", { id: sent?.id, to: email });
-
-    return json({ sent: true, resetLink });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message });
-    return json({ error: message }, 500);
+    let payload: any = null;
+    try { payload = JSON.parse(text); } catch {}
+    return ok({ sent: true, id: payload?.id, resetLink });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    // Nunca 500: sempre 200 com erro descritivo
+    return ok({ sent: false, error: message });
   }
 });
