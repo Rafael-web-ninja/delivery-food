@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Store, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+function genTempPassword(len = 10) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#*!?';
+  return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,26 +23,18 @@ const Auth = () => {
   const [customerName, setCustomerName] = useState('');
   const [userType, setUserType] = useState<'customer' | 'delivery_owner' | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Esqueci a senha
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  const {
-    signUp,
-    signIn,
-    user,
-    loading: authLoading,
-    initialized
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+
+  const { signUp, signIn, user, loading: authLoading, initialized } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
+
   useEffect(() => {
-    console.log('Auth page: Auth state -', {
-      user: user?.email || 'null',
-      authLoading,
-      initialized
-    });
+    console.log('Auth page: Auth state -', { user: user?.email || 'null', authLoading, initialized });
 
     // Só redirecionar quando a auth estiver inicializada
     if (initialized && !authLoading && user) {
@@ -47,72 +44,52 @@ const Auth = () => {
       const userData = user.user_metadata;
       const userType = userData?.user_type;
       if (userType === 'customer') {
-        navigate('/meu-perfil', {
-          replace: true
-        });
+        navigate('/meu-perfil', { replace: true });
       } else if (userType === 'delivery_owner') {
-        navigate('/dashboard', {
-          replace: true
-        });
+        navigate('/dashboard', { replace: true });
       } else {
         // Fallback: verificar na database
         checkUserTypeAndRedirect();
       }
     }
   }, [user, authLoading, initialized, navigate]);
+
   const checkUserTypeAndRedirect = async () => {
     if (!user) return;
     try {
       // Verificar se é dono de delivery
-      const {
-        data: business
-      } = await supabase.from('delivery_businesses').select('id').eq('owner_id', user.id).single();
+      const { data: business } = await supabase
+        .from('delivery_businesses')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
       if (business) {
-        navigate('/dashboard', {
-          replace: true
-        });
+        navigate('/dashboard', { replace: true });
       } else {
-        navigate('/meu-perfil', {
-          replace: true
-        });
+        navigate('/meu-perfil', { replace: true });
       }
     } catch (error) {
       // Se não encontrou business, é cliente
-      navigate('/meu-perfil', {
-        replace: true
-      });
+      navigate('/meu-perfil', { replace: true });
     }
   };
+
   const handleSignUp = async (e: React.FormEvent, type: 'customer' | 'delivery_owner') => {
     e.preventDefault();
     if (!email || !password) {
-      toast({
-        title: "Erro",
-        description: "Preencha email e senha",
-        variant: "destructive"
-      });
+      toast({ title: "Erro", description: "Preencha email e senha", variant: "destructive" });
       return;
     }
     if (type === 'delivery_owner' && !businessName) {
-      toast({
-        title: "Erro",
-        description: "Preencha o nome do seu delivery",
-        variant: "destructive"
-      });
+      toast({ title: "Erro", description: "Preencha o nome do seu delivery", variant: "destructive" });
       return;
     }
     if (type === 'customer' && !customerName) {
-      toast({
-        title: "Erro",
-        description: "Preencha seu nome",
-        variant: "destructive"
-      });
+      toast({ title: "Erro", description: "Preencha seu nome", variant: "destructive" });
       return;
     }
     setLoading(true);
-    const {
-      error
-    } = await signUp(email, password, type === 'delivery_owner' ? businessName : customerName, type);
+    const { error } = await signUp(email, password, type === 'delivery_owner' ? businessName : customerName, type);
     if (error) {
       toast({
         title: "Erro no cadastro",
@@ -120,36 +97,25 @@ const Auth = () => {
         variant: "destructive"
       });
     } else {
-      toast({
-        title: "Cadastro realizado!",
-        description: "Redirecionando..."
-      });
-
+      toast({ title: "Cadastro realizado!", description: "Redirecionando..." });
       // Redirecionar para /meu-perfil após cadastro de cliente bem-sucedido
       if (type === 'customer') {
         setTimeout(() => {
-          navigate('/meu-perfil', {
-            replace: true
-          });
+          navigate('/meu-perfil', { replace: true });
         }, 1000);
       }
     }
     setLoading(false);
   };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast({
-        title: "Erro",
-        description: "Preencha email e senha",
-        variant: "destructive"
-      });
+      toast({ title: "Erro", description: "Preencha email e senha", variant: "destructive" });
       return;
     }
     setLoading(true);
-    const {
-      error
-    } = await signIn(email, password);
+    const { error } = await signIn(email, password);
     if (error) {
       toast({
         title: "Erro no login",
@@ -160,6 +126,7 @@ const Auth = () => {
     setLoading(false);
   };
 
+  // >>>>> AJUSTE AQUI: enviar link de recuperação usando Edge Function com invoke
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailToSend = forgotPasswordEmail.trim().toLowerCase();
@@ -167,48 +134,57 @@ const Auth = () => {
       toast({ title: "Erro", description: "Preencha o email para recuperação", variant: "destructive" });
       return;
     }
-  
+
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(emailToSend, {
-        redirectTo: 'https://app.geracardapio.com/auth/callback', // importante!
+      // Chama a Edge Function que prepara o link fixo /reset-password (sem token) e dispara o envio
+      // Garanta que o nome da função publicado é exatamente 'send-auth-welcome-email'
+      const { data, error } = await supabase.functions.invoke('send-auth-welcome-email', {
+        body: {
+          email: emailToSend,
+          temporaryPassword: genTempPassword(10), // se sua function exigir esse campo
+        },
       });
-  
-      if (error) throw error;
-  
+
+      if (error) throw new Error(error.message || 'Falha ao enviar o link.');
+      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : 'Falha ao enviar o link.');
+
       setResetEmailSent(true);
       toast({
         title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        description: "Verifique sua caixa de entrada para redefinir sua senha",
       });
-    } catch (err: any) {
+    } catch (error: any) {
       toast({
         title: "Erro na recuperação",
-        description: err?.message || 'Tente novamente em instantes.',
-        variant: "destructive",
+        description: error?.message || 'Tente novamente em instantes.',
+        variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
-
+  // <<<<< FIM DO AJUSTE
 
   // Mostrar loading enquanto a auth não estiver inicializada
   if (!initialized) {
-    return <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center space-y-4 p-6">
             <LoadingSpinner />
             <p className="text-sm text-muted-foreground">Inicializando...</p>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
-  return <div className="min-h-screen flex items-center justify-center bg-background p-4">
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Gera Cardápio</CardTitle>
-          <CardDescription>
+        <CardDescription>
             Gerencie seu delivery de forma simples e eficiente
           </CardDescription>
         </CardHeader>
@@ -313,7 +289,8 @@ const Auth = () => {
             </TabsContent>
             
             <TabsContent value="signup">
-              {!userType ? <div className="space-y-4">
+              {!userType ? (
+                <div className="space-y-4">
                   <div className="text-center mb-6">
                     <h3 className="text-lg font-semibold mb-2">Como você quer usar o DeliveryFácil?</h3>
                     <p className="text-sm text-muted-foreground">Escolha o tipo de conta que melhor se adequa ao seu perfil</p>
@@ -340,19 +317,25 @@ const Auth = () => {
                       </div>
                     </Button>
                   </div>
-                </div> : <div className="space-y-4">
+                </div>
+              ) : (
+                <div className="space-y-4">
                   <Button variant="ghost" onClick={() => setUserType(null)} className="mb-4">
                     ← Voltar
                   </Button>
                   
                   <form onSubmit={e => handleSignUp(e, userType)} className="space-y-4">
-                    {userType === 'delivery_owner' ? <div className="space-y-2">
+                    {userType === 'delivery_owner' ? (
+                      <div className="space-y-2">
                         <Label htmlFor="businessName">Nome do seu Delivery</Label>
                         <Input id="businessName" type="text" value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Ex: Pizzaria do João" required disabled={loading} />
-                      </div> : <div className="space-y-2">
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
                         <Label htmlFor="customerName">Seu Nome</Label>
                         <Input id="customerName" type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Ex: João da Silva" required disabled={loading} />
-                      </div>}
+                      </div>
+                    )}
                     
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">Email</Label>
@@ -368,11 +351,14 @@ const Auth = () => {
                       {loading ? 'Cadastrando...' : userType === 'delivery_owner' ? 'Cadastrar Delivery' : 'Cadastrar como Cliente'}
                     </Button>
                   </form>
-                </div>}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default Auth;
