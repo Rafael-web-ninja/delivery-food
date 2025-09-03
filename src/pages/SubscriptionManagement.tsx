@@ -143,7 +143,7 @@ export default function SubscriptionManagement() {
           <Separator />
 
           <div className="flex flex-wrap gap-3">
-            {planType === 'free' && (
+            {planType === 'free' ? (
               <>
                 <Button
                   variant="outline"
@@ -163,6 +163,17 @@ export default function SubscriptionManagement() {
                   Assinar Plano Anual
                 </Button>
               </>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={openCustomerPortal}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                Gerenciar Assinatura
+                <ExternalLink className="w-3 h-3" />
+              </Button>
             )}
           </div>
         </CardContent>
