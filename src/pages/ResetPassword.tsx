@@ -27,11 +27,10 @@ const ResetPassword = () => {
 
   useEffect(() => {
     // Garante que ninguém fique logado nessa tela
-    // (sua exigência: ao clicar no e-mail, não pode logar no app)
     (async () => {
       try {
         await supabase.auth.signOut();
-      } catch (e) {
+      } catch {
         // ignore
       } finally {
         setInitializing(false);
@@ -41,8 +40,11 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
 
-    if (!email || !password || !confirmPassword) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !password || !confirmPassword) {
       toast({
         title: 'Erro',
         description: 'Preencha todos os campos.',
@@ -72,21 +74,17 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // Chama sua Edge Function ADMIN que atualiza a senha por e-mail (sem token/sessão)
-      // Ajuste a URL caso use proxy diferente. No Supabase padrão:
-      // POST {PROJECT_URL}/functions/v1/admin-reset-password
-      const res = await fetch('/functions/v1/admin-reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          newPassword: password,
-        }),
+      // Chamada via supabase.functions.invoke = headers corretos (apikey/authorization)
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: { email: cleanEmail, newPassword: password },
       });
 
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json?.error || 'Não foi possível redefinir a senha.');
+      if (error) {
+        throw new Error(error.message || 'Não foi possível redefinir a senha.');
+      }
+      // (Opcional) validar sucesso no data, se sua function retorna { success: true }
+      if (data && data.error) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'Não foi possível redefinir a senha.');
       }
 
       toast({
