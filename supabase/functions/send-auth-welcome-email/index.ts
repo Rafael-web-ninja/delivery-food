@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,10 +39,10 @@ serve(async (req) => {
 
     const { email, temporaryPassword }: WelcomeEmailRequest = body;
 
-    if (!email || !temporaryPassword) {
+    /*if (!email || !temporaryPassword) {
       logStep("ERROR: Missing required fields");
       throw new Error("Email and temporaryPassword are required");
-    }
+    }*/
 
     // (Opcional) Verifica se o usuário existe
     const { data: userList, error: userFetchError } = await supabaseClient.auth.admin.listUsers({
@@ -75,58 +74,15 @@ serve(async (req) => {
 
     logStep("Reset link prepared (no token, fixed path)", { resetLink });
 
-    // Inicializar Resend
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    
-    if (!Deno.env.get("RESEND_API_KEY")) {
-      logStep("ERROR: RESEND_API_KEY not configured");
-      throw new Error("RESEND_API_KEY not configured");
-    }
-
-    // Enviar o e-mail de recuperação
-    const emailResponse = await resend.emails.send({
-      from: "Gera Cardápio <noreply@geracardapio.com>",
-      to: [email],
-      subject: "Recuperação de Senha - Gera Cardápio",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; text-align: center;">Recuperação de Senha</h1>
-          <p style="color: #666; font-size: 16px;">Olá!</p>
-          <p style="color: #666; font-size: 16px;">
-            Recebemos uma solicitação para redefinir a senha da sua conta no Gera Cardápio.
-          </p>
-          <p style="color: #666; font-size: 16px;">
-            Sua senha temporária é: <strong style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">${temporaryPassword}</strong>
-          </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetLink}" 
-               style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Redefinir Senha
-            </a>
-          </div>
-          <p style="color: #999; font-size: 14px;">
-            Se você não solicitou a recuperação de senha, pode ignorar este e-mail.
-          </p>
-          <p style="color: #999; font-size: 14px;">
-            Este link é válido por 24 horas.
-          </p>
-        </div>
-      `,
-    });
-
-    if (emailResponse.error) {
-      logStep("ERROR sending email", { error: emailResponse.error });
-      throw new Error(`Failed to send email: ${emailResponse.error.message}`);
-    }
-
-    logStep("Email sent successfully", { emailId: emailResponse.data?.id });
-
+    // Retorne o link que deve ir no e-mail + metadados úteis
     return new Response(
       JSON.stringify({
         success: true,
         email,
-        emailId: emailResponse.data?.id,
-        message: "E-mail de recuperação enviado com sucesso"
+        // Este é o link no botão do e-mail
+        resetLink,
+        // Indicativo para logs/observabilidade
+        info: "Use 'resetLink' no e-mail. O action_link do Supabase foi gerado apenas para validar o fluxo, mas foi ignorado."
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
