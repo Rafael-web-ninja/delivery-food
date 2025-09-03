@@ -55,8 +55,12 @@ serve(async (req) => {
 
     // ===== Envio do e-mail via Resend =====
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const MAIL_FROM = Deno.env.get("MAIL_FROM") || "onboarding@resend.dev";
-    if (!RESEND_API_KEY) return json({ error: "Missing RESEND_API_KEY" }, 500);
+    const MAIL_FROM = Deno.env.get("MAIL_FROM") || "noreply@geracardapio.com";
+    
+    if (!RESEND_API_KEY) {
+      logStep("ERROR: Missing RESEND_API_KEY");
+      return json({ error: "Missing RESEND_API_KEY" }, 500);
+    }
 
     const subject = "Redefinição de senha - Gera Cardápio";
     const html = `
@@ -74,6 +78,8 @@ serve(async (req) => {
         <p style="color:#666;font-size:12px">Esse link direciona para a página de redefinição no app.</p>
       </div>
     `;
+
+    logStep("Attempting to send email", { to: email, from: MAIL_FROM });
 
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
