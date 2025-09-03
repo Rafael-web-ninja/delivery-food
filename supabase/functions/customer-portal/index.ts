@@ -28,6 +28,13 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
     logStep("Authorization header found");
 
+    // Use service role key for database queries
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
     // Use ANON key for auth verification ONLY
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -42,17 +49,42 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    
+    // Try to find customer by email first
+    let customerId;
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    if (customers.data.length === 0) {
-      throw new Error("No Stripe customer found for this user");
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      logStep("Found Stripe customer by email", { customerId });
+    } else {
+      // Fallback: try to find customer ID from subscriber_plans table
+      logStep("No customer found by email, checking subscriber_plans table");
+      const { data: subscriberData, error: subError } = await supabaseService
+        .from('subscriber_plans')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (subError) {
+        logStep("Error querying subscriber_plans", { error: subError.message });
+        throw new Error("No Stripe customer found for this user");
+      }
+      
+      if (!subscriberData?.stripe_customer_id) {
+        throw new Error("No Stripe customer found for this user");
+      }
+      
+      customerId = subscriberData.stripe_customer_id;
+      logStep("Found Stripe customer from subscriber_plans", { customerId });
     }
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
 
-    const origin = req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app";
+    // Use configured return URL or fallback to origin
+    const returnUrl = Deno.env.get("STRIPE_PORTAL_RETURN_URL") || `${req.headers.get("origin") || "https://preview--app-gera-cardapio.lovable.app"}/subscription`;
+    logStep("Creating portal session", { customerId, returnUrl });
+    
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/subscription`,
+      return_url: returnUrl,
     });
     logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
 
