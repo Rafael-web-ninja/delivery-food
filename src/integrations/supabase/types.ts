@@ -1011,6 +1011,38 @@ export type Database = {
         Args: { email: string }
         Returns: string
       }
+      upsert_customer_profile: {
+        Args: {
+          p_city: string
+          p_complement: string
+          p_name: string
+          p_neighborhood: string
+          p_phone: string
+          p_state: string
+          p_street: string
+          p_street_number: string
+          p_user_id: string
+          p_zip_code: string
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          complement: string | null
+          created_at: string
+          first_login_completed: boolean | null
+          id: string
+          name: string | null
+          neighborhood: string | null
+          phone: string | null
+          state: string | null
+          street: string | null
+          street_number: string | null
+          temp_password_sent: boolean | null
+          updated_at: string
+          user_id: string
+          zip_code: string | null
+        }
+      }
     }
     Enums: {
       coupon_type: "percent" | "fixed"
