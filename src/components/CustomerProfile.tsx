@@ -6,14 +6,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Phone, MapPin, Mail } from 'lucide-react';
+import { User, Phone, MapPin, Mail, Loader2 } from 'lucide-react';
 import PasswordChangeForm from './PasswordChangeForm';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { maskPhone, unmaskPhone, isValidPhone } from '@/lib/phone-utils';
+import { maskZipCode, unmaskZipCode, isValidZipCode, fetchAddressByZipCode } from '@/lib/viacep-utils';
 
 interface CustomerProfileData {
   name: string;
   phone: string;
   address: string;
+  zip_code: string;
+  street: string;
+  street_number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  complement: string;
 }
 
 interface EmailChangeData {
@@ -25,10 +34,18 @@ export default function CustomerProfile() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
   const [profileData, setProfileData] = useState<CustomerProfileData>({
     name: '',
     phone: '',
-    address: ''
+    address: '',
+    zip_code: '',
+    street: '',
+    street_number: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    complement: ''
   });
   const [emailData, setEmailData] = useState<EmailChangeData>({
     newEmail: '',
@@ -54,7 +71,14 @@ export default function CustomerProfile() {
         setProfileData({
           name: data.name || '',
           phone: data.phone || '',
-          address: data.address || ''
+          address: data.address || '',
+          zip_code: data.zip_code || '',
+          street: data.street || '',
+          street_number: data.street_number || '',
+          neighborhood: data.neighborhood || '',
+          city: data.city || '',
+          state: data.state || '',
+          complement: data.complement || ''
         });
       }
     } catch (error) {
@@ -64,6 +88,46 @@ export default function CustomerProfile() {
 
   const handleInputChange = (field: keyof CustomerProfileData, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const maskedPhone = maskPhone(value);
+    setProfileData(prev => ({ ...prev, phone: maskedPhone }));
+  };
+
+  const handleZipCodeChange = async (value: string) => {
+    const maskedZipCode = maskZipCode(value);
+    setProfileData(prev => ({ ...prev, zip_code: maskedZipCode }));
+
+    // Auto-fill address when zip code is complete
+    if (isValidZipCode(maskedZipCode)) {
+      setCepLoading(true);
+      try {
+        const addressData = await fetchAddressByZipCode(maskedZipCode);
+        if (addressData) {
+          setProfileData(prev => ({
+            ...prev,
+            street: addressData.logradouro || '',
+            neighborhood: addressData.bairro || '',
+            city: addressData.localidade || '',
+            state: addressData.uf || ''
+          }));
+          
+          toast({
+            title: "Endereço encontrado!",
+            description: "Os campos de endereço foram preenchidos automaticamente.",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Erro ao buscar CEP",
+          description: error.message || "Não foi possível encontrar o endereço.",
+          variant: "destructive"
+        });
+      } finally {
+        setCepLoading(false);
+      }
+    }
   };
 
   const saveProfile = async () => {
@@ -175,23 +239,114 @@ export default function CustomerProfile() {
             <Input
               id="phone"
               value={profileData.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
+              onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="(11) 99999-9999"
+              maxLength={15}
             />
           </div>
-          
-          <div>
-            <Label htmlFor="address" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Endereço padrão
-            </Label>
-            <Input
-              id="address"
-              value={profileData.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="Rua, número, bairro, cidade"
-            />
+        </CardContent>
+      </Card>
+
+      {/* Address Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Endereço
+          </CardTitle>
+          <CardDescription>
+            Informe seu CEP para preenchimento automático do endereço
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="zip_code">CEP *</Label>
+              <div className="relative">
+                <Input
+                  id="zip_code"
+                  value={profileData.zip_code}
+                  onChange={(e) => handleZipCodeChange(e.target.value)}
+                  placeholder="00000-000"
+                  maxLength={9}
+                />
+                {cepLoading && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="street">Rua/Logradouro *</Label>
+              <Input
+                id="street"
+                value={profileData.street}
+                onChange={(e) => handleInputChange('street', e.target.value)}
+                placeholder="Nome da rua"
+              />
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="street_number">Número *</Label>
+              <Input
+                id="street_number"
+                value={profileData.street_number}
+                onChange={(e) => handleInputChange('street_number', e.target.value)}
+                placeholder="123"
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <Label htmlFor="complement">Complemento</Label>
+              <Input
+                id="complement"
+                value={profileData.complement}
+                onChange={(e) => handleInputChange('complement', e.target.value)}
+                placeholder="Apto, casa, bloco, etc."
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="neighborhood">Bairro *</Label>
+              <Input
+                id="neighborhood"
+                value={profileData.neighborhood}
+                onChange={(e) => handleInputChange('neighborhood', e.target.value)}
+                placeholder="Nome do bairro"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="city">Cidade *</Label>
+              <Input
+                id="city"
+                value={profileData.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                placeholder="Nome da cidade"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="state">Estado *</Label>
+              <Input
+                id="state"
+                value={profileData.state}
+                onChange={(e) => handleInputChange('state', e.target.value)}
+                placeholder="UF"
+                maxLength={2}
+              />
+            </div>
+          </div>
+
+          <Button onClick={saveProfile} disabled={loading} className="w-full">
+            {loading ? 'Salvando...' : 'Salvar Perfil'}
+          </Button>
 
           <Button onClick={saveProfile} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : 'Salvar Perfil'}

@@ -180,36 +180,57 @@ export type Database = {
       customer_profiles: {
         Row: {
           address: string | null
+          city: string | null
+          complement: string | null
           created_at: string
           first_login_completed: boolean | null
           id: string
           name: string | null
+          neighborhood: string | null
           phone: string | null
+          state: string | null
+          street: string | null
+          street_number: string | null
           temp_password_sent: boolean | null
           updated_at: string
           user_id: string
+          zip_code: string | null
         }
         Insert: {
           address?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string
           first_login_completed?: boolean | null
           id?: string
           name?: string | null
+          neighborhood?: string | null
           phone?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           temp_password_sent?: boolean | null
           updated_at?: string
           user_id: string
+          zip_code?: string | null
         }
         Update: {
           address?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string
           first_login_completed?: boolean | null
           id?: string
           name?: string | null
+          neighborhood?: string | null
           phone?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           temp_password_sent?: boolean | null
           updated_at?: string
           user_id?: string
+          zip_code?: string | null
         }
         Relationships: []
       }
