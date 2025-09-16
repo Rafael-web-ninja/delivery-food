@@ -24,5 +24,8 @@ verify_jwt = false
 [functions.send-auth-welcome-email]
 verify_jwt = false
 
+[functions.send-welcome-email]
+verify_jwt = false
+
 [functions.admin-reset-password]
 verify_jwt = false
