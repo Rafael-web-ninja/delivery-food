@@ -33,7 +33,6 @@ import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TestCheckout from "./pages/TestCheckout";
-
 const queryClient = new QueryClient();
 
 const App = () => (
