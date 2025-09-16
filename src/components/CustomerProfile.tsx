@@ -141,8 +141,9 @@ export default function CustomerProfile() {
         .upsert({
           user_id: user?.id,
           ...profileData
+        }, {
+          onConflict: 'user_id'
         })
-        .eq('user_id', user?.id)
         .select()
         .single();
 
