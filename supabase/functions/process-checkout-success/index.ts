@@ -151,30 +151,42 @@ serve(async (req) => {
         isNewUser = true;
         logStep("New user created successfully", { userId, email: customerEmail });
 
-        // Send welcome email with password using Supabase Auth (non-blocking)
+        // Send welcome email with password using custom email function
         try {
-          logStep("Sending welcome email via Supabase Auth", { email: customerEmail });
+          logStep("Sending welcome email with credentials", { email: customerEmail });
           
-          // Generate a password reset link for the new user
-          const { data: resetData, error: resetError } = await supabaseClient.auth.admin.generateLink({
-            type: 'recovery',
-            email: customerEmail,
-            options: {
-              redirectTo: `https://app.geracardapio.com/reset-password?type=welcome&email=${encodeURIComponent(customerEmail)}`
+          // Call our custom welcome email function
+          const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
+            body: {
+              customerName: customerEmail.split('@')[0], // Use part before @ as name fallback
+              customerEmail: customerEmail,
+              tempPassword: randomPassword,
+              planType: session.metadata?.plan_type || 'mensal',
+              amount: session.amount_total || 0
             }
           });
 
-          if (resetError) {
-            logStep("Error generating reset link", { error: resetError });
-          } else if (resetData?.properties?.action_link) {
-            // The email will be sent automatically by Supabase Auth
-            emailSent = true;
-            logStep("Welcome email sent via Supabase Auth successfully", { 
-              email: customerEmail,
-              hasActionLink: !!resetData.properties.action_link 
-            });
+          if (emailError) {
+            logStep("Error sending welcome email", { error: emailError });
           } else {
-            logStep("No action link generated");
+            emailSent = true;
+            logStep("Welcome email sent successfully", { 
+              email: customerEmail,
+              emailId: emailData?.emailId
+            });
+          }
+          
+          // Mark that temp password was sent
+          try {
+            await supabaseClient
+              .from('customer_profiles')
+              .update({ 
+                temp_password_sent: true,
+                first_login_completed: false
+              })
+              .eq('user_id', userId);
+          } catch (profileUpdateError) {
+            logStep("Could not update profile flags (non-critical)", { error: profileUpdateError });
           }
         } catch (emailError) {
           logStep("Email sending error (non-critical)", { 

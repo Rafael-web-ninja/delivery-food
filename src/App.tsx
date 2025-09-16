@@ -10,7 +10,9 @@ import AuthGate from "@/components/AuthGate";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
 import NotificationsListener from "@/components/NotificationsListener";
-import { NotificationProvider } from "@/components/NotificationProvider";
+import { NotificationProvider } from '@/components/NotificationProvider';
+import { FirstLoginPasswordChange } from '@/components/FirstLoginPasswordChange';
+import { useFirstLogin } from '@/hooks/useFirstLogin';
 
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -35,17 +37,29 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TestCheckout from "./pages/TestCheckout";
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthErrorBoundary>
-      <AuthProvider>
-        <SubscriptionProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <NotificationsListener />
-          <NotificationProvider />
-          <BrowserRouter>
+const App = () => {
+  const { 
+    showPasswordChange, 
+    handlePasswordChangeComplete, 
+    handleSkipPasswordChange 
+  } = useFirstLogin();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthErrorBoundary>
+        <AuthProvider>
+          <SubscriptionProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <NotificationsListener />
+            <NotificationProvider />
+            <FirstLoginPasswordChange
+              isOpen={showPasswordChange}
+              onClose={handlePasswordChangeComplete}
+              onSkip={handleSkipPasswordChange}
+            />
+            <BrowserRouter>
             <Routes>
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />
               <Route path="/demo" element={<AuthGate requireAuth={false}><Demo /></AuthGate>} />
@@ -116,6 +130,7 @@ const App = () => (
       </AuthProvider>
     </AuthErrorBoundary>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

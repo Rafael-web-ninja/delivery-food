@@ -181,27 +181,33 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          first_login_completed: boolean | null
           id: string
           name: string | null
           phone: string | null
+          temp_password_sent: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
           address?: string | null
           created_at?: string
+          first_login_completed?: boolean | null
           id?: string
           name?: string | null
           phone?: string | null
+          temp_password_sent?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
           address?: string | null
           created_at?: string
+          first_login_completed?: boolean | null
           id?: string
           name?: string | null
           phone?: string | null
+          temp_password_sent?: boolean | null
           updated_at?: string
           user_id?: string
         }
