@@ -144,23 +144,17 @@ export default function CustomerProfile() {
     }
   };
 
-  /**
-   * Salva sempre:
-   * - Tenta UPDATE primeiro (quando já existe perfil)
-   * - Se não existir, faz INSERT
-   * - Desmascara telefone/CEP ao gravar (DB fica com valor limpo)
-   * - Recarrega/normaliza valores retornados (reaplica máscaras para UI)
-   */
   const saveProfile = async () => {
     setLoading(true);
     try {
       const userId = user?.id;
       if (!userId) throw new Error('No authenticated user');
   
-      // ⚠️ Se suas colunas NO DB são NOT NULL, use string vazia em vez de null
+      // Normalize and unmask data for database storage
       const normalize = (v: string) => (v?.trim ? v.trim() : v) || '';
   
       const payload = {
+        user_id: userId,
         name: normalize(profileData.name),
         phone: unmaskPhone(profileData.phone || ''),
         zip_code: unmaskZipCode(profileData.zip_code || ''),
@@ -177,61 +171,47 @@ export default function CustomerProfile() {
       console.log('userId', userId);
       console.table(payload);
   
-      // 1) UPDATE primeiro
-      const upd = await supabase
+      // Use proper UPSERT with conflict resolution
+      const { data, error } = await supabase
         .from('customer_profiles')
-        .update(payload)
-        .eq('user_id', userId)
+        .upsert([payload], {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        })
         .select('*')
-        .maybeSingle();
-  
-      if (upd.error) {
-        console.error('[UPDATE ERROR]', upd.error);
-        // se a linha não existe, segue para INSERT; se for RLS/constraint, vamos falhar no throw abaixo
+        .single();
+
+      if (error) {
+        console.error('[UPSERT ERROR]', error);
+        const msg = [
+          `code: ${error.code ?? 'n/a'}`,
+          `message: ${error.message ?? 'n/a'}`,
+          `details: ${error.details ?? 'n/a'}`,
+          `hint: ${error.hint ?? 'n/a'}`,
+        ].join(' | ');
+        throw new Error(`Supabase UPSERT failed → ${msg}`);
       }
-  
-      let row = upd.data;
-  
-      // 2) Se não atualizou (provavelmente não existe), tenta INSERT
-      if (!row) {
-        const ins = await supabase
-          .from('customer_profiles')
-          .insert([{ user_id: userId, ...payload }])
-          .select('*')
-          .single();
-  
-        if (ins.error) {
-          console.error('[INSERT ERROR]', ins.error);
-          // Exibe info rica no toast
-          const e: any = ins.error;
-          const msg = [
-            `code: ${e.code ?? 'n/a'}`,
-            `message: ${e.message ?? 'n/a'}`,
-            `details: ${e.details ?? 'n/a'}`,
-            `hint: ${e.hint ?? 'n/a'}`,
-          ].join(' | ');
-          throw new Error(`Supabase INSERT failed → ${msg}`);
-        }
-  
-        row = ins.data;
-      }
-  
-      if (!row) throw new Error('No row returned after save');
-  
+
+      if (!data) throw new Error('No row returned after upsert');
+
+      // Update UI state with masked values for display
       setProfileData({
-        name: row.name || '',
-        phone: maskPhone(row.phone || ''),
-        zip_code: maskZipCode(row.zip_code || ''),
-        street: row.street || '',
-        street_number: row.street_number || '',
-        neighborhood: row.neighborhood || '',
-        city: row.city || '',
-        state: row.state || '',
-        complement: row.complement || ''
+        name: data.name || '',
+        phone: maskPhone(data.phone || ''),
+        zip_code: maskZipCode(data.zip_code || ''),
+        street: data.street || '',
+        street_number: data.street_number || '',
+        neighborhood: data.neighborhood || '',
+        city: data.city || '',
+        state: data.state || '',
+        complement: data.complement || ''
       });
   
       console.groupEnd();
-      toast({ title: 'Perfil atualizado!', description: 'Suas informações foram salvas com sucesso.' });
+      toast({ 
+        title: 'Perfil atualizado!', 
+        description: 'Suas informações foram salvas com sucesso.' 
+      });
     } catch (error: any) {
       console.groupEnd?.();
       console.error('[PROFILE SAVE CATCH]', error);
