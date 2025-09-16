@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/formatters';
 import { notificationStore } from '@/stores/notificationStore';
+import { useNotificationSound } from '@/components/NotificationSound';
 
 interface OrderNotification {
   id: string;
@@ -17,7 +18,16 @@ interface OrderNotification {
 export const useNotifications = () => {
   const { user, initialized } = useAuth();
   const { toast } = useToast();
+  const { playNotificationSound } = useNotificationSound();
   const [notifications, setNotifications] = useState(notificationStore.getNotifications());
+  const [newOrderModal, setNewOrderModal] = useState<{ order: OrderNotification | null; isOpen: boolean }>({
+    order: null,
+    isOpen: false
+  });
+  const [statusModal, setStatusModal] = useState<{ order: OrderNotification | null; isOpen: boolean }>({
+    order: null,
+    isOpen: false
+  });
 
   // Subscribe to store changes with proper cleanup
   useEffect(() => {
@@ -85,12 +95,18 @@ export const useNotifications = () => {
                 // Add to notification store
                 notificationStore.addNotification(newOrder);
                 
+                // Play notification sound
+                playNotificationSound();
+                
                 // Show toast notification
                 toast({
                   title: "🎉 Novo Pedido!",
                   description: `${newOrder.customer_name} fez um pedido de ${formatCurrency(Number(newOrder.total_amount))}`,
                   duration: 5000,
                 });
+
+                // Show modal popup
+                setNewOrderModal({ order: newOrder, isOpen: true });
 
                 console.log('✅ Business notification processed successfully');
               }
@@ -179,6 +195,9 @@ export const useNotifications = () => {
                     description: statusInfo.description,
                     duration: 4000,
                   });
+
+                  // Show status modal popup
+                  setStatusModal({ order: updatedOrder, isOpen: true });
                 }
                 console.log('✅ Customer notification processed successfully');
               }
@@ -243,6 +262,10 @@ export const useNotifications = () => {
     notifications,
     markAsRead,
     clearAll,
-    hasUnread: notificationStore.hasUnread()
+    hasUnread: notificationStore.hasUnread(),
+    newOrderModal,
+    statusModal,
+    closeNewOrderModal: () => setNewOrderModal({ order: null, isOpen: false }),
+    closeStatusModal: () => setStatusModal({ order: null, isOpen: false })
   };
 };
