@@ -15,7 +15,6 @@ import { maskZipCode, unmaskZipCode, isValidZipCode, fetchAddressByZipCode } fro
 interface CustomerProfileData {
   name: string;
   phone: string;
-  address: string;
   zip_code: string;
   street: string;
   street_number: string;
@@ -38,7 +37,6 @@ export default function CustomerProfile() {
   const [profileData, setProfileData] = useState<CustomerProfileData>({
     name: '',
     phone: '',
-    address: '',
     zip_code: '',
     street: '',
     street_number: '',
@@ -71,7 +69,6 @@ export default function CustomerProfile() {
         setProfileData({
           name: data.name || '',
           phone: data.phone || '',
-          address: data.address || '',
           zip_code: data.zip_code || '',
           street: data.street || '',
           street_number: data.street_number || '',
@@ -343,10 +340,6 @@ export default function CustomerProfile() {
               />
             </div>
           </div>
-
-          <Button onClick={saveProfile} disabled={loading} className="w-full">
-            {loading ? 'Salvando...' : 'Salvar Perfil'}
-          </Button>
 
           <Button onClick={saveProfile} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : 'Salvar Perfil'}
