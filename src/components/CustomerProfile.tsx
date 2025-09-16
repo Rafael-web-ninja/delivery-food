@@ -8,7 +8,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Phone, MapPin, Mail, Loader2 } from 'lucide-react';
 import PasswordChangeForm from './PasswordChangeForm';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 import { maskPhone, unmaskPhone, isValidPhone } from '@/lib/phone-utils';
 import { maskZipCode, unmaskZipCode, isValidZipCode, fetchAddressByZipCode } from '@/lib/viacep-utils';
 
@@ -52,10 +62,22 @@ export default function CustomerProfile() {
   const [emailLoading, setEmailLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadProfile();
     }
-  }, [user]);
+  }, [user?.id]);
+
+  const mapRowToState = (row: any): CustomerProfileData => ({
+    name: row?.name || '',
+    phone: row?.phone ? maskPhone(row.phone) : '',
+    zip_code: row?.zip_code ? maskZipCode(row.zip_code) : '',
+    street: row?.street || '',
+    street_number: row?.street_number || '',
+    neighborhood: row?.neighborhood || '',
+    city: row?.city || '',
+    state: row?.state || '',
+    complement: row?.complement || ''
+  });
 
   const loadProfile = async () => {
     try {
@@ -66,25 +88,15 @@ export default function CustomerProfile() {
         .maybeSingle();
 
       if (error) {
-        console.error('Erro ao carregar perfil:', error);
+        console.error('[PROFILE LOAD ERROR]', error);
         return;
       }
 
       if (data) {
-        setProfileData({
-          name: data.name || '',
-          phone: data.phone || '',
-          zip_code: data.zip_code || '',
-          street: data.street || '',
-          street_number: data.street_number || '',
-          neighborhood: data.neighborhood || '',
-          city: data.city || '',
-          state: data.state || '',
-          complement: data.complement || ''
-        });
+        setProfileData(mapRowToState(data));
       }
-    } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
+    } catch (err) {
+      console.error('[PROFILE LOAD CATCH]', err);
     }
   };
 
@@ -109,10 +121,10 @@ export default function CustomerProfile() {
         if (addressData) {
           setProfileData(prev => ({
             ...prev,
-            street: addressData.logradouro || '',
-            neighborhood: addressData.bairro || '',
-            city: addressData.localidade || '',
-            state: addressData.uf || ''
+            street: addressData.logradouro || prev.street || '',
+            neighborhood: addressData.bairro || prev.neighborhood || '',
+            city: addressData.localidade || prev.city || '',
+            state: addressData.uf || prev.state || ''
           }));
           
           toast({
@@ -123,7 +135,7 @@ export default function CustomerProfile() {
       } catch (error: any) {
         toast({
           title: "Erro ao buscar CEP",
-          description: error.message || "Não foi possível encontrar o endereço.",
+          description: error?.message || "Não foi possível encontrar o endereço.",
           variant: "destructive"
         });
       } finally {
@@ -132,50 +144,78 @@ export default function CustomerProfile() {
     }
   };
 
+  /**
+   * Salva sempre:
+   * - Tenta UPDATE primeiro (quando já existe perfil)
+   * - Se não existir, faz INSERT
+   * - Desmascara telefone/CEP ao gravar (DB fica com valor limpo)
+   * - Recarrega/normaliza valores retornados (reaplica máscaras para UI)
+   */
   const saveProfile = async () => {
     setLoading(true);
     try {
-      // Use upsert to handle both INSERT (new profile) and UPDATE (existing profile)
-      const { data, error } = await supabase
-        .from('customer_profiles')
-        .upsert({
-          user_id: user?.id,
-          ...profileData
-        }, {
-          onConflict: 'user_id'
-        })
-        .select()
-        .single();
+      const userId = user?.id;
+      if (!userId) throw new Error('No authenticated user');
 
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
+      // Normaliza/limpa payload antes de persistir
+      const payload = {
+        name: (profileData.name || '').trim() || null,
+        phone: unmaskPhone(profileData.phone || '') || null,
+        zip_code: unmaskZipCode(profileData.zip_code || '') || null,
+        street: (profileData.street || '').trim() || null,
+        street_number: (profileData.street_number || '').trim() || null,
+        neighborhood: (profileData.neighborhood || '').trim() || null,
+        city: (profileData.city || '').trim() || null,
+        state: (profileData.state || '').trim().toUpperCase() || null,
+        complement: (profileData.complement || '').trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      // 1) Tenta UPDATE
+      const upd = await supabase
+        .from('customer_profiles')
+        .update(payload)
+        .eq('user_id', userId)
+        .select('*')
+        .maybeSingle();
+
+      if (upd.error) {
+        // Erros de update serão logados, mas não impedem o fallback de insert
+        console.error('[PROFILE UPDATE ERROR]', upd.error);
+      }
+
+      let row = upd.data;
+
+      // 2) Se não atualizou (não havia linha), faz INSERT
+      if (!row) {
+        const ins = await supabase
+          .from('customer_profiles')
+          .insert([{ user_id: userId, ...payload }])
+          .select('*')
+          .single();
+
+        if (ins.error) {
+          console.error('[PROFILE INSERT ERROR]', ins.error);
+          throw ins.error;
+        }
+
+        row = ins.data;
+      }
+
+      // 3) Atualiza estado com máscaras para exibição
+      if (row) {
+        setProfileData(mapRowToState(row));
       }
 
       toast({
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
       });
-
-      // Reload the profile to show updated data
-      if (data) {
-        setProfileData({
-          name: data.name || '',
-          phone: data.phone || '',
-          zip_code: data.zip_code || '',
-          street: data.street || '',
-          street_number: data.street_number || '',
-          neighborhood: data.neighborhood || '',
-          city: data.city || '',
-          state: data.state || '',
-          complement: data.complement || ''
-        });
-      }
     } catch (error: any) {
-      console.error('Erro ao salvar perfil:', error);
+      console.error('[PROFILE SAVE CATCH]', error);
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Não foi possível salvar suas informações.",
+        description: error?.message || "Não foi possível salvar suas informações.",
         variant: "destructive"
       });
     } finally {
@@ -209,10 +249,10 @@ export default function CustomerProfile() {
 
       setEmailData({ newEmail: '', password: '' });
     } catch (error: any) {
-      console.error('Erro ao alterar e-mail:', error);
+      console.error('[EMAIL CHANGE ERROR]', error);
       toast({
         title: "Erro ao alterar e-mail",
-        description: error.message || "Não foi possível alterar o e-mail.",
+        description: error?.message || "Não foi possível alterar o e-mail.",
         variant: "destructive"
       });
     } finally {
@@ -255,6 +295,10 @@ export default function CustomerProfile() {
               placeholder="(11) 99999-9999"
               maxLength={15}
             />
+            {/* Exemplo opcional de validação visual
+            {!isValidPhone(profileData.phone) && profileData.phone && (
+              <p className="text-xs text-red-500 mt-1">Telefone inválido</p>
+            )} */}
           </div>
         </CardContent>
       </Card>
