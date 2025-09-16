@@ -210,12 +210,11 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
     try {
       let biz: any = null;
 
-      // Tenta por ID primeiro
+      // Tenta por ID primeiro usando view segura
       const byId = await supabase
-        .from('delivery_businesses')
+        .from('public_business_info')
         .select('*')
         .eq('id', businessId)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (byId.data) {
@@ -223,10 +222,9 @@ const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'menu');
       } else {
         // Fallback: tenta por slug
         const bySlug = await supabase
-          .from('delivery_businesses')
+          .from('public_business_info')
           .select('*')
           .eq('slug', businessId!)
-          .eq('is_active', true)
           .maybeSingle();
         if (bySlug.data) biz = bySlug.data;
       }
