@@ -9,6 +9,8 @@ import { useNotificationSound } from '@/components/NotificationSound';
 interface OrderNotification {
   id: string;
   customer_name: string;
+  customer_phone?: string;
+  customer_address?: string;
   total_amount: number;
   status: string;
   created_at: string;

@@ -20,6 +20,19 @@ import Dashboard from "./pages/Dashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
 import { DashboardRouter } from "./components/DashboardRouter";
+import MenuManagement from "./pages/MenuManagement";
+import OrderManagement from "./pages/OrderManagement";
+import PublicMenu from "./pages/PublicMenu";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
+import PDV from "./pages/PDV";
+import SubscriptionManagement from "./pages/SubscriptionManagement";
+import TestNotifications from "./pages/TestNotifications";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TestCheckout from "./pages/TestCheckout";
 
 const queryClient = new QueryClient();
 

@@ -14,7 +14,7 @@ declare global {
 
 // Create notification sound using Web Audio API
 const createNotificationSound = () => {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext || null;
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext || null;
   
   if (!AudioContextClass) {
     console.warn('Web Audio API not supported');
