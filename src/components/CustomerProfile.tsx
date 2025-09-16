@@ -59,11 +59,16 @@ export default function CustomerProfile() {
 
   const loadProfile = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('customer_profiles')
         .select('*')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao carregar perfil:', error);
+        return;
+      }
 
       if (data) {
         setProfileData({
@@ -130,37 +135,28 @@ export default function CustomerProfile() {
   const saveProfile = async () => {
     setLoading(true);
     try {
-      const { data: existingProfile } = await supabase
+      // Use upsert to handle both insert and update cases
+      const { error } = await supabase
         .from('customer_profiles')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
+        .upsert({
+          user_id: user?.id,
+          ...profileData
+        });
 
-      if (existingProfile) {
-        // Atualizar perfil existente
-        await supabase
-          .from('customer_profiles')
-          .update(profileData)
-          .eq('user_id', user?.id);
-      } else {
-        // Criar novo perfil
-        await supabase
-          .from('customer_profiles')
-          .insert({
-            user_id: user?.id,
-            ...profileData
-          });
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
       }
 
       toast({
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar perfil:', error);
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar suas informações.",
+        description: error.message || "Não foi possível salvar suas informações.",
         variant: "destructive"
       });
     } finally {
