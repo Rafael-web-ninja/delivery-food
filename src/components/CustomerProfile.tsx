@@ -156,67 +156,89 @@ export default function CustomerProfile() {
     try {
       const userId = user?.id;
       if (!userId) throw new Error('No authenticated user');
-
-      // Normaliza/limpa payload antes de persistir
+  
+      // ⚠️ Se suas colunas NO DB são NOT NULL, use string vazia em vez de null
+      const normalize = (v: string) => (v?.trim ? v.trim() : v) || '';
+  
       const payload = {
-        name: (profileData.name || '').trim() || null,
-        phone: unmaskPhone(profileData.phone || '') || null,
-        zip_code: unmaskZipCode(profileData.zip_code || '') || null,
-        street: (profileData.street || '').trim() || null,
-        street_number: (profileData.street_number || '').trim() || null,
-        neighborhood: (profileData.neighborhood || '').trim() || null,
-        city: (profileData.city || '').trim() || null,
-        state: (profileData.state || '').trim().toUpperCase() || null,
-        complement: (profileData.complement || '').trim() || null,
+        name: normalize(profileData.name),
+        phone: unmaskPhone(profileData.phone || ''),
+        zip_code: unmaskZipCode(profileData.zip_code || ''),
+        street: normalize(profileData.street),
+        street_number: normalize(profileData.street_number),
+        neighborhood: normalize(profileData.neighborhood),
+        city: normalize(profileData.city),
+        state: normalize(profileData.state).toUpperCase(),
+        complement: normalize(profileData.complement),
         updated_at: new Date().toISOString(),
       };
-
-      // 1) Tenta UPDATE
+  
+      console.group('[PROFILE SAVE]');
+      console.log('userId', userId);
+      console.table(payload);
+  
+      // 1) UPDATE primeiro
       const upd = await supabase
         .from('customer_profiles')
         .update(payload)
         .eq('user_id', userId)
         .select('*')
         .maybeSingle();
-
+  
       if (upd.error) {
-        // Erros de update serão logados, mas não impedem o fallback de insert
-        console.error('[PROFILE UPDATE ERROR]', upd.error);
+        console.error('[UPDATE ERROR]', upd.error);
+        // se a linha não existe, segue para INSERT; se for RLS/constraint, vamos falhar no throw abaixo
       }
-
+  
       let row = upd.data;
-
-      // 2) Se não atualizou (não havia linha), faz INSERT
+  
+      // 2) Se não atualizou (provavelmente não existe), tenta INSERT
       if (!row) {
         const ins = await supabase
           .from('customer_profiles')
           .insert([{ user_id: userId, ...payload }])
           .select('*')
           .single();
-
+  
         if (ins.error) {
-          console.error('[PROFILE INSERT ERROR]', ins.error);
-          throw ins.error;
+          console.error('[INSERT ERROR]', ins.error);
+          // Exibe info rica no toast
+          const e: any = ins.error;
+          const msg = [
+            `code: ${e.code ?? 'n/a'}`,
+            `message: ${e.message ?? 'n/a'}`,
+            `details: ${e.details ?? 'n/a'}`,
+            `hint: ${e.hint ?? 'n/a'}`,
+          ].join(' | ');
+          throw new Error(`Supabase INSERT failed → ${msg}`);
         }
-
+  
         row = ins.data;
       }
-
-      // 3) Atualiza estado com máscaras para exibição
-      if (row) {
-        setProfileData(mapRowToState(row));
-      }
-
-      toast({
-        title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso.",
+  
+      if (!row) throw new Error('No row returned after save');
+  
+      setProfileData({
+        name: row.name || '',
+        phone: maskPhone(row.phone || ''),
+        zip_code: maskZipCode(row.zip_code || ''),
+        street: row.street || '',
+        street_number: row.street_number || '',
+        neighborhood: row.neighborhood || '',
+        city: row.city || '',
+        state: row.state || '',
+        complement: row.complement || ''
       });
+  
+      console.groupEnd();
+      toast({ title: 'Perfil atualizado!', description: 'Suas informações foram salvas com sucesso.' });
     } catch (error: any) {
+      console.groupEnd?.();
       console.error('[PROFILE SAVE CATCH]', error);
       toast({
-        title: "Erro ao salvar",
-        description: error?.message || "Não foi possível salvar suas informações.",
-        variant: "destructive"
+        title: 'Não foi possível salvar o perfil',
+        description: error?.message || 'Erro desconhecido ao salvar.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
