@@ -135,11 +135,16 @@ export default function CustomerProfile() {
   const saveProfile = async () => {
     setLoading(true);
     try {
-      // Update the existing profile record
-      const { error } = await supabase
+      // Use upsert to handle both INSERT (new profile) and UPDATE (existing profile)
+      const { data, error } = await supabase
         .from('customer_profiles')
-        .update(profileData)
-        .eq('user_id', user?.id);
+        .upsert({
+          user_id: user?.id,
+          ...profileData
+        })
+        .eq('user_id', user?.id)
+        .select()
+        .single();
 
       if (error) {
         console.error('Database error:', error);
@@ -150,6 +155,21 @@ export default function CustomerProfile() {
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
       });
+
+      // Reload the profile to show updated data
+      if (data) {
+        setProfileData({
+          name: data.name || '',
+          phone: data.phone || '',
+          zip_code: data.zip_code || '',
+          street: data.street || '',
+          street_number: data.street_number || '',
+          neighborhood: data.neighborhood || '',
+          city: data.city || '',
+          state: data.state || '',
+          complement: data.complement || ''
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao salvar perfil:', error);
       toast({
