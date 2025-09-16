@@ -213,6 +213,45 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_areas: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          zip_code: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          zip_code: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          zip_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_areas_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_areas_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_business_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_businesses: {
         Row: {
           accent_color: string | null
@@ -228,6 +267,7 @@ export type Database = {
           cnpj: string | null
           created_at: string
           delivery_fee: number | null
+          delivery_radius_km: number | null
           delivery_time_bg_color: string | null
           delivery_time_minutes: number
           delivery_time_text_color: string | null
@@ -259,6 +299,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           delivery_fee?: number | null
+          delivery_radius_km?: number | null
           delivery_time_bg_color?: string | null
           delivery_time_minutes?: number
           delivery_time_text_color?: string | null
@@ -290,6 +331,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           delivery_fee?: number | null
+          delivery_radius_km?: number | null
           delivery_time_bg_color?: string | null
           delivery_time_minutes?: number
           delivery_time_text_color?: string | null

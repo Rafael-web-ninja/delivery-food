@@ -17,6 +17,7 @@ import OrderSuccessModal from './OrderSuccessModal';
 import { DeliveryFeeDisplay, TotalWithDelivery } from './DeliveryFeeDisplay';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { getCustomerName } from '@/lib/auth-utils';
+import { validateDeliveryArea, extractZipCodeFromAddress } from '@/lib/delivery-validation';
 
 interface CartItem {
   id: string;
@@ -447,6 +448,31 @@ const handleFinishOrder = async () => {
       variant: "destructive"
     });
     return;
+  }
+
+  // Validar área de entrega para delivery
+  if (!isPickup && customerData.address) {
+    const zipCode = extractZipCodeFromAddress(customerData.address);
+    
+    if (!zipCode) {
+      toast({
+        title: "CEP não encontrado",
+        description: "Inclua um CEP válido no endereço (ex: 12345-678)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const validation = await validateDeliveryArea(business.id, zipCode);
+    
+    if (!validation.isValid) {
+      toast({
+        title: "Área de entrega",
+        description: validation.message || "CEP não atendido para entrega",
+        variant: "destructive"
+      });
+      return;
+    }
   }
 
   setLoading(true);

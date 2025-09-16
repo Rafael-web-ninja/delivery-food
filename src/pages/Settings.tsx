@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BusinessHours from '@/components/BusinessHours';
 import PaymentMethodManagement from '@/components/PaymentMethodManagement';
+import DeliveryAreasManagement from '@/components/DeliveryAreasManagement';
 import { useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { ArrowLeft, Save, Store, QrCode } from 'lucide-react';
@@ -33,6 +34,7 @@ interface BusinessData {
   delivery_fee: number;
   min_order_value: number;
   delivery_time_minutes: number;
+  delivery_radius_km: number;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -154,6 +156,7 @@ const [businessData, setBusinessData] = useState<BusinessData>({
   delivery_fee: 0,
   min_order_value: 0,
   delivery_time_minutes: 30,
+  delivery_radius_km: 10,
   primary_color: '#2563eb',
   secondary_color: '#64748b',
   accent_color: '#059669',
@@ -301,6 +304,7 @@ const { error } = await supabase
         <Tabs defaultValue="business" className="space-y-6">
           <TabsList>
             <TabsTrigger value="business">Dados do Negócio</TabsTrigger>
+            <TabsTrigger value="delivery">Entrega</TabsTrigger>
             <TabsTrigger value="hours">Horários</TabsTrigger>
             <TabsTrigger value="payments">Pagamentos</TabsTrigger>
             <TabsTrigger value="coupons">Cupons</TabsTrigger>
@@ -522,6 +526,16 @@ const { error } = await supabase
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="delivery">
+            <DeliveryAreasManagement 
+              businessId={businessData.id}
+              deliveryRadius={businessData.delivery_radius_km}
+              onDeliveryRadiusChange={(radius) => 
+                setBusinessData(prev => ({ ...prev, delivery_radius_km: radius }))
+              }
+            />
           </TabsContent>
 
           <TabsContent value="hours">
