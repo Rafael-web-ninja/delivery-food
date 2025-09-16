@@ -5,9 +5,23 @@ interface NotificationSoundProps {
   onPlay?: () => void;
 }
 
+// Type declaration for webkit compatibility
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 // Create notification sound using Web Audio API
 const createNotificationSound = () => {
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext || null;
+  
+  if (!AudioContextClass) {
+    console.warn('Web Audio API not supported');
+    return () => {};
+  }
+  
+  const audioContext = new AudioContextClass();
   
   const playSound = () => {
     // Create oscillator for the first tone

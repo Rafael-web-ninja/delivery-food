@@ -9,6 +9,8 @@ import { AuthErrorBoundary } from "@/components/AuthErrorBoundary";
 import AuthGate from "@/components/AuthGate";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
+import NotificationsListener from "@/components/NotificationsListener";
+import { NotificationProvider } from "@/components/NotificationProvider";
 
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -18,20 +20,6 @@ import Dashboard from "./pages/Dashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
 import { DashboardRouter } from "./components/DashboardRouter";
-import MenuManagement from "./pages/MenuManagement";
-import OrderManagement from "./pages/OrderManagement";
-import PublicMenu from "./pages/PublicMenu";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import PDV from "./pages/PDV";
-import SubscriptionManagement from "./pages/SubscriptionManagement";
-import TestNotifications from "./pages/TestNotifications";
-import NotificationsListener from "@/components/NotificationsListener";
-import SubscriptionSuccess from "./pages/SubscriptionSuccess";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TestCheckout from "./pages/TestCheckout";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +32,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <NotificationsListener />
+          <NotificationProvider />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<AuthGate requireAuth={false}><Index /></AuthGate>} />

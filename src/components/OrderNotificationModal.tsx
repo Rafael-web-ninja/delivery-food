@@ -8,7 +8,7 @@ import { Clock, User, MapPin, Phone, Package } from 'lucide-react';
 interface OrderNotification {
   id: string;
   customer_name: string;
-  customer_phone: string;
+  customer_phone?: string;
   customer_address?: string;
   total_amount: number;
   status: string;
