@@ -135,12 +135,14 @@ export default function CustomerProfile() {
   const saveProfile = async () => {
     setLoading(true);
     try {
-      // Use upsert to handle both insert and update cases
+      // Use upsert with onConflict to properly handle existing records
       const { error } = await supabase
         .from('customer_profiles')
         .upsert({
           user_id: user?.id,
           ...profileData
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) {
