@@ -6,19 +6,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Phone, MapPin, Clock, Package, Star } from 'lucide-react';
+import { User, Phone, MapPin, Clock, Package, Star, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, statusTranslations as statusLabels } from '@/lib/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getDisplayName } from '@/lib/auth-utils';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
+import { maskPhone, unmaskPhone, isValidPhone } from '@/lib/phone-utils';
+import { maskZipCode, unmaskZipCode, isValidZipCode, fetchAddressByZipCode } from '@/lib/viacep-utils';
 
 
 interface CustomerProfile {
   id: string;
   name: string;
   phone: string;
-  address: string;
+  zip_code: string;
+  street: string;
+  street_number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  complement: string;
 }
 
 interface CustomerOrder {
@@ -68,11 +76,18 @@ const CustomerDashboard = () => {
     id: '',
     name: '',
     phone: '',
-    address: ''
+    zip_code: '',
+    street: '',
+    street_number: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    complement: ''
   });
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -159,7 +174,13 @@ const CustomerDashboard = () => {
         user_id: user?.id,
         name: profile.name,
         phone: profile.phone,
-        address: profile.address
+        zip_code: profile.zip_code,
+        street: profile.street,
+        street_number: profile.street_number,
+        neighborhood: profile.neighborhood,
+        city: profile.city,
+        state: profile.state,
+        complement: profile.complement
       };
 
       const { error } = await supabase
@@ -181,6 +202,46 @@ const CustomerDashboard = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const maskedPhone = maskPhone(value);
+    setProfile(prev => ({ ...prev, phone: maskedPhone }));
+  };
+
+  const handleZipCodeChange = async (value: string) => {
+    const maskedZipCode = maskZipCode(value);
+    setProfile(prev => ({ ...prev, zip_code: maskedZipCode }));
+
+    // Auto-fill address when zip code is complete  
+    if (isValidZipCode(maskedZipCode)) {
+      setCepLoading(true);
+      try {
+        const addressData = await fetchAddressByZipCode(maskedZipCode);
+        if (addressData) {
+          setProfile(prev => ({
+            ...prev,
+            street: addressData.logradouro || '',
+            neighborhood: addressData.bairro || '',
+            city: addressData.localidade || '',
+            state: addressData.uf || ''
+          }));
+          
+          toast({
+            title: "Endereço encontrado!",
+            description: "Os campos de endereço foram preenchidos automaticamente.",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Erro ao buscar CEP",
+          description: error.message || "Não foi possível encontrar o endereço.",
+          variant: "destructive"
+        });
+      } finally {
+        setCepLoading(false);
+      }
     }
   };
 
@@ -264,24 +325,111 @@ const CustomerDashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone *</Label>
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Telefone *
+                    </Label>
                     <Input
                       id="phone"
                       value={profile.phone}
-                      onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
                       placeholder="(11) 99999-9999"
+                      maxLength={15}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço de Entrega</Label>
-                  <Input
-                    id="address"
-                    value={profile.address}
-                    onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="Rua, número, bairro, cidade..."
-                  />
+                {/* Address Section */}
+                <div className="space-y-4 border-t pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <h3 className="text-lg font-medium">Endereço de Entrega</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="zip_code">CEP *</Label>
+                      <div className="relative">
+                        <Input
+                          id="zip_code"
+                          value={profile.zip_code}
+                          onChange={(e) => handleZipCodeChange(e.target.value)}
+                          placeholder="00000-000"
+                          maxLength={9}
+                        />
+                        {cepLoading && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="street">Rua/Logradouro *</Label>
+                      <Input
+                        id="street"
+                        value={profile.street}
+                        onChange={(e) => setProfile(prev => ({ ...prev, street: e.target.value }))}
+                        placeholder="Nome da rua"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="street_number">Número *</Label>
+                      <Input
+                        id="street_number"
+                        value={profile.street_number}
+                        onChange={(e) => setProfile(prev => ({ ...prev, street_number: e.target.value }))}
+                        placeholder="123"
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="complement">Complemento</Label>
+                      <Input
+                        id="complement"
+                        value={profile.complement}
+                        onChange={(e) => setProfile(prev => ({ ...prev, complement: e.target.value }))}
+                        placeholder="Apto, casa, bloco, etc."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="neighborhood">Bairro *</Label>
+                      <Input
+                        id="neighborhood"
+                        value={profile.neighborhood}
+                        onChange={(e) => setProfile(prev => ({ ...prev, neighborhood: e.target.value }))}
+                        placeholder="Nome do bairro"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Cidade *</Label>
+                      <Input
+                        id="city"
+                        value={profile.city}
+                        onChange={(e) => setProfile(prev => ({ ...prev, city: e.target.value }))}
+                        placeholder="Nome da cidade"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="state">Estado *</Label>
+                      <Input
+                        id="state"
+                        value={profile.state}
+                        onChange={(e) => setProfile(prev => ({ ...prev, state: e.target.value }))}
+                        placeholder="UF"
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-2 pt-4">
