@@ -171,41 +171,70 @@ export default function CustomerProfile() {
       console.log('userId', userId);
       console.table(payload);
   
-      // Use proper UPSERT with conflict resolution
-      const { data, error } = await supabase
-        .from('customer_profiles')
-        .upsert([payload], {
-          onConflict: 'user_id',
-          ignoreDuplicates: false
-        })
-        .select('*')
-        .single();
+      // Use the RPC function as the primary method
+      const { data, error } = await supabase.rpc('upsert_customer_profile', {
+        p_user_id: userId,
+        p_name: payload.name,
+        p_phone: payload.phone,
+        p_zip_code: payload.zip_code,
+        p_street: payload.street,
+        p_street_number: payload.street_number,
+        p_neighborhood: payload.neighborhood,
+        p_city: payload.city,
+        p_state: payload.state,
+        p_complement: payload.complement
+      });
 
       if (error) {
-        console.error('[UPSERT ERROR]', error);
-        const msg = [
-          `code: ${error.code ?? 'n/a'}`,
-          `message: ${error.message ?? 'n/a'}`,
-          `details: ${error.details ?? 'n/a'}`,
-          `hint: ${error.hint ?? 'n/a'}`,
-        ].join(' | ');
-        throw new Error(`Supabase UPSERT failed → ${msg}`);
+        console.error('[RPC ERROR]', error);
+        
+        // Fallback to direct upsert if RPC fails
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('customer_profiles')
+          .upsert([payload], {
+            onConflict: 'user_id',
+            ignoreDuplicates: false
+          })
+          .select('*')
+          .single();
+
+        if (fallbackError) {
+          const msg = [
+            `code: ${fallbackError.code ?? 'n/a'}`,
+            `message: ${fallbackError.message ?? 'n/a'}`,
+            `details: ${fallbackError.details ?? 'n/a'}`,
+            `hint: ${fallbackError.hint ?? 'n/a'}`,
+          ].join(' | ');
+          throw new Error(`Supabase UPSERT failed → ${msg}`);
+        }
+
+        // Use fallback data
+        const resultData = fallbackData;
+        setProfileData({
+          name: resultData.name || '',
+          phone: maskPhone(resultData.phone || ''),
+          zip_code: maskZipCode(resultData.zip_code || ''),
+          street: resultData.street || '',
+          street_number: resultData.street_number || '',
+          neighborhood: resultData.neighborhood || '',
+          city: resultData.city || '',
+          state: resultData.state || '',
+          complement: resultData.complement || ''
+        });
+      } else if (data) {
+        // Update UI state with masked values for display using RPC result
+        setProfileData({
+          name: data.name || '',
+          phone: maskPhone(data.phone || ''),
+          zip_code: maskZipCode(data.zip_code || ''),
+          street: data.street || '',
+          street_number: data.street_number || '',
+          neighborhood: data.neighborhood || '',
+          city: data.city || '',
+          state: data.state || '',
+          complement: data.complement || ''
+        });
       }
-
-      if (!data) throw new Error('No row returned after upsert');
-
-      // Update UI state with masked values for display
-      setProfileData({
-        name: data.name || '',
-        phone: maskPhone(data.phone || ''),
-        zip_code: maskZipCode(data.zip_code || ''),
-        street: data.street || '',
-        street_number: data.street_number || '',
-        neighborhood: data.neighborhood || '',
-        city: data.city || '',
-        state: data.state || '',
-        complement: data.complement || ''
-      });
   
       console.groupEnd();
       toast({ 

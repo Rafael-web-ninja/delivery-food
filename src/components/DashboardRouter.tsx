@@ -17,7 +17,16 @@ export const DashboardRouter = () => {
       try {
         console.log('DashboardRouter: Checking user type for:', user.email);
         
-        // Verificar se é dono de um delivery business
+        // First check user metadata for explicit role
+        const userType = user.user_metadata?.user_type;
+        if (userType === 'delivery_owner') {
+          console.log('DashboardRouter: User metadata indicates delivery_owner, routing to business dashboard');
+          setUserType('business');
+          setLoading(false);
+          return;
+        }
+
+        // If no metadata, check if user owns a business
         const { data: business, error } = await supabase
           .from('delivery_businesses')
           .select('id')
@@ -25,24 +34,19 @@ export const DashboardRouter = () => {
           .maybeSingle();
 
         if (error) {
-          console.error('DashboardRouter: Error checking business:', error);
+          console.error('DashboardRouter: Error checking business ownership:', error);
+          // For authenticated users without business, default to customer
           setUserType('customer');
         } else if (business && business.id) {
           console.log('DashboardRouter: User has business, routing to business dashboard');
           setUserType('business');
         } else {
-          // Verificar se tem metadata indicando que é business owner
-          const userType = user.user_metadata?.user_type;
-          if (userType === 'delivery_owner') {
-            console.log('DashboardRouter: User metadata indicates delivery_owner, routing to business dashboard');
-            setUserType('business');
-          } else {
-            console.log('DashboardRouter: No business found, routing to customer dashboard');
-            setUserType('customer');
-          }
+          console.log('DashboardRouter: No business found, routing to customer dashboard');
+          setUserType('customer');
         }
       } catch (error) {
         console.error('DashboardRouter: Exception checking user type:', error);
+        // Default to customer for any errors
         setUserType('customer');
       } finally {
         setLoading(false);

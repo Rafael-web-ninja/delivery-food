@@ -105,7 +105,12 @@ const CustomerDashboard = () => {
         .maybeSingle();
 
       if (data) {
-        setProfile(data);
+        // Apply masking for display
+        setProfile({
+          ...data,
+          phone: data.phone ? maskPhone(data.phone) : '',
+          zip_code: data.zip_code ? maskZipCode(data.zip_code) : ''
+        });
       }
       if (error && error.code !== 'PGRST116') {
         console.error('Erro ao buscar perfil:', error);
@@ -170,24 +175,52 @@ const CustomerDashboard = () => {
 
     setSaving(true);
     try {
-      const profileData = {
-        user_id: user?.id,
-        name: profile.name,
-        phone: profile.phone,
-        zip_code: profile.zip_code,
-        street: profile.street,
-        street_number: profile.street_number,
-        neighborhood: profile.neighborhood,
-        city: profile.city,
-        state: profile.state,
-        complement: profile.complement
-      };
+      const userId = user?.id;
+      if (!userId) throw new Error('No authenticated user');
 
-      const { error } = await supabase
-        .from('customer_profiles')
-        .upsert(profileData);
+      // Normalize data for database storage
+      const normalize = (v: string) => (v?.trim ? v.trim() : v) || '';
 
-      if (error) throw error;
+      // Use the RPC function as the primary method
+      const { data, error } = await supabase.rpc('upsert_customer_profile', {
+        p_user_id: userId,
+        p_name: normalize(profile.name),
+        p_phone: unmaskPhone(profile.phone || ''),
+        p_zip_code: unmaskZipCode(profile.zip_code || ''),
+        p_street: normalize(profile.street),
+        p_street_number: normalize(profile.street_number),
+        p_neighborhood: normalize(profile.neighborhood),
+        p_city: normalize(profile.city),
+        p_state: normalize(profile.state).toUpperCase(),
+        p_complement: normalize(profile.complement)
+      });
+
+      if (error) {
+        console.error('[RPC ERROR]', error);
+        
+        // Fallback to direct upsert if RPC fails
+        const profileData = {
+          user_id: userId,
+          name: normalize(profile.name),
+          phone: unmaskPhone(profile.phone || ''),
+          zip_code: unmaskZipCode(profile.zip_code || ''),
+          street: normalize(profile.street),
+          street_number: normalize(profile.street_number),
+          neighborhood: normalize(profile.neighborhood),
+          city: normalize(profile.city),
+          state: normalize(profile.state).toUpperCase(),
+          complement: normalize(profile.complement)
+        };
+
+        const { error: upsertError } = await supabase
+          .from('customer_profiles')
+          .upsert(profileData, { onConflict: 'user_id' });
+
+        if (upsertError) throw upsertError;
+      }
+
+      // Refresh profile after save
+      await fetchProfile();
 
       toast({
         title: "Perfil salvo!",

@@ -11,7 +11,7 @@ import ResetPassword from "../pages/ResetPassword";
 import Index from "../pages/Index";
 import Demo from "../pages/Demo";
 import Dashboard from "../pages/Dashboard";
-import CustomerDashboard from "../pages/CustomerDashboard";
+import { CustomerNavigation } from "@/components/CustomerNavigation";
 import CustomerProfile from "../pages/CustomerProfile";
 import MenuManagement from "../pages/MenuManagement";
 import OrderManagement from "../pages/OrderManagement";
@@ -55,7 +55,7 @@ export const AppContent = () => {
           {/* Customer Routes */}
           <Route path="/meu-perfil" element={
             <ProtectedRoute requiredUserType="customer">
-              <CustomerDashboard />
+              <CustomerNavigation />
             </ProtectedRoute>
           } />
           
