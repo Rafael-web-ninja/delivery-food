@@ -17,7 +17,7 @@ export const DashboardRouter = () => {
       try {
         console.log('DashboardRouter: Checking user type for:', user.email);
         
-        // First check user metadata for explicit role
+        // First check user metadata for quick determination
         const userType = user.user_metadata?.user_type;
         if (userType === 'delivery_owner') {
           console.log('DashboardRouter: User metadata indicates delivery_owner, routing to business dashboard');
@@ -25,20 +25,18 @@ export const DashboardRouter = () => {
           setLoading(false);
           return;
         }
-
-        // If no metadata, check if user owns a business
-        const { data: business, error } = await supabase
-          .from('delivery_businesses')
-          .select('id')
-          .eq('owner_id', user.id)
-          .maybeSingle();
+        
+        // Only query database if metadata doesn't indicate business owner
+        // Use the new secure function instead of direct table query
+        const { data: businessId, error } = await supabase
+          .rpc('get_user_business_id');
 
         if (error) {
           console.error('DashboardRouter: Error checking business ownership:', error);
-          // For authenticated users without business, default to customer
+          // Default to customer on any error to prevent infinite loops
           setUserType('customer');
-        } else if (business && business.id) {
-          console.log('DashboardRouter: User has business, routing to business dashboard');
+        } else if (businessId) {
+          console.log('DashboardRouter: User owns business, routing to business dashboard');
           setUserType('business');
         } else {
           console.log('DashboardRouter: No business found, routing to customer dashboard');
@@ -46,7 +44,7 @@ export const DashboardRouter = () => {
         }
       } catch (error) {
         console.error('DashboardRouter: Exception checking user type:', error);
-        // Default to customer for any errors
+        // Always default to customer on errors to prevent app from breaking
         setUserType('customer');
       } finally {
         setLoading(false);
