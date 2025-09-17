@@ -126,7 +126,6 @@ const Auth = () => {
     setLoading(false);
   };
 
-  // >>>>> AJUSTE AQUI: enviar link de recuperação usando Edge Function com invoke
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailToSend = forgotPasswordEmail.trim().toLowerCase();
@@ -137,17 +136,12 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Chama a Edge Function que prepara o link fixo /reset-password (sem token) e dispara o envio
-      // Garanta que o nome da função publicado é exatamente 'send-auth-welcome-email'
-      const { data, error } = await supabase.functions.invoke('send-auth-welcome-email', {
-        body: {
-          email: emailToSend,
-          temporaryPassword: genTempPassword(10), // se sua function exigir esse campo
-        },
+      // Usar o método padrão do Supabase para reset de senha
+      const { error } = await supabase.auth.resetPasswordForEmail(emailToSend, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      if (error) throw new Error(error.message || 'Falha ao enviar o link.');
-      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : 'Falha ao enviar o link.');
+      if (error) throw error;
 
       setResetEmailSent(true);
       toast({
@@ -163,7 +157,6 @@ const Auth = () => {
     }
     setLoading(false);
   };
-  // <<<<< FIM DO AJUSTE
 
   // Mostrar loading enquanto a auth não estiver inicializada
   if (!initialized) {
